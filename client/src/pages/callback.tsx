@@ -173,15 +173,14 @@ const Callback: FC = () => {
               
               {authCode && (
                 <div className="mt-4 border border-[var(--eva-orange)]/50 bg-black/50 rounded-md p-3">
-                  <p className="text-sm font-mono text-[var(--eva-orange)] mb-2 flex items-center">
-                    <span className="w-3 h-3 bg-[var(--eva-orange)] mr-2"></span>
-                    AUTHENTICATION CODE CAPTURED:
-                  </p>
-                  <div className="bg-black/50 p-3 rounded border border-[var(--eva-orange)]/30 flex items-center justify-between">
-                    <code className="text-sm font-mono text-[var(--eva-green)] break-all">{authCode}</code>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-mono text-[var(--eva-orange)] flex items-center">
+                      <span className="w-3 h-3 bg-[var(--eva-orange)] mr-2"></span>
+                      AUTHENTICATION CODE CAPTURED:
+                    </p>
                     <Button 
                       variant="outline"
-                      size="icon"
+                      size="sm"
                       onClick={() => {
                         navigator.clipboard.writeText(authCode || '');
                         toast({
@@ -189,14 +188,26 @@ const Callback: FC = () => {
                           description: "Authentication code transferred to clipboard",
                         });
                       }}
-                      className="ml-2 text-[var(--eva-orange)] border-[var(--eva-orange)]/50 hover:bg-[var(--eva-orange)]/20"
+                      className="text-xs text-[var(--eva-orange)] border-[var(--eva-orange)]/50 hover:bg-[var(--eva-orange)]/20"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                      COPY CODE
                     </Button>
                   </div>
-                  <p className="text-xs text-[var(--eva-blue)] mt-2 font-mono">
-                    Return to central command and enter authentication code manually.
-                  </p>
+                  <div className="bg-black/50 p-3 rounded border border-[var(--eva-orange)]/30">
+                    <code className="text-sm font-mono text-[var(--eva-green)] break-all">{authCode}</code>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-[var(--eva-orange)]/20">
+                    <p className="text-xs text-[var(--eva-text)] mb-2 font-mono">
+                      OAuth authentication failed, but you can still use this code:
+                    </p>
+                    <ol className="text-xs text-[var(--eva-blue)] font-mono list-decimal ml-4 space-y-1">
+                      <li>Return to the main interface using the button below</li>
+                      <li>Navigate to NERV SYSTEM-B (chat interface) tab</li>
+                      <li>Enter your OpenRouter API key directly in the provided field</li>
+                      <li>OR use the "SYNCHRONIZE WITH OPENROUTER" option again</li>
+                    </ol>
+                  </div>
                 </div>
               )}
             </div>

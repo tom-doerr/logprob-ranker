@@ -106,13 +106,25 @@ const MainLayout: FC = () => {
                 </div>
               </div>
               
-              <div className="border border-[var(--eva-orange)]/30 p-3 bg-black/30 rounded-md text-sm">
+              <div className="border border-[var(--eva-orange)]/30 p-3 bg-black/30 rounded-md text-sm mb-3">
                 <p className="mb-2 text-[var(--eva-orange)]">INSTRUCTIONS:</p>
                 <ol className="list-decimal ml-5 space-y-1 text-xs">
                   <li>Click "PROCEED TO AUTHENTICATION" below or navigate to "NERV SYSTEM-B" tab</li>
                   <li>Enter your OpenRouter API key or create a new one via the OpenRouter authentication</li>
                   <li>Once authorized, you'll have full access to all NERV systems</li>
                 </ol>
+              </div>
+              
+              <div className="bg-black/50 border border-[var(--eva-blue)]/30 p-3 rounded-md">
+                <p className="text-xs font-mono text-[var(--eva-blue)] mb-2 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                  MAGI SYSTEM NOTICE
+                </p>
+                <ul className="list-disc ml-4 text-xs space-y-1">
+                  <li>You can either enter your OpenRouter API key directly</li>
+                  <li>OR use the OAuth flow to create/retrieve a key from OpenRouter</li>
+                  <li>For demo purposes, you can also use <span className="text-[var(--eva-green)]">sk-or-v1-demo-123456</span> as a simulation key</li>
+                </ul>
               </div>
             </div>
             
