@@ -1,12 +1,46 @@
-import { useState, useRef } from 'react';
+import React, { createContext, useState, useRef, useContext, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ModelConfig, BROWSER_MODEL_OPTIONS } from '../lib/modelTypes';
+import { ModelConfig, BROWSER_MODEL_OPTIONS, POPULAR_MODELS } from '../lib/modelTypes';
 import * as webllm from '@mlc-ai/web-llm';
 
-/**
- * Custom hook for centralized model configuration management
- */
-export function useModelConfig() {
+// Define the shape of our model configuration context
+interface ModelConfigContextType {
+  // Model settings
+  isUsingBrowserModel: boolean;
+  setIsUsingBrowserModel: (value: boolean) => void;
+  selectedModel: string;
+  setSelectedModel: (modelId: string) => void;
+  temperature: number;
+  setTemperature: (value: number) => void;
+  topP: number;
+  setTopP: (value: number) => void;
+  maxTokens: number;
+  setMaxTokens: (value: number) => void;
+  customModel: string;
+  setCustomModel: (value: string) => void;
+  
+  // Browser model settings
+  browserModelEngine: any;
+  isModelLoaded: boolean;
+  isLoadingModel: boolean;
+  loadingProgress: number;
+  loadingMessage: string;
+  loadBrowserModel: () => Promise<void>;
+  resetEngine: () => void;
+  
+  // Browser model options
+  browserModelOptions: typeof BROWSER_MODEL_OPTIONS;
+  popularModels: typeof POPULAR_MODELS;
+  
+  // Helper method
+  getModelConfig: () => ModelConfig;
+}
+
+// Create the context with a default value
+const ModelConfigContext = createContext<ModelConfigContextType | undefined>(undefined);
+
+// Provider component that wraps the app and makes model config available to any child component
+export function ModelConfigProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   
   // Model configuration state
@@ -105,7 +139,8 @@ export function useModelConfig() {
     browserModelEngine: engineRef.current
   });
 
-  return {
+  // Create the context value object
+  const contextValue: ModelConfigContextType = {
     // Model settings
     isUsingBrowserModel,
     setIsUsingBrowserModel,
@@ -129,7 +164,28 @@ export function useModelConfig() {
     loadBrowserModel,
     resetEngine,
     
+    // Browser model options
+    browserModelOptions: BROWSER_MODEL_OPTIONS,
+    popularModels: POPULAR_MODELS,
+    
     // Helper method
     getModelConfig
   };
+
+  return (
+    <ModelConfigContext.Provider value={contextValue}>
+      {children}
+    </ModelConfigContext.Provider>
+  );
+}
+
+// Hook that lets any component easily access the model configuration context
+export function useModelConfig() {
+  const context = useContext(ModelConfigContext);
+  
+  if (context === undefined) {
+    throw new Error('useModelConfig must be used within a ModelConfigProvider');
+  }
+  
+  return context;
 }

@@ -76,29 +76,7 @@ const MainLayout: FC = () => {
       {showAuthInfo && <AuthModal onClose={closeAuthInfo} onProceed={proceedToAuth} />}
       
       {/* Centralized Model Configuration (visible when authenticated) */}
-      {!showAuthInfo && (
-        <ModelConfig 
-          isUsingBrowserModel={modelConfig.isUsingBrowserModel}
-          onSelectBrowserModel={modelConfig.setIsUsingBrowserModel}
-          selectedModel={modelConfig.selectedModel}
-          onSelectModel={modelConfig.setSelectedModel}
-          temperature={modelConfig.temperature}
-          onTemperatureChange={modelConfig.setTemperature}
-          topP={modelConfig.topP}
-          onTopPChange={modelConfig.setTopP}
-          maxTokens={modelConfig.maxTokens}
-          onMaxTokensChange={modelConfig.setMaxTokens}
-          onLoadBrowserModel={modelConfig.loadBrowserModel}
-          isModelLoaded={modelConfig.isModelLoaded}
-          isLoadingModel={modelConfig.isLoadingModel}
-          loadingProgress={modelConfig.loadingProgress}
-          loadingMessage={modelConfig.loadingMessage}
-          browserModelOptions={BROWSER_MODEL_OPTIONS}
-          popularModels={POPULAR_MODELS}
-          customModel={modelConfig.customModel}
-          onCustomModelChange={modelConfig.setCustomModel}
-        />
-      )}
+      {!showAuthInfo && <ModelConfig />}
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
         <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">

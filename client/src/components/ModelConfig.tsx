@@ -8,52 +8,32 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ChatMessage } from './BrowserLLM';
-import { ModelOption, BrowserModelOption } from '../lib/modelTypes';
+import { useModelConfig } from '@/hooks/use-model-config';
 
-interface ModelConfigProps {
-  isUsingBrowserModel: boolean;
-  onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
-  selectedModel: string;
-  onSelectModel: (modelId: string) => void;
-  temperature: number;
-  onTemperatureChange: (value: number) => void;
-  topP: number;
-  onTopPChange: (value: number) => void;
-  maxTokens: number;
-  onMaxTokensChange: (value: number) => void;
-  onLoadBrowserModel: () => Promise<void>;
-  isModelLoaded: boolean;
-  isLoadingModel: boolean;
-  loadingProgress: number;
-  loadingMessage: string;
-  browserModelOptions: BrowserModelOption[];
-  popularModels: ModelOption[];
-  customModel: string;
-  onCustomModelChange: (value: string) => void;
-}
-
-const ModelConfig: FC<ModelConfigProps> = ({
-  isUsingBrowserModel,
-  onSelectBrowserModel,
-  selectedModel,
-  onSelectModel,
-  temperature,
-  onTemperatureChange,
-  topP,
-  onTopPChange,
-  maxTokens,
-  onMaxTokensChange,
-  onLoadBrowserModel,
-  isModelLoaded,
-  isLoadingModel,
-  loadingProgress,
-  loadingMessage,
-  browserModelOptions,
-  popularModels,
-  customModel,
-  onCustomModelChange,
-}) => {
+// Simplified component that doesn't need props anymore
+const ModelConfig: FC = () => {
+  // Get all model configuration from our centralized context
+  const {
+    isUsingBrowserModel,
+    setIsUsingBrowserModel,
+    selectedModel,
+    setSelectedModel,
+    temperature,
+    setTemperature,
+    topP,
+    setTopP,
+    maxTokens,
+    setMaxTokens,
+    customModel,
+    setCustomModel,
+    loadBrowserModel,
+    isModelLoaded,
+    isLoadingModel,
+    loadingProgress,
+    loadingMessage,
+    browserModelOptions,
+    popularModels
+  } = useModelConfig();
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   
   const toggleModelPicker = () => {
@@ -61,19 +41,19 @@ const ModelConfig: FC<ModelConfigProps> = ({
   };
 
   const handleSelectModelFromPopular = (modelId: string) => {
-    onSelectModel(modelId);
+    setSelectedModel(modelId);
     setModelPickerOpen(false);
   };
 
   const handleSelectCustomModel = () => {
     if (customModel.trim()) {
-      onSelectModel('custom');
+      setSelectedModel('custom');
       setModelPickerOpen(false);
     }
   };
 
   const handleBrowserModelSelect = (modelId: string) => {
-    onSelectModel(modelId);
+    setSelectedModel(modelId);
   };
 
   return (
@@ -88,7 +68,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => onSelectBrowserModel(!isUsingBrowserModel)}
+              onClick={() => setIsUsingBrowserModel(!isUsingBrowserModel)}
               className="eva-button text-[var(--eva-orange)]"
             >
               {isUsingBrowserModel ? <Zap className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
@@ -141,7 +121,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
                     {!isModelLoaded && !isLoadingModel && (
                       <div className="pt-4">
                         <Button 
-                          onClick={onLoadBrowserModel} 
+                          onClick={loadBrowserModel} 
                           className="w-full eva-button text-[var(--eva-orange)] font-mono uppercase tracking-wider"
                         >
                           <Download className="h-4 w-4 mr-2" />
@@ -204,7 +184,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
                       <Input
                         placeholder="Enter model identifier"
                         value={customModel}
-                        onChange={(e) => onCustomModelChange(e.target.value)}
+                        onChange={(e) => setCustomModel(e.target.value)}
                         className="eva-input text-[var(--eva-green)] font-mono"
                       />
                       <Button 
@@ -257,7 +237,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
                 value={[temperature]}
                 max={2}
                 step={0.1}
-                onValueChange={(value) => onTemperatureChange(value[0])}
+                onValueChange={(value) => setTemperature(value[0])}
                 className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
               />
               <div className="flex justify-between text-[0.6rem] text-[var(--eva-text)]/40 font-mono mt-1">
@@ -275,7 +255,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
                 max={1}
                 min={0.1}
                 step={0.01}
-                onValueChange={(value) => onTopPChange(value[0])}
+                onValueChange={(value) => setTopP(value[0])}
                 className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
               />
             </div>
@@ -289,7 +269,7 @@ const ModelConfig: FC<ModelConfigProps> = ({
                 max={4000}
                 min={100}
                 step={100}
-                onValueChange={(value) => onMaxTokensChange(value[0])}
+                onValueChange={(value) => setMaxTokens(value[0])}
                 className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
               />
             </div>

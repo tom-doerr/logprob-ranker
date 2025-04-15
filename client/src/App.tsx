@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Callback from "@/pages/callback";
+import { ModelConfigProvider } from "./hooks/use-model-config";
 
 function Router() {
   return (
@@ -20,8 +21,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <ModelConfigProvider>
+        <Router />
+        <Toaster />
+      </ModelConfigProvider>
     </QueryClientProvider>
   );
 }
