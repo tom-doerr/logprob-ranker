@@ -193,9 +193,13 @@ const ChatInterface: FC = () => {
     setApiKey(null);
     clearApiKey();
     setMessages([]);
+    
+    // Dispatch custom event to notify the app that the API key has been removed
+    window.dispatchEvent(new Event('api-key-changed'));
+    
     toast({
-      title: 'Logged Out',
-      description: 'Your API key has been removed',
+      title: 'PILOT DISCONNECTED',
+      description: 'NERV authentication credentials removed',
     });
   };
 

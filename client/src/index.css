@@ -113,3 +113,9 @@
     );
   }
 }
+
+@layer utilities {
+  .animation-delay-500 {
+    animation-delay: 500ms;
+  }
+}
