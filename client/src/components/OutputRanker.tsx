@@ -61,7 +61,25 @@ const examples: LogProbExample[] = [
   }
 ];
 
-const OutputRanker: FC = () => {
+interface OutputRankerProps {
+  isUsingBrowserModel?: boolean;
+  selectedModel?: string;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+  customModel?: string;
+  browserModelEngine?: any;
+}
+
+const OutputRanker: FC<OutputRankerProps> = ({
+  isUsingBrowserModel: externalIsUsingBrowserModel,
+  selectedModel: externalSelectedModel,
+  temperature: externalTemperature,
+  topP: externalTopP,
+  maxTokens: externalMaxTokens,
+  customModel: externalCustomModel,
+  browserModelEngine
+}) => {
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');

@@ -94,7 +94,25 @@ const popularModels: ModelOption[] = [
   }
 ];
 
-const ChatInterface: FC = () => {
+interface ChatInterfaceProps {
+  isUsingBrowserModel?: boolean;
+  selectedModel?: string;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+  customModel?: string;
+  browserModelEngine?: any;
+}
+
+const ChatInterface: FC<ChatInterfaceProps> = ({
+  isUsingBrowserModel: externalIsUsingBrowserModel,
+  selectedModel: externalSelectedModel,
+  temperature: externalTemperature,
+  topP: externalTopP,
+  maxTokens: externalMaxTokens,
+  customModel: externalCustomModel,
+  browserModelEngine
+}) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
