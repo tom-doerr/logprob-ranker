@@ -22,8 +22,9 @@ const Footer: FC = () => {
             </a>
           </div>
           
-          <div className="text-neutral-400 text-xs mt-4 md:mt-0">
+          <div className="text-neutral-400 text-xs mt-4 md:mt-0 text-center md:text-right">
             <p>&copy; {new Date().getFullYear()} OpenRouter. All rights reserved.</p>
+            <p className="mt-1">Using <a href="https://simpleanalytics.com" className="underline hover:text-white" target="_blank" rel="noopener noreferrer">Simple Analytics</a> for privacy-first analytics.</p>
           </div>
         </div>
       </div>
