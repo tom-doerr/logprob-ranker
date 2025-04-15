@@ -119,15 +119,11 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       // Initialize WebLLM first
       try {
         setProgressMessage('Initializing WebLLM...');
-        // @ts-ignore - isInitialized may not be exposed in type definitions
-        if (!webllm.isInitialized || !webllm.isInitialized()) {
-          // @ts-ignore - initWebLLM may not be exposed in type definitions
-          if (webllm.initWebLLM) {
-            await webllm.initWebLLM();
-          }
-        }
+        // Some WebLLM versions have different initialization procedures
+        // Just attempt to create the engine directly
+        console.log('Starting WebLLM engine initialization');
       } catch (e) {
-        console.log('WebLLM initialization not needed or already initialized');
+        console.log('WebLLM pre-initialization error:', e);
       }
       
       // Create a new engine with available WebLLM model
@@ -195,10 +191,12 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       
       let fullResponse = '';
       
-      // Handle streaming based on the returned type
+      // Handle streaming based on the returned type - use type casting to avoid TS errors
+      // @ts-ignore: Stream could be different types depending on WebLLM version
       if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
         // It's an async iterable for streaming
-        for await (const chunk of stream as AsyncIterable<any>) {
+        // @ts-ignore: Handle async iteration manually
+        for await (const chunk of stream) {
           const content = chunk.choices?.[0]?.delta?.content || '';
           fullResponse += content;
         }
