@@ -385,25 +385,59 @@ const ChatInterface: FC = () => {
                   NERV AUTHENTICATION REQUIRED
                 </h3>
                 <div className="border border-[var(--eva-orange)] rounded-md p-4 bg-black/20">
-                  <p className="text-xs text-[var(--eva-text)] mb-4 font-mono">
-                    ENTER OPENROUTER SECURITY CREDENTIALS:
-                  </p>
-                  <div className="flex space-x-2">
-                    <Input
-                      type="password"
-                      value={manualApiKey}
-                      onChange={(e) => setManualApiKey(e.target.value)}
-                      placeholder="sk-or-v1-..."
-                      className="flex-grow eva-input text-[var(--eva-green)] font-mono"
-                    />
-                    <Button 
-                      onClick={handleApiKeySubmit} 
-                      disabled={!manualApiKey.trim()}
-                      className="eva-button text-[var(--eva-orange)]"
-                    >
-                      <Key className="h-4 w-4 mr-2" />
-                      AUTHORIZE
-                    </Button>
+                  <div className="flex items-center mb-3">
+                    <div className="w-3 h-3 bg-[var(--eva-green)] mr-2"></div>
+                    <p className="text-xs text-[var(--eva-green)] font-mono">AUTHENTICATION OPTIONS:</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-[var(--eva-text)] mb-2 font-mono flex items-center">
+                        <span className="inline-block w-2 h-2 bg-[var(--eva-orange)] mr-2"></span>
+                        OPTION 1: ENTER OPENROUTER API KEY:
+                      </p>
+                      <div className="flex space-x-2">
+                        <Input
+                          type="password"
+                          value={manualApiKey}
+                          onChange={(e) => setManualApiKey(e.target.value)}
+                          placeholder="sk-or-v1-..."
+                          className="flex-grow eva-input text-[var(--eva-green)] font-mono"
+                        />
+                        <Button 
+                          onClick={handleApiKeySubmit} 
+                          disabled={!manualApiKey.trim()}
+                          className="eva-button text-[var(--eva-orange)]"
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          AUTHORIZE
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t border-[var(--eva-orange)]/20 pt-3">
+                      <p className="text-xs text-[var(--eva-text)] mb-2 font-mono flex items-center">
+                        <span className="inline-block w-2 h-2 bg-[var(--eva-blue)] mr-2"></span>
+                        OPTION 2: ACTIVATE DEMO MODE:
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          const demoKey = 'sk-or-v1-demo-123456';
+                          saveApiKey(demoKey);
+                          setApiKey(demoKey);
+                          window.dispatchEvent(new Event('api-key-changed'));
+                          toast({
+                            title: 'SIMULATION MODE ACTIVE',
+                            description: 'Using demo credentials for testing',
+                          });
+                        }}
+                        variant="outline"
+                        className="w-full eva-button text-[var(--eva-blue)] border-[var(--eva-blue)]/30 hover:bg-[var(--eva-blue)]/10"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M12 9v4l2 2"/><path d="M5 3a16.971 16.971 0 0 0 12 0"/><path d="M5 21a16.971 16.971 0 0 1 12 0"/><path d="M12 3v18"/><path d="M12 12a8 8 0 0 0 8-8"/><path d="M12 12a8 8 0 0 1-8-8"/><path d="M12 12a8 8 0 0 1 8 8"/><path d="M12 12a8 8 0 0 0-8 8"/></svg>
+                        INITIALIZE SIMULATION
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

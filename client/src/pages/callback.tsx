@@ -81,6 +81,15 @@ const Callback: FC = () => {
           throw new Error('No API key returned from server');
         }
         
+        // Display debug info if available
+        if (data.debug_info) {
+          console.log("OAuth Exchange Debug Info:", data.debug_info);
+          toast({
+            title: 'Using Simulation Mode',
+            description: 'Using demo API key due to OAuth issues',
+          });
+        }
+        
         // Store the token and update application state
         saveApiKey(data.key);
         clearCodeVerifier();
