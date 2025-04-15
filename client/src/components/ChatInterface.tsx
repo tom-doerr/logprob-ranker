@@ -94,15 +94,9 @@ const popularModels: ModelOption[] = [
   }
 ];
 
-interface ChatInterfaceProps {
-  isUsingBrowserModel?: boolean;
-  selectedModel?: string;
-  temperature?: number;
-  topP?: number;
-  maxTokens?: number;
-  customModel?: string;
-  browserModelEngine?: any;
-}
+import { ModelConfig } from '../lib/modelTypes';
+
+interface ChatInterfaceProps extends Partial<ModelConfig> {}
 
 const ChatInterface: FC<ChatInterfaceProps> = ({
   isUsingBrowserModel: externalIsUsingBrowserModel,
@@ -121,7 +115,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   const [manualApiKey, setManualApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>(externalSelectedModel || 'google/gemini-2.0-flash-001');
   const [customModel, setCustomModel] = useState<string>(externalCustomModel || '');
-  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+
   const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(externalIsUsingBrowserModel ?? false);
   const [temperature, setTemperature] = useState(externalTemperature || 0.7);
   const [topP, setTopP] = useState(externalTopP || 0.9);
@@ -312,9 +306,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     };
   };
 
-  const toggleModelPicker = () => {
-    setModelPickerOpen(!modelPickerOpen);
-  };
+
 
   const modelInfo = getModelInfo();
 
@@ -339,24 +331,10 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
             </span>
             {apiKey && (
               <div className="flex space-x-2 items-center">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={toggleModelPicker}
-                  className="text-xs flex items-center font-mono eva-button text-[var(--eva-orange)]"
-                >
-                  <Settings className="h-3 w-3 mr-1" />
+                <div className="text-xs flex items-center font-mono text-[var(--eva-green)]">
+                  <Settings className="h-3 w-3 mr-1 text-[var(--eva-green)]" />
                   <span className="hidden sm:inline">PILOT:</span> {isUsingBrowserModel ? "WebLLM" : modelInfo.name}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsUsingBrowserModel(!isUsingBrowserModel)}
-                  className="eva-button text-[var(--eva-orange)]"
-                >
-                  {isUsingBrowserModel ? <Send className="h-4 w-4 mr-2" /> : <Cpu className="h-4 w-4 mr-2" />}
-                  {isUsingBrowserModel ? "API" : "LOCAL"}
-                </Button>
+                </div>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="eva-button text-[var(--eva-orange)]">
                   <LogOut className="h-4 w-4 mr-2" />
                   EJECT
@@ -371,70 +349,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
           </div>
           {apiKey ? (
             <div className="flex flex-col h-[60vh]">
-              {modelPickerOpen && (
-                <div className="mb-4 p-4 bg-black/30 border border-[var(--eva-orange)] rounded-md">
-                  <h3 className="text-sm font-medium mb-2 flex items-center text-[var(--eva-orange)] uppercase font-mono tracking-wider">
-                    <Sparkles className="h-4 w-4 mr-2 text-[var(--eva-orange)]" />
-                    EVA PILOT SELECTION
-                  </h3>
-                  <Tabs defaultValue="popular" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 border border-[var(--eva-orange)] bg-opacity-20">
-                      <TabsTrigger value="popular" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI DATABASE</TabsTrigger>
-                      <TabsTrigger value="custom" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">CUSTOM PILOT</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="popular" className="space-y-4 mt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {popularModels.map((model) => (
-                          <div 
-                            key={model.id}
-                            onClick={() => {
-                              setSelectedModel(model.id);
-                              setModelPickerOpen(false);
-                            }}
-                            className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                              selectedModel === model.id 
-                                ? 'border-[var(--eva-orange)] bg-[var(--eva-orange)]/10' 
-                                : 'border-[var(--eva-blue)]/30 hover:border-[var(--eva-orange)]/50 hover:bg-black/20'
-                            }`}
-                          >
-                            <h4 className="font-medium text-sm text-[var(--eva-orange)] font-mono">{model.name}</h4>
-                            <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">{model.description}</p>
-                            <div className="flex justify-between mt-2 text-xs text-[var(--eva-green)] font-mono">
-                              <span>CAPACITY: {model.contextSize}</span>
-                              <span>RESOURCES: {model.pricing}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="custom" className="mt-4">
-                      <div className="space-y-4 py-2 border border-[var(--eva-orange)]/30 rounded-md p-4 bg-black/20">
-                        <p className="text-xs text-[var(--eva-text)] font-mono">
-                          ENTER CUSTOM PILOT IDENTIFIER (e.g., "anthropic/claude-3-opus-20240229"):
-                        </p>
-                        <Input
-                          placeholder="Enter model identifier"
-                          value={customModel}
-                          onChange={(e) => setCustomModel(e.target.value)}
-                          className="eva-input text-[var(--eva-green)] font-mono"
-                        />
-                        <Button 
-                          onClick={() => {
-                            if (customModel.trim()) {
-                              setSelectedModel('custom');
-                              setModelPickerOpen(false);
-                            }
-                          }}
-                          disabled={!customModel.trim()}
-                          className="w-full mt-2 eva-button text-[var(--eva-orange)] font-mono uppercase"
-                        >
-                          INITIATE CUSTOM SYNCHRONIZATION
-                        </Button>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
+
               
               <div className="flex-grow overflow-y-auto mb-4 space-y-4 p-4 bg-black/30 rounded-md border border-[var(--eva-orange)]/40">
                 {messages.length === 0 ? (

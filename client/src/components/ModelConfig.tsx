@@ -9,21 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChatMessage } from './BrowserLLM';
-
-export interface ModelOption {
-  id: string;
-  name: string;
-  description: string;
-  contextSize: string;
-  pricing: string;
-}
-
-export interface BrowserModelOption {
-  id: string;
-  name: string;
-  source: string;
-  description: string;
-}
+import { ModelOption, BrowserModelOption } from '../lib/modelTypes';
 
 interface ModelConfigProps {
   isUsingBrowserModel: boolean;
