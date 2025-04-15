@@ -67,13 +67,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          // Return the error with detailed information
-          return res.status(response.status).json({ 
-            message: `Authentication failed: ${response.status} response with non-JSON content`,
+          // Check if the response contains an API key pattern
+          const possibleApiKey = textResponse.match(/sk-or-v1-[a-zA-Z0-9]{32,}/);
+          if (possibleApiKey && possibleApiKey[0]) {
+            console.log("Found potential API key in non-JSON response, returning it");
+            return res.json({ 
+              key: possibleApiKey[0],
+              debug_info: {
+                note: "API key extracted from non-JSON response",
+                content_type: contentType,
+                status: response.status
+              }
+            });
+          }
+          
+          // Return the error with the raw response for client-side debugging
+          return res.status(200).json({ 
+            message: `Authentication response received but in unexpected format`,
             debug_info: {
               status: response.status,
               content_type: contentType,
-              response_text: textResponse.substring(0, 300) + (textResponse.length > 300 ? '...' : ''),
+              response_text: textResponse,
+              raw_headers: JSON.stringify(Object.fromEntries(response.headers.entries())),
               suggestion: "Check if the OpenRouter OAuth service is expecting different parameters or has changed its API"
             }
           });

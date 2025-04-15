@@ -89,6 +89,9 @@ const Callback: FC = () => {
           responseText = await response.clone().text();
           console.log("Raw response from server:", responseText);
           
+          // Display the raw response for debugging
+          const rawResponsePreview = responseText.substring(0, 1000) + (responseText.length > 1000 ? '...' : '');
+          
           try {
             data = await response.json();
           } catch (jsonError) {
@@ -97,7 +100,6 @@ const Callback: FC = () => {
             
             // Create a more detailed error with both the error and the raw response
             const jsonErrorMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
-            const rawResponsePreview = responseText.substring(0, 150) + (responseText.length > 150 ? '...' : '');
             
             // If we see a pattern that looks like an API key in the response, try to extract it
             const possibleApiKey = responseText.match(/sk-or-v1-[a-zA-Z0-9]{32,}/);
@@ -106,12 +108,17 @@ const Callback: FC = () => {
               console.log("Found potential API key in response, attempting to use it");
               data = { key: possibleApiKey[0] };
             } else {
-              throw new Error(`Invalid JSON response from server: ${jsonErrorMsg}\n\nRaw response: ${rawResponsePreview}`);
+              throw new Error(`Invalid JSON response from server: ${jsonErrorMsg}\n\nRaw response:\n${rawResponsePreview}`);
             }
           }
         } catch (parseError) {
           console.error("Error accessing response:", parseError);
-          throw new Error('Invalid JSON response from server');
+          // If we have a raw response, include it in the error
+          if (responseText) {
+            throw new Error(`Invalid JSON response from server.\n\nRaw response:\n${responseText.substring(0, 1000)}`);
+          } else {
+            throw new Error('Invalid JSON response from server');
+          }
         }
         
         if (!data || !data.key) {
@@ -235,11 +242,11 @@ const Callback: FC = () => {
                 </div>
                 
                 <div className="pt-3 border-t border-[var(--eva-red)]/30">
-                  <details className="text-xs">
+                  <details className="text-xs" open>
                     <summary className="cursor-pointer hover:text-[var(--eva-orange)] transition-colors mb-2">
                       SHOW TECHNICAL DETAILS
                     </summary>
-                    <div className="p-2 bg-black/50 rounded border border-[var(--eva-red)]/20 overflow-auto max-h-36">
+                    <div className="p-2 bg-black/50 rounded border border-[var(--eva-red)]/20 overflow-auto max-h-96">
                       <div className="text-[var(--eva-text)]">
                         <p>
                           The OpenRouter OAuth flow encountered an error when attempting to exchange the authorization code. 
@@ -257,14 +264,22 @@ const Callback: FC = () => {
                           <span className="text-[var(--eva-green)]">You can try clicking SYNCHRONIZE WITH OPENROUTER again, or use direct API key input instead.</span>
                         </div>
                         
-                        <details className="mt-3 border-t border-[var(--eva-blue)]/30 pt-2">
-                          <summary className="cursor-pointer text-[var(--eva-blue)] hover:text-[var(--eva-orange)]">
-                            FULL ERROR DETAILS
-                          </summary>
-                          <div className="mt-1 p-2 bg-black/70 rounded text-[var(--eva-yellow)] overflow-auto max-h-24 text-[10px] font-mono whitespace-pre-wrap">
+                        <div className="mt-3 border-t border-[var(--eva-blue)]/30 pt-2">
+                          <div className="text-[var(--eva-blue)] mb-1">FULL ERROR DETAILS:</div>
+                          <div className="p-2 bg-black/70 rounded text-[var(--eva-yellow)] overflow-auto max-h-40 text-[10px] font-mono whitespace-pre-wrap">
                             {error}
                           </div>
-                        </details>
+                        </div>
+                        
+                        <div className="mt-3 pt-2 border-t border-[var(--eva-orange)]/30">
+                          <div className="text-[var(--eva-orange)] mb-1">TROUBLESHOOTING OPTIONS:</div>
+                          <ol className="list-decimal pl-5 mb-2 text-[var(--eva-text)]">
+                            <li>Try using direct API key input instead of OAuth</li>
+                            <li>Make sure you have a valid OpenRouter account</li>
+                            <li>Check if your API tokens have been revoked</li>
+                            <li>Try a different browser or clear your cookies</li>
+                          </ol>
+                        </div>
                       </div>
                     </div>
                   </details>
