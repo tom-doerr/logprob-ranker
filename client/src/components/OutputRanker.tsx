@@ -356,12 +356,12 @@ ${generatedOutput}`
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
-      <Card className="w-full">
-        <CardHeader>
+      <Card className="w-full eva-card">
+        <CardHeader className="border-b border-[var(--eva-orange)]">
           <CardTitle className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <BarChart className="h-5 w-5 text-blue-500" />
-              <span>LLM Output Ranker</span>
+              <BarChart className="h-5 w-5 text-[var(--eva-orange)]" />
+              <span className="eva-title">NERV MAGI SYSTEM - LLM OUTPUT RANKER</span>
             </div>
           </CardTitle>
         </CardHeader>
@@ -382,28 +382,28 @@ ${generatedOutput}`
                 
                 <TabsContent value="generator" className="space-y-4 mt-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                       Input Prompt
                     </label>
                     <Textarea
                       placeholder="Enter your prompt here..."
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
-                      className="min-h-[100px]"
+                      className="min-h-[100px] eva-input text-[var(--eva-green)]"
                     />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Column 1: LogProb Template */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                         LogProb Template
                       </label>
                       <Textarea
                         placeholder="Enter your logprob template..."
                         value={logProbTemplate}
                         onChange={(e) => setLogProbTemplate(e.target.value)}
-                        className="font-mono text-sm min-h-[120px]"
+                        className="font-mono text-sm min-h-[120px] eva-input text-[var(--eva-green)]"
                       />
                       <div className="mt-2 space-y-2">
                         <p className="text-xs text-gray-500">

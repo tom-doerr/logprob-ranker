@@ -1,13 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --eva-orange: #ff6700;
+    --eva-blue: #00a3d9;
+    --eva-purple: #6f00ff;
+    --eva-green: #00ff66;
+    --eva-red: #ff0000;
+    --eva-black: #121212;
+    --eva-dark: #1a1a1a;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply bg-[#121212] text-foreground antialiased font-mono;
+    font-family: 'Share Tech Mono', monospace;
+    background-image: 
+      linear-gradient(to right, rgba(0, 163, 217, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 163, 217, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+@layer components {
+  .eva-card {
+    @apply relative overflow-hidden;
+    border: 1px solid var(--eva-orange);
+    box-shadow: 0 0 8px rgba(255, 103, 0, 0.5);
+  }
+
+  .eva-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--eva-orange);
+  }
+
+  .eva-title {
+    @apply font-mono text-[var(--eva-orange)] uppercase tracking-wide;
+    text-shadow: 0 0 5px rgba(255, 103, 0, 0.7);
+  }
+
+  .eva-button {
+    @apply font-mono uppercase tracking-wider;
+    border: 1px solid var(--eva-orange);
+    background: rgba(255, 103, 0, 0.1);
+    box-shadow: 0 0 5px rgba(255, 103, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .eva-button:hover {
+    background: rgba(255, 103, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 103, 0, 0.5);
+  }
+
+  .eva-input {
+    @apply font-mono text-sm;
+    border: 1px solid var(--eva-blue);
+    background: rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 5px rgba(0, 163, 217, 0.3) inset;
+  }
+
+  .eva-progress {
+    height: 10px;
+    background: var(--eva-black);
+    border: 1px solid var(--eva-orange);
+    overflow: hidden;
+  }
+
+  .eva-progress-value {
+    height: 100%;
+    background: var(--eva-orange);
+    transition: width 0.3s ease;
+  }
+
+  .eva-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .eva-terminal {
+    font-family: 'Share Tech Mono', monospace;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--eva-blue);
+    padding: 1rem;
+    color: #00ff66;
+    text-shadow: 0 0 5px rgba(0, 255, 102, 0.7);
+  }
+
+  .eva-separator {
+    height: 1px;
+    background: linear-gradient(to right, 
+      transparent, 
+      var(--eva-orange), 
+      transparent
+    );
   }
 }
