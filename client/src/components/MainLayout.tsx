@@ -123,7 +123,7 @@ const MainLayout: FC = () => {
                 <ul className="list-disc ml-4 text-xs space-y-1">
                   <li>You can either enter your OpenRouter API key directly</li>
                   <li>OR use the OAuth flow to create/retrieve a key from OpenRouter</li>
-                  <li>For demo purposes, you can also use <span className="text-[var(--eva-green)]">sk-or-v1-demo-123456</span> as a simulation key</li>
+                  <li>You will need a valid OpenRouter API key to use the application</li>
                 </ul>
               </div>
             </div>

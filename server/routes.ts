@@ -49,10 +49,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const textResponse = await response.text();
           console.error("Non-JSON response:", textResponse);
           
-          // Always return a simulation key in this case to make testing easier
-          console.log("Providing simulation key due to non-JSON response");
-          return res.json({ 
-            key: `sk-or-v1-demo-${Math.random().toString(36).substring(2, 10)}`,
+          // Return the error instead of a demo key
+          console.error("Non-JSON response from OpenRouter authentication");
+          return res.status(response.status).json({ 
+            message: `Authentication failed: ${response.status} response`,
             debug_info: {
               status: response.status,
               content_type: contentType,
@@ -79,14 +79,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = await response.json();
         return res.json(data);
       } catch (apiError: unknown) {
-        console.warn("Using fallback simulation due to API error:", apiError);
+        console.error("API error during OAuth code exchange:", apiError);
         
-        // Fallback to simulation for demo purposes
-        console.log("Simulating successful API key exchange");
-        
-        // Return a simulated API key that's clearly marked as a simulation
-        return res.json({ 
-          key: `sk-or-v1-demo-${Math.random().toString(36).substring(2, 10)}` 
+        // Return error instead of simulation
+        return res.status(500).json({ 
+          message: "Authentication failed. Please try entering your API key directly.",
+          error: apiError instanceof Error ? apiError.message : String(apiError)
         });
       }
     } catch (error) {
@@ -146,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 index: 0,
                 message: {
                   role: 'assistant',
-                  content: `Hello! This is a simulated response in demo mode. I'm responding to your message: "${userMessage}". In a production environment with a valid API key, this would be a real response from the ${model} model.`
+                  content: `This is a demonstration response to your message: "${userMessage}"\n\nIn a production environment with a valid API key, this would be a real response from the ${model} model.\n\nPlease enter your OpenRouter API key to interact with actual AI models.`
                 },
                 finish_reason: 'stop'
               }
