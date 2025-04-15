@@ -1,14 +1,158 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChatInterface from './ChatInterface';
 import OutputRanker from './OutputRanker';
+import ModelConfig, { ModelOption, BrowserModelOption } from './ModelConfig';
 import { MessageSquare, BarChart2, Power, Key, AlertCircle } from 'lucide-react';
 import { getApiKey } from '../utils/pkce';
 import { Button } from './ui/button';
+import { useToast } from '@/hooks/use-toast';
+import * as webllm from '@mlc-ai/web-llm';
 
 const MainLayout: FC = () => {
+  const { toast } = useToast();
   const [showAuthInfo, setShowAuthInfo] = useState(false);
   const [activeTab, setActiveTab] = useState("output-ranker");
+  
+  // Model configuration state
+  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>('anthropic/claude-3-haiku-20240307');
+  const [temperature, setTemperature] = useState<number>(0.7);
+  const [topP, setTopP] = useState<number>(0.9);
+  const [maxTokens, setMaxTokens] = useState<number>(1000);
+  const [customModel, setCustomModel] = useState<string>('');
+  
+  // Browser model state
+  const engineRef = useRef<any>(null);
+  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false);
+  const [isLoadingModel, setIsLoadingModel] = useState<boolean>(false);
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
+  const [loadingMessage, setLoadingMessage] = useState<string>('Initializing...');
+  
+  // Popular models list for OpenRouter
+  const popularModels: ModelOption[] = [
+    {
+      id: 'anthropic/claude-3-haiku-20240307',
+      name: 'Claude 3 Haiku',
+      description: 'Fast, compact AI assistant with strong coding abilities',
+      contextSize: '200K',
+      pricing: '$0.25/M'
+    },
+    {
+      id: 'anthropic/claude-3-opus-20240229',
+      name: 'Claude 3 Opus',
+      description: 'Anthropic\'s most intelligent model with expert reasoning',
+      contextSize: '200K',
+      pricing: '$15/M'
+    },
+    {
+      id: 'anthropic/claude-3-sonnet-20240229',
+      name: 'Claude 3 Sonnet',
+      description: 'Balanced intelligence and speed for complex tasks',
+      contextSize: '200K',
+      pricing: '$3/M'
+    },
+    {
+      id: 'google/gemini-1.5-pro-latest',
+      name: 'Gemini 1.5 Pro',
+      description: 'State-of-the-art reasoning, multimodality, and coding abilities',
+      contextSize: '1M',
+      pricing: '$7/M'
+    },
+    {
+      id: 'meta-llama/llama-3-70b-instruct',
+      name: 'Llama 3 70B',
+      description: 'Meta\'s SOTA large language model with advanced capabilities',
+      contextSize: '8K',
+      pricing: '$1.50/M'
+    },
+    {
+      id: 'mistralai/mistral-large-latest',
+      name: 'Mistral Large',
+      description: 'Flagship Mistral model with excellent reasoning abilities',
+      contextSize: '32K',
+      pricing: '$2/M'
+    }
+  ];
+
+  // Browser model options
+  const browserModelOptions: BrowserModelOption[] = [
+    {
+      id: 'Llama-3.1-8B-Q4_K_M',
+      name: 'Llama 3.1 8B',
+      source: 'Meta',
+      description: 'Smaller Llama 3.1 model optimized for running in browser'
+    },
+    {
+      id: 'Phi-3-mini-4k-instruct-Q4_K_M',
+      name: 'Phi-3 Mini',
+      source: 'Microsoft',
+      description: 'Compact yet powerful model for instruction following'
+    },
+    {
+      id: 'Gemma-2B-it-Q4_K_M',
+      name: 'Gemma 2B',
+      source: 'Google',
+      description: 'Lightweight instruction-tuned model derived from Gemini'
+    },
+    {
+      id: 'Qwen2-0.5B-instruct-Q4_K_M',
+      name: 'Qwen2 0.5B',
+      source: 'Alibaba',
+      description: 'Ultra-efficient model for basic tasks'
+    }
+  ];
+
+  // Load browser model
+  const loadBrowserModel = async () => {
+    if (!isUsingBrowserModel) return;
+
+    try {
+      setIsLoadingModel(true);
+      setIsModelLoaded(false);
+      setLoadingProgress(0);
+      setLoadingMessage('Initializing...');
+      
+      // Clean up previous engine if exists
+      if (engineRef.current) {
+        try {
+          // No specific cleanup method in docs, but we can set it to null
+          engineRef.current = null;
+        } catch (e) {
+          console.error('Error cleaning up previous engine:', e);
+        }
+      }
+      
+      // Create a new engine
+      const engine = await webllm.CreateMLCEngine(
+        selectedModel, 
+        {
+          initProgressCallback: (report) => {
+            const percentage = Math.round(report.progress * 100);
+            setLoadingProgress(percentage);
+            setLoadingMessage(report.text || 'Loading model...');
+          }
+        }
+      );
+      
+      engineRef.current = engine;
+      setIsModelLoaded(true);
+      setLoadingMessage('Model loaded successfully!');
+      toast({
+        title: "MAGI SYNCHRONIZATION COMPLETE",
+        description: `${selectedModel} loaded successfully`,
+      });
+    } catch (error) {
+      console.error('Error loading model:', error);
+      toast({
+        title: "MODEL LOADING ERROR",
+        description: error instanceof Error ? error.message : 'Failed to load model',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingModel(false);
+    }
+  };
   
   // Check if API key exists on mount and monitor for changes
   useEffect(() => {
@@ -151,6 +295,31 @@ const MainLayout: FC = () => {
         </div>
       )}
       
+      {/* Centralized Model Configuration (visible when authenticated) */}
+      {!showAuthInfo && (
+        <ModelConfig 
+          isUsingBrowserModel={isUsingBrowserModel}
+          onSelectBrowserModel={setIsUsingBrowserModel}
+          selectedModel={selectedModel}
+          onSelectModel={setSelectedModel}
+          temperature={temperature}
+          onTemperatureChange={setTemperature}
+          topP={topP}
+          onTopPChange={setTopP}
+          maxTokens={maxTokens}
+          onMaxTokensChange={setMaxTokens}
+          onLoadBrowserModel={loadBrowserModel}
+          isModelLoaded={isModelLoaded}
+          isLoadingModel={isLoadingModel}
+          loadingProgress={loadingProgress}
+          loadingMessage={loadingMessage}
+          browserModelOptions={browserModelOptions}
+          popularModels={popularModels}
+          customModel={customModel}
+          onCustomModelChange={setCustomModel}
+        />
+      )}
+      
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
         <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
           <TabsTrigger value="output-ranker" className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">
@@ -164,11 +333,27 @@ const MainLayout: FC = () => {
         </TabsList>
         
         <TabsContent value="output-ranker">
-          <OutputRanker />
+          <OutputRanker 
+            isUsingBrowserModel={isUsingBrowserModel}
+            selectedModel={selectedModel}
+            temperature={temperature}
+            topP={topP}
+            maxTokens={maxTokens}
+            customModel={customModel}
+            browserModelEngine={engineRef.current}
+          />
         </TabsContent>
         
         <TabsContent value="chat">
-          <ChatInterface />
+          <ChatInterface 
+            isUsingBrowserModel={isUsingBrowserModel}
+            selectedModel={selectedModel}
+            temperature={temperature}
+            topP={topP}
+            maxTokens={maxTokens}
+            customModel={customModel}
+            browserModelEngine={engineRef.current}
+          />
         </TabsContent>
       </Tabs>
     </div>
