@@ -36,16 +36,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: JSON.stringify(body),
         });
 
-        // Log response details
+        // Log response details for debugging
+        console.log("===== OAUTH DEBUG INFO =====");
         console.log("OpenRouter auth response status:", response.status);
+        console.log("Request URL:", "https://openrouter.ai/api/v1/auth/keys");
+        console.log("Request body:", JSON.stringify(body, null, 2));
         
-        // Convert headers to object safely
+        // Convert headers to object safely for logging
         const headerObj: Record<string, string> = {};
         // Type-safe way to iterate headers
         for (const [key, value] of Array.from(response.headers)) {
           headerObj[key] = value;
         }
-        console.log("OpenRouter auth response headers:", JSON.stringify(headerObj));
+        console.log("OpenRouter auth response headers:", JSON.stringify(headerObj, null, 2));
         
         // Handle non-JSON responses
         const contentType = response.headers.get('content-type');
@@ -53,14 +56,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const textResponse = await response.text();
           console.error("Non-JSON response:", textResponse);
           
-          // Return the error instead of a demo key
-          console.error("Non-JSON response from OpenRouter authentication");
+          // Log possible redirect URLs from the response
+          const matches = textResponse.match(/href=["']([^"']+)["']/g);
+          if (matches && matches.length > 0) {
+            console.log("Possible redirect URLs found in HTML response:");
+            matches.forEach(match => {
+              console.log("  -", match);
+            });
+          }
+          
+          // Return the error with detailed information
           return res.status(response.status).json({ 
-            message: `Authentication failed: ${response.status} response`,
+            message: `Authentication failed: ${response.status} response with non-JSON content`,
             debug_info: {
               status: response.status,
               content_type: contentType,
-              response_text: textResponse.substring(0, 200) + (textResponse.length > 200 ? '...' : '')
+              response_text: textResponse.substring(0, 300) + (textResponse.length > 300 ? '...' : ''),
+              suggestion: "Check if the OpenRouter OAuth service is expecting different parameters or has changed its API"
             }
           });
         }

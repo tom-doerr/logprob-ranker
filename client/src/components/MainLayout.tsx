@@ -124,6 +124,7 @@ const MainLayout: FC = () => {
                   <li>You will need a valid OpenRouter API key to use the application</li>
                   <li>You can enter your OpenRouter API key directly in the form</li>
                   <li>If you don't have a key, you can follow the link to create one on OpenRouter's website</li>
+                  <li>You can also try the OAuth authentication option (may not work on all deployments)</li>
                 </ul>
               </div>
             </div>
