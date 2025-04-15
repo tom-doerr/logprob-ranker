@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { createChatCompletion, ChatMessage } from '../lib/openrouter';
 import { getApiKey } from '../utils/pkce';
-import { Loader2, ArrowUpDown, Crown, Flame, X, Plus, BarChart, ArrowDownWideNarrow } from 'lucide-react';
+import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
+import { NervScanline, NervBlink, NervType, NervPulse } from '@/components/ui/nerv-animations';
+import MagiProgress from '@/components/ui/magi-progress';
+import RankedOutput from '@/components/ui/ranked-output';
+import ExampleCard from '@/components/ui/example-card';
 
 interface LogProbExample {
   prompt: string;
@@ -736,51 +738,14 @@ ${generatedOutput}`
                         </p>
                       </div>
                       
-                      {isGenerating && (
-                        <div className="mt-4 mb-2 border border-[var(--eva-orange)] rounded-md p-3 bg-black/30 nerv-scanline">
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center">
-                              <div className="w-3 h-3 bg-[var(--eva-orange)] animate-pulse mr-2 nerv-pulse"></div>
-                              <span className="text-sm font-mono text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">ANGEL ANALYSIS</span>
-                            </div>
-                            <span className="text-sm font-mono text-[var(--eva-green)] nerv-type">
-                              {useAutoStop 
-                                ? `AUTO-CEASE: ${autoStopThreshold}`
-                                : `PROGRESS: ${rankedOutputs.length}/${numberOfVariants}`
-                              }
-                            </span>
-                          </div>
-                          
-                          <div className="w-full bg-black/40 rounded-full h-2.5 mb-2 border border-[var(--eva-orange)]/30 overflow-hidden">
-                            <div 
-                              className="bg-[var(--eva-orange)] h-2 rounded-full transition-all magi-progress" 
-                              style={{
-                                width: `${useAutoStop ? Math.min(100, (rankedOutputs.length / (rankedOutputs.length + 5)) * 100) : Math.min(100, (rankedOutputs.length / numberOfVariants) * 100)}%`
-                              }}>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-2 mt-3 text-xs font-mono">
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
-                              <div className="w-2 h-2 bg-[var(--eva-green)] rounded-full mr-1 nerv-pulse"></div>
-                              <span className="text-[var(--eva-green)] nerv-blink">MAGI-1: MELCHIOR</span>
-                            </div>
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
-                              <div className="w-2 h-2 bg-[var(--eva-orange)] rounded-full mr-1 nerv-pulse"></div>
-                              <span className="text-[var(--eva-orange)] nerv-blink animation-delay-500">MAGI-2: BALTHASAR</span>
-                            </div>
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
-                              <div className="w-2 h-2 bg-[var(--eva-blue)] rounded-full mr-1 nerv-pulse"></div>
-                              <span className="text-[var(--eva-blue)] nerv-blink">MAGI-3: CASPER</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex justify-between text-xs font-mono mt-2">
-                            <span className="text-[var(--eva-text)] nerv-glitch">A.T. FIELD ANALYSIS ACTIVE</span>
-                            <span className="text-[var(--eva-blue)] nerv-type">THREADS: {threadCount}</span>
-                          </div>
-                        </div>
-                      )}
+                      <MagiProgress 
+                        isGenerating={isGenerating}
+                        useAutoStop={useAutoStop}
+                        autoStopThreshold={autoStopThreshold}
+                        rankedOutputs={rankedOutputs}
+                        numberOfVariants={numberOfVariants}
+                        threadCount={threadCount}
+                      />
                       
                       <Button 
                         onClick={generateOutputs} 
@@ -811,19 +776,11 @@ ${generatedOutput}`
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {examples.map((example, idx) => (
-                      <div 
+                      <ExampleCard 
                         key={idx}
-                        onClick={() => handleSelectExample(example)}
-                        className="border border-[var(--eva-orange)] rounded-md p-4 cursor-pointer hover:bg-black/10 transition-colors nerv-scanline"
-                      >
-                        <h3 className="font-medium mb-2 text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">{example.prompt}</h3>
-                        <p className="text-sm text-[var(--eva-text)] font-mono">
-                          VARIANTS: {example.variants}
-                        </p>
-                        <pre className="text-xs bg-black/5 p-2 mt-2 rounded overflow-x-auto text-[var(--eva-green)] border border-[var(--eva-orange)]/30">
-                          {example.template}
-                        </pre>
-                      </div>
+                        example={example}
+                        onClick={handleSelectExample}
+                      />
                     ))}
                   </div>
                 </TabsContent>
@@ -854,82 +811,12 @@ ${generatedOutput}`
                   
                   <div className="space-y-4">
                     {rankedOutputs.map((output, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`border ${rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index 
-                          ? 'border-[var(--eva-blue)] bg-[var(--eva-blue)]/5' 
-                          : 'border-[var(--eva-orange)]'} rounded-md p-4 relative nerv-scanline`}
-                      >
-                        {rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index && (
-                          <div className="absolute top-0 right-0 border-t-2 border-r-2 border-[var(--eva-blue)] w-6 h-6"></div>
-                        )}
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center">
-                            {idx === 0 && (
-                              <span className="inline-flex items-center bg-[var(--eva-orange)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
-                                <Crown className="h-3 w-3 mr-1" />
-                                PRIME SUBJECT
-                              </span>
-                            )}
-                            {rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index && (
-                              <span className="inline-flex items-center bg-[var(--eva-blue)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
-                                <span className="h-2 w-2 bg-white rounded-full animate-pulse mr-1"></span>
-                                LATEST
-                              </span>
-                            )}
-                            <span className="text-sm text-[var(--eva-text)] font-mono">
-                              {"VARIANT-" + String(output.index + 1).padStart(3, '0')}
-                            </span>
-                          </div>
-                          <span className="text-sm font-medium bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded">
-                            Score: {output.logprob.toFixed(4)}
-                          </span>
-                        </div>
-                        <div className="mt-2 p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30">
-                          {output.output}
-                        </div>
-                        
-                        {/* Attribute Scores Display */}
-                        {output.attributeScores && output.attributeScores.length > 0 && (
-                          <div className="mt-3 border-t border-[var(--eva-orange)]/30 pt-3">
-                            <h4 className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">Attribute Scores</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              {output.attributeScores.map((attr, attrIdx) => (
-                                <div 
-                                  key={attrIdx} 
-                                  className="flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-pulse"
-                                >
-                                  <span className="text-xs font-medium text-[var(--eva-text)]">{attr.name}:</span>
-                                  <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
-                                    {attr.score.toFixed(4)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* View Raw Evaluation Button */}
-                        {output.rawEvaluation && (
-                          <div className="mt-2 flex justify-end">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setSelectedOutputIdx(selectedOutputIdx === idx ? null : idx)}
-                              className="text-xs text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80"
-                            >
-                              {selectedOutputIdx === idx ? 'CLOSE TERMINAL' : 'VIEW MAGI ANALYSIS'}
-                            </Button>
-                          </div>
-                        )}
-                        
-                        {/* Raw Evaluation */}
-                        {selectedOutputIdx === idx && output.rawEvaluation && (
-                          <div className="mt-2 p-2 bg-black/5 border border-[var(--eva-orange)]/50 rounded-md text-xs font-mono whitespace-pre-wrap text-[var(--eva-green)] nerv-scan">
-                            <span className="nerv-blink">MAGI:</span> <span className="nerv-type">{output.rawEvaluation}</span>
-                          </div>
-                        )}
-                      </div>
+                      <RankedOutput 
+                        key={idx}
+                        output={output}
+                        isFirst={idx === 0}
+                        isLatest={rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index}
+                      />
                     ))}
                   </div>
                 </div>
