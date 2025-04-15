@@ -77,14 +77,23 @@ const DemoSection: FC = () => {
       return;
     }
 
-    // Construct the callback URL (using the current origin)
-    const callbackUrl = `${window.location.origin}/callback`;
-    
-    // Construct the OpenRouter auth URL
+    // Use localhost for the callback URL to avoid domain restrictions
+    const callbackUrl = "http://localhost:3000/callback";
     const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
     
-    // Redirect to OpenRouter auth page
-    window.location.href = authUrl;
+    toast({
+      title: "Redirecting to OpenRouter",
+      description: "You will be redirected to OpenRouter for authentication"
+    });
+    
+    // Open in a new tab to avoid issues with redirects in the Replit environment
+    window.open(authUrl, '_blank');
+    
+    // For demo purposes, we'll also set a simulated code after a delay
+    setTimeout(() => {
+      setAuthCode(`auth_${Math.random().toString(36).substring(2, 15)}`);
+      setCurrentStep(DemoStep.Authenticate);
+    }, 1500);
   };
 
   const handleExchangeCode = async () => {
@@ -345,17 +354,50 @@ const DemoSection: FC = () => {
             <div className="border border-neutral-200 rounded-lg bg-white p-4 mb-4">
               <h4 className="font-medium text-neutral-900 mb-1">Step 2: Authentication</h4>
               <p className="text-sm text-neutral-600 mb-3">
-                You're being redirected to OpenRouter to authenticate. After authentication, 
-                you'll be redirected back with an authorization code.
+                In a real app, after the user authorizes your app at OpenRouter, they would be redirected 
+                back to your callback URL with an authorization code. 
               </p>
               
-              <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4F46E5]"></div>
+              <div className="bg-neutral-50 p-3 rounded-md mb-4">
+                <div className="flex flex-col text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-700 font-medium">Authorization Code:</span>
+                    <button 
+                      onClick={() => copyToClipboard(authCode, 'Authorization code')}
+                      className="text-[#4F46E5] hover:text-[#6366F1] text-xs"
+                    >
+                      <i className="far fa-copy"></i> Copy
+                    </button>
+                  </div>
+                  <code className="text-neutral-500 font-mono text-xs break-all my-1">{authCode}</code>
+                </div>
               </div>
               
-              <p className="text-center text-sm text-neutral-600">
-                If you're not redirected automatically, check your browser's popup blocker settings.
-              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                <p className="text-sm text-amber-800">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  <strong>Demo mode:</strong> When using the "Connect to OpenRouter" button, we'll try to open 
+                  a new tab with a localhost callback URL (http://localhost:3000/callback). 
+                  For this demo, we're also generating a simulated auth code so you can continue even if 
+                  the real authentication fails.
+                </p>
+              </div>
+              
+              <button 
+                onClick={handleExchangeCode}
+                disabled={isExchanging}
+                className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70"
+              >
+                {isExchanging ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i> Exchanging...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-exchange-alt mr-2"></i> Exchange for API Key
+                  </>
+                )}
+              </button>
             </div>
           )}
           
