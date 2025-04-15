@@ -75,31 +75,31 @@ const MainLayout: FC = () => {
     }
   ];
 
-  // Browser model options - using official WebLLM model IDs
+  // Browser model options - exact same as in BrowserLLM component
   const browserModelOptions: BrowserModelOption[] = [
     {
-      id: 'Llama-3.1-8B-Instruct-q4f32_0',
-      name: 'Llama 3.1 8B',
+      id: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
+      name: 'Llama 3.1 8B Instruct',
       source: 'Meta',
-      description: 'Smaller Llama 3.1 model optimized for running in browser'
+      description: 'Compact but capable instruction-following model'
     },
     {
-      id: 'Phi-3-mini-4k-instruct-q4f32_1',
-      name: 'Phi-3 Mini',
+      id: 'Phi-3-mini-4k-Instruct-q4f32_1-MLC',
+      name: 'Phi-3 Mini 4K Instruct',
       source: 'Microsoft',
-      description: 'Compact yet powerful model for instruction following'
+      description: 'Efficient small model with strong reasoning abilities'
     },
     {
-      id: 'Gemma-2B-it-q4f32_0',
-      name: 'Gemma 2B',
+      id: 'Gemma-2B-it-q4f32_1-MLC',
+      name: 'Gemma 2B Instruct',
       source: 'Google',
-      description: 'Lightweight instruction-tuned model derived from Gemini'
+      description: 'Lightweight yet effective conversational model'
     },
     {
-      id: 'Qwen2-0.5B-Instruct-q4f16_1',
-      name: 'Qwen2 0.5B',
+      id: 'Qwen2-1.5B-Instruct-q4f32_1-MLC',
+      name: 'Qwen2 1.5B Instruct',
       source: 'Alibaba',
-      description: 'Ultra-efficient model for basic tasks'
+      description: 'Efficient multilingual instruction model'
     }
   ];
 
@@ -126,15 +126,11 @@ const MainLayout: FC = () => {
       // Initialize WebLLM first
       try {
         setLoadingMessage('Initializing WebLLM...');
-        // @ts-ignore - isInitialized may not be exposed in type definitions
-        if (!webllm.isInitialized || !webllm.isInitialized()) {
-          // @ts-ignore - initWebLLM may not be exposed in type definitions
-          if (webllm.initWebLLM) {
-            await webllm.initWebLLM();
-          }
-        }
+        // Some WebLLM versions have different initialization procedures
+        // Just attempt to create the engine directly
+        console.log('Starting WebLLM engine initialization');
       } catch (e) {
-        console.log('WebLLM initialization not needed or already initialized');
+        console.log('WebLLM pre-initialization error:', e);
       }
       
       // Create a new engine with available WebLLM model
