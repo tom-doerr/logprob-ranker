@@ -1,19 +1,48 @@
 import { FC, useState } from 'react';
-import { Settings, Zap, Download, ExternalLink, Layers } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { 
+  Cpu, 
+  Cloud, 
+  Thermometer, 
+  Crosshair, 
+  CirclePlay, 
+  Maximize, 
+  AlertTriangle 
+} from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 import { useModelConfig } from '@/hooks/use-model-config';
-import { getApiKey } from '../utils/pkce';
 
-// Unified model selection component that handles all model sources (API & browser)
 const ModelSelection: FC = () => {
-  const [modelPickerOpen, setModelPickerOpen] = useState(false);
-  const [primaryTab, setPrimaryTab] = useState<string>('api');
-
-  // Get model config from context
+  const { toast } = useToast();
+  
+  // Get model configuration from context
   const {
     isUsingBrowserModel,
     setIsUsingBrowserModel,
@@ -31,258 +60,341 @@ const ModelSelection: FC = () => {
     browserModelOptions
   } = useModelConfig();
 
-  // Toggle model picker view
-  const toggleModelPicker = () => {
-    setModelPickerOpen(!modelPickerOpen);
-  };
+  // Local tab state
+  const [activeTab, setActiveTab] = useState<string>(isUsingBrowserModel ? 'local' : 'openrouter');
 
-  // Handle model selection from popular models
-  const handleSelectModelFromPopular = (modelId: string) => {
-    setSelectedModel(modelId);
-    setModelPickerOpen(false);
-  };
-
-  // Handle custom model selection
-  const handleSelectCustomModel = () => {
-    if (customModel.trim()) {
-      setSelectedModel('custom');
-      setModelPickerOpen(false);
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    // Update model type in context
+    if (value === 'local') {
+      if (!isUsingBrowserModel) {
+        setIsUsingBrowserModel(true);
+        toast({
+          title: 'Switched to Local Mode',
+          description: 'Using browser-based models. No API key required.',
+        });
+      }
+    } else {
+      if (isUsingBrowserModel) {
+        setIsUsingBrowserModel(false);
+        toast({
+          title: 'Switched to API Mode',
+          description: 'Using OpenRouter API. API key required.',
+        });
+      }
     }
   };
 
-  // Check for API key
-  const hasApiKey = !!getApiKey();
-
-  // Handle switching between API and Browser models
-  const handleModelSourceChange = (value: string) => {
-    setPrimaryTab(value);
-    setIsUsingBrowserModel(value === 'browser');
-  };
-
   return (
-    <Card className="eva-card border border-[var(--eva-orange)]/50 bg-black/50 mb-4">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-[var(--eva-orange)] font-mono uppercase tracking-wider text-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <Settings className="h-4 w-4 mr-2" />
-            MAGI SYSTEM CONFIGURATION
+    <Card className="mb-6 border border-[var(--eva-orange)] bg-black/40">
+      <CardHeader className="border-b border-[var(--eva-orange)]/30 relative">
+        <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-[var(--eva-orange)] opacity-60"></div>
+        <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-[var(--eva-orange)] opacity-60"></div>
+        <div className="absolute top-1 left-4 font-mono text-[10px] text-[var(--eva-blue)] tracking-widest opacity-70">
+          NERV-MAGI:PRIMARY
+        </div>
+        <div className="absolute top-1 right-4 font-mono text-[10px] text-[var(--eva-blue)] tracking-widest opacity-70">
+          STATUS:OPERATIONAL
+        </div>
+        <CardTitle className="text-[var(--eva-orange)] font-mono uppercase tracking-wider pt-5">
+          <div className="w-5 h-5 bg-[var(--eva-orange)] mr-2 inline-flex items-center justify-center">
+            <div className="w-3 h-3 bg-black"></div>
           </div>
-          <Tabs value={primaryTab} onValueChange={handleModelSourceChange} className="w-auto">
-            <TabsList className="h-8 border border-[var(--eva-orange)] bg-opacity-20">
-              <TabsTrigger 
-                value="api" 
-                className="h-7 data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase text-xs"
-                disabled={!hasApiKey}
-              >
-                <Zap className="h-3 w-3 mr-1" />
-                API
-              </TabsTrigger>
-              <TabsTrigger 
-                value="browser" 
-                className="h-7 data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase text-xs"
-              >
-                <Layers className="h-3 w-3 mr-1" />
-                LOCAL
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          MODEL CONTROL
         </CardTitle>
-        {!hasApiKey && primaryTab === 'api' && (
-          <CardDescription className="text-[var(--eva-orange)]/70 font-mono text-xs mt-2">
-            No API key found. Please authenticate to use API models.
-          </CardDescription>
-        )}
+        <CardDescription className="font-mono text-xs text-[var(--eva-text)]/60">
+          Configure model parameters and generation settings
+        </CardDescription>
       </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Model Selection for API Models */}
-        {primaryTab === 'api' && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xs font-medium text-[var(--eva-orange)] font-mono uppercase">MODEL SELECTION</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={toggleModelPicker} 
-                className="h-6 px-2 text-xs text-[var(--eva-green)]"
-                disabled={!hasApiKey}
-              >
-                {modelPickerOpen ? 'CLOSE' : 'CHANGE'}
-              </Button>
-            </div>
-            
-            {modelPickerOpen ? (
-              <div className="p-4 bg-black/30 border border-[var(--eva-orange)] rounded-md mb-4">
-                <Tabs defaultValue="popular" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 border border-[var(--eva-orange)] bg-opacity-20">
-                    <TabsTrigger value="popular" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI DATABASE</TabsTrigger>
-                    <TabsTrigger value="custom" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">CUSTOM MODEL</TabsTrigger>
-                  </TabsList>
+      
+      <CardContent className="pt-6">
+        <Tabs 
+          defaultValue={isUsingBrowserModel ? 'local' : 'openrouter'} 
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
+            <TabsTrigger 
+              value="openrouter" 
+              className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
+            >
+              <Cloud className="h-4 w-4 mr-2" />
+              OPENROUTER API
+            </TabsTrigger>
+            <TabsTrigger 
+              value="local" 
+              className="flex items-center justify-center data-[state=active]:bg-[var(--eva-blue)] data-[state=active]:text-black font-mono uppercase"
+            >
+              <Cpu className="h-4 w-4 mr-2" />
+              LOCAL MODELS
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="openrouter" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <div className="space-y-2">
+                  <Label htmlFor="model-select" className="font-mono text-[var(--eva-orange)]">
+                    MODEL SELECTION
+                  </Label>
                   
-                  <TabsContent value="popular" className="space-y-4 mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Select
+                    value={selectedModel}
+                    onValueChange={(value) => {
+                      setSelectedModel(value);
+                      toast({
+                        title: 'Model Selected',
+                        description: `${popularModels.find(m => m.id === value)?.name || value}`,
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="font-mono eva-input border-[var(--eva-orange)]/30 bg-black/40 w-full">
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent className="font-mono bg-black border-[var(--eva-orange)]/30">
                       {popularModels.map((model) => (
-                        <div 
+                        <SelectItem
                           key={model.id}
-                          onClick={() => handleSelectModelFromPopular(model.id)}
-                          className={`p-3 border rounded-md cursor-pointer transition-colors ${
-                            selectedModel === model.id 
-                              ? 'border-[var(--eva-orange)] bg-[var(--eva-orange)]/10' 
-                              : 'border-[var(--eva-blue)]/30 hover:border-[var(--eva-orange)]/50 hover:bg-black/20'
-                          }`}
+                          value={model.id}
+                          className="font-mono"
                         >
-                          <h4 className="font-medium text-sm text-[var(--eva-orange)] font-mono">{model.name}</h4>
-                          <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">{model.description}</p>
-                          <div className="flex justify-between mt-2 text-xs text-[var(--eva-green)] font-mono">
-                            <span>CAPACITY: {model.contextSize}</span>
-                            <span>RESOURCES: {model.pricing}</span>
+                          <div className="flex flex-col">
+                            <span>{model.name}</span>
+                            <span className="text-xs opacity-60">
+                              {model.description}
+                            </span>
                           </div>
-                        </div>
+                        </SelectItem>
                       ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="custom" className="mt-4">
-                    <div className="space-y-4 py-2 border border-[var(--eva-orange)]/30 rounded-md p-4 bg-black/20">
-                      <p className="text-xs text-[var(--eva-text)]/60 font-mono">
-                        ENTER CUSTOM MODEL IDENTIFIER (e.g., "anthropic/claude-3-opus-20240229"):
-                      </p>
+                      <SelectItem value="custom" className="font-mono">
+                        <div className="flex flex-col">
+                          <span>Custom Model</span>
+                          <span className="text-xs opacity-60">
+                            Use a specific model ID
+                          </span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {selectedModel === 'custom' && (
+                    <div className="pt-2">
+                      <Label htmlFor="custom-model" className="font-mono text-xs text-[var(--eva-orange)]">
+                        CUSTOM MODEL ID
+                      </Label>
                       <Input
-                        placeholder="Enter model identifier"
+                        id="custom-model"
                         value={customModel}
                         onChange={(e) => setCustomModel(e.target.value)}
-                        className="eva-input text-[var(--eva-green)] font-mono"
+                        placeholder="Enter custom model ID (e.g., anthropic/claude-3-opus)"
+                        className="font-mono eva-input border-[var(--eva-orange)]/30 bg-black/40"
                       />
-                      <Button 
-                        onClick={handleSelectCustomModel}
-                        disabled={!customModel.trim()}
-                        className="w-full mt-2 eva-button text-[var(--eva-orange)] font-mono uppercase"
-                      >
-                        INITIATE CUSTOM SYNCHRONIZATION
-                      </Button>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
+                
+                {selectedModel !== 'custom' && (
+                  <div className="mt-4 border border-[var(--eva-orange)]/30 rounded-md p-3 bg-black/20">
+                    <div className="font-mono text-xs space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-[var(--eva-orange)]">MODEL:</span>
+                        <span className="text-[var(--eva-text)]">
+                          {popularModels.find(m => m.id === selectedModel)?.name || selectedModel}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[var(--eva-orange)]">CONTEXT:</span>
+                        <span className="text-[var(--eva-text)]">
+                          {popularModels.find(m => m.id === selectedModel)?.contextSize || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[var(--eva-orange)]">PRICING:</span>
+                        <span className="text-[var(--eva-text)]">
+                          {popularModels.find(m => m.id === selectedModel)?.pricing || 'Unknown'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="p-3 border border-[var(--eva-orange)]/40 rounded-md bg-black/20">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="text-[var(--eva-orange)] font-mono text-sm">
-                      {selectedModel === 'custom' 
-                        ? customModel 
-                        : popularModels.find(m => m.id === selectedModel)?.name || 'Loading...'}
-                    </h4>
-                    <p className="text-xs text-[var(--eva-text)]/60 font-mono mt-1">
-                      Remote execution via OpenRouter API
-                    </p>
-                  </div>
-                  <div className="text-[var(--eva-green)] bg-[var(--eva-green)]/10 border border-[var(--eva-green)]/20 px-2 py-1 rounded text-xs font-mono">
-                    API
-                  </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-mono text-[var(--eva-orange)] flex items-center">
+                    <Thermometer className="h-3 w-3 mr-1 text-[var(--eva-orange)]" />
+                    TEMPERATURE: {temperature.toFixed(2)}
+                  </Label>
+                  <Slider
+                    value={[temperature]}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onValueChange={(values) => setTemperature(values[0])}
+                    className="eva-slider"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="font-mono text-[var(--eva-orange)] flex items-center">
+                    <Crosshair className="h-3 w-3 mr-1 text-[var(--eva-orange)]" />
+                    TOP-P: {topP.toFixed(2)}
+                  </Label>
+                  <Slider
+                    value={[topP]}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onValueChange={(values) => setTopP(values[0])}
+                    className="eva-slider"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="font-mono text-[var(--eva-orange)] flex items-center">
+                    <Maximize className="h-3 w-3 mr-1 text-[var(--eva-orange)]" />
+                    MAX TOKENS: {maxTokens}
+                  </Label>
+                  <Slider
+                    value={[maxTokens]}
+                    min={100}
+                    max={4000}
+                    step={100}
+                    onValueChange={(values) => setMaxTokens(values[0])}
+                    className="eva-slider"
+                  />
                 </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Browser model selection is handled separately in BrowserModels component */}
-        {primaryTab === 'browser' && (
-          <div className="p-3 border border-[var(--eva-orange)]/40 rounded-md bg-black/20">
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="text-[var(--eva-orange)] font-mono text-sm">
-                  Local Browser Execution
-                </h4>
-                <p className="text-xs text-[var(--eva-text)]/60 font-mono mt-1">
-                  Models run directly in your browser without API calls
-                </p>
-              </div>
-              <div className="text-[var(--eva-green)] bg-[var(--eva-green)]/10 border border-[var(--eva-green)]/20 px-2 py-1 rounded text-xs font-mono">
-                LOCAL
-              </div>
             </div>
-            <p className="text-xs text-[var(--eva-orange)]/70 font-mono mt-3">
-              Configure browser model settings in the dedicated panel below
-            </p>
-          </div>
-        )}
-        
-        {/* Generation Parameters - Always visible for both API and local modes */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-medium text-[var(--eva-orange)] font-mono uppercase">GENERATION PARAMETERS</h3>
+            
+            <div className="pt-4">
+              <Alert className="border border-[var(--eva-orange)]/30 bg-black/20">
+                <AlertTriangle className="h-4 w-4 text-[var(--eva-orange)]" />
+                <AlertTitle className="text-[var(--eva-orange)] font-mono">
+                  API KEY REQUIRED
+                </AlertTitle>
+                <AlertDescription className="text-xs font-mono">
+                  OpenRouter API mode requires authentication. Please provide your API key in the interface below.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </TabsContent>
           
-          <div className="space-y-4 p-3 border border-[var(--eva-orange)]/40 rounded-md bg-black/20">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-xs text-[var(--eva-green)] font-mono">TEMPERATURE: {temperature.toFixed(1)}</label>
-              </div>
-              <Slider
-                value={[temperature]}
-                max={2}
-                step={0.1}
-                onValueChange={(value) => setTemperature(value[0])}
-                className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
-              />
-              <div className="flex justify-between text-[0.6rem] text-[var(--eva-text)]/40 font-mono mt-1">
-                <span>PRECISE</span>
-                <span>CREATIVE</span>
-              </div>
-            </div>
+          <TabsContent value="local" className="space-y-4">
+            <Alert className="border border-[var(--eva-blue)] bg-black/20">
+              <Cpu className="h-4 w-4 text-[var(--eva-blue)]" />
+              <AlertTitle className="text-[var(--eva-blue)] font-mono">
+                LOCAL MODEL MODE
+              </AlertTitle>
+              <AlertDescription className="text-xs font-mono">
+                Browser-based models run directly in your browser. No API calls, no API keys required.
+                Models will be downloaded the first time they are used (~4GB).
+              </AlertDescription>
+            </Alert>
             
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-xs text-[var(--eva-green)] font-mono">TOP-P: {topP.toFixed(2)}</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="font-mono text-[var(--eva-blue)]">
+                  AVAILABLE LOCAL MODELS
+                </Label>
+                <div className="grid grid-cols-1 gap-2 mt-2">
+                  {browserModelOptions.map((model) => (
+                    <Button
+                      key={model.id}
+                      variant={selectedModel === model.id ? "default" : "outline"}
+                      size="sm"
+                      className={`justify-start font-mono ${
+                        selectedModel === model.id 
+                          ? "bg-[var(--eva-blue)] hover:bg-[var(--eva-blue)]/80 text-black" 
+                          : "border-[var(--eva-blue)]/30 text-[var(--eva-blue)]"
+                      }`}
+                      onClick={() => {
+                        setSelectedModel(model.id);
+                        toast({
+                          title: 'Local Model Selected',
+                          description: model.name,
+                        });
+                      }}
+                    >
+                      <div className="flex flex-col items-start text-left">
+                        <span>{model.name}</span>
+                        <span className="text-xs opacity-70 mt-1">{model.description}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
               </div>
-              <Slider
-                value={[topP]}
-                max={1}
-                min={0.1}
-                step={0.01}
-                onValueChange={(value) => setTopP(value[0])}
-                className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-xs text-[var(--eva-green)] font-mono">MAX TOKENS: {maxTokens}</label>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label className="font-mono text-[var(--eva-blue)]">
+                    LOCAL MODEL PARAMETERS
+                  </Label>
+                  
+                  <div className="space-y-2 mt-2">
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[var(--eva-blue)] flex items-center text-xs">
+                        <Thermometer className="h-3 w-3 mr-1 text-[var(--eva-blue)]" />
+                        TEMPERATURE: {temperature.toFixed(2)}
+                      </Label>
+                      <Slider
+                        value={[temperature]}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onValueChange={(values) => setTemperature(values[0])}
+                        className="eva-slider"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[var(--eva-blue)] flex items-center text-xs">
+                        <Crosshair className="h-3 w-3 mr-1 text-[var(--eva-blue)]" />
+                        TOP-P: {topP.toFixed(2)}
+                      </Label>
+                      <Slider
+                        value={[topP]}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onValueChange={(values) => setTopP(values[0])}
+                        className="eva-slider"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[var(--eva-blue)] flex items-center text-xs">
+                        <Maximize className="h-3 w-3 mr-1 text-[var(--eva-blue)]" />
+                        MAX TOKENS: {maxTokens}
+                      </Label>
+                      <Slider
+                        value={[maxTokens]}
+                        min={100}
+                        max={2000}
+                        step={100}
+                        onValueChange={(values) => setMaxTokens(values[0])}
+                        className="eva-slider"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 pt-2">
+                  <Switch
+                    checked={isUsingBrowserModel}
+                    onCheckedChange={setIsUsingBrowserModel}
+                    className="data-[state=checked]:bg-[var(--eva-blue)]"
+                  />
+                  <Label className="font-mono text-xs text-[var(--eva-blue)]">
+                    BROWSER-BASED EXECUTION ENABLED
+                  </Label>
+                </div>
               </div>
-              <Slider
-                value={[maxTokens]}
-                max={4000}
-                min={100}
-                step={100}
-                onValueChange={(value) => setMaxTokens(value[0])}
-                className="[&>span:first-child]:h-2 [&>span:first-child]:bg-[var(--eva-blue)]/20"
-              />
             </div>
-          </div>
-        </div>
-        
-        {/* API Key Status */}
-        {primaryTab === 'api' && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--eva-text)]/60 font-mono">API KEY STATUS:</span>
-              <span className={`text-xs font-mono ${hasApiKey ? 'text-[var(--eva-green)]' : 'text-[var(--eva-orange)]'}`}>
-                {hasApiKey ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}
-              </span>
-            </div>
-            {!hasApiKey && (
-              <Button 
-                variant="link" 
-                className="p-0 h-6 text-xs text-[var(--eva-blue)] hover:text-[var(--eva-blue)]/80 font-mono"
-                asChild
-              >
-                <a href="/callback" className="flex items-center">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  AUTHENTICATE WITH OPENROUTER
-                </a>
-              </Button>
-            )}
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

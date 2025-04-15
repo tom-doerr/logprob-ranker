@@ -101,6 +101,7 @@ interface ChatInterfaceProps extends Partial<ModelConfig> {}
 const ChatInterface: FC = () => {
   const { 
     isUsingBrowserModel,
+    setIsUsingBrowserModel,
     selectedModel: configSelectedModel, 
     temperature: configTemperature, 
     topP: configTopP, 
@@ -340,17 +341,8 @@ const ChatInterface: FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               
-              {isUsingBrowserModel ? (
-                <BrowserLLM 
-                  onSelectBrowserModel={handleSelectBrowserModel}
-                  onMessageSent={handleBrowserModelMessageSent}
-                  onResponseReceived={handleBrowserModelResponseReceived}
-                  isUsingBrowserModel={isUsingBrowserModel}
-                  temperature={temperature}
-                  topP={topP}
-                  maxTokens={maxTokens}
-                />
-              ) : (
+              {/* Browser model chat is handled by BrowserModels component */}
+              {!isUsingBrowserModel && (
                 <div className="flex space-x-2">
                   <Textarea
                     value={input}
@@ -452,6 +444,7 @@ const ChatInterface: FC = () => {
                       variant="outline" 
                       className="w-full eva-button text-[var(--eva-blue)] uppercase font-mono tracking-wider border-[var(--eva-blue)]/30 hover:bg-[var(--eva-blue)]/10"
                       onClick={() => {
+                        // Using the context method
                         setIsUsingBrowserModel(true);
                         setApiKey("browser-llm"); // Use placeholder token for browser model mode
                       }}

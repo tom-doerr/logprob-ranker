@@ -15,7 +15,7 @@ const MainLayout: FC = () => {
   const [activeTab, setActiveTab] = useState("output-ranker");
   
   // Use the centralized model configuration hook
-  const { isUsingBrowserModel, getModelConfig } = useModelConfig();
+  const { isUsingBrowserModel } = useModelConfig();
   
   // Check if API key exists on mount and monitor for changes
   useEffect(() => {
@@ -106,7 +106,7 @@ const MainLayout: FC = () => {
           </TabsContent>
           
           <TabsContent value="chat">
-            <ChatInterface {...getModelConfig()} />
+            <ChatInterface />
           </TabsContent>
         </Tabs>
       )}
