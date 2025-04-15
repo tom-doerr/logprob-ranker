@@ -430,6 +430,9 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
                   onMessageSent={handleBrowserModelMessageSent}
                   onResponseReceived={handleBrowserModelResponseReceived}
                   isUsingBrowserModel={isUsingBrowserModel}
+                  temperature={temperature}
+                  topP={topP}
+                  maxTokens={maxTokens}
                 />
               ) : (
                 <div className="flex space-x-2">
