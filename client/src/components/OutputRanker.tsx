@@ -65,28 +65,27 @@ import { ModelConfig } from '../lib/modelTypes';
 
 interface OutputRankerProps extends Partial<ModelConfig> {}
 
-const OutputRanker: FC<OutputRankerProps> = ({
-  isUsingBrowserModel: externalIsUsingBrowserModel,
-  selectedModel: externalSelectedModel,
-  temperature: externalTemperature,
-  topP: externalTopP,
-  maxTokens: externalMaxTokens,
-  customModel: externalCustomModel,
-  browserModelEngine
-}) => {
+const OutputRanker: FC<OutputRankerProps> = (props) => {
+  // Destructure props directly where needed
+  const { 
+    isUsingBrowserModel,
+    selectedModel,
+    temperature, 
+    topP,
+    maxTokens,
+    customModel, 
+    browserModelEngine 
+  } = props;
+
+  // Local UI state only
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
   const [numberOfVariants, setNumberOfVariants] = useState(5);
-  const [modelId, setModelId] = useState(externalSelectedModel || 'google/gemini-2.0-flash-001');
-  const [customModelId, setCustomModelId] = useState(externalCustomModel || '');
   const [useAutoStop, setUseAutoStop] = useState(false);
   const [autoStopThreshold, setAutoStopThreshold] = useState(5);
   const [threadCount, setThreadCount] = useState(1);
-  const [temperature, setTemperature] = useState(externalTemperature || 0.9);
-  const [topP, setTopP] = useState(externalTopP || 0.95);
-  const [maxTokens, setMaxTokens] = useState(externalMaxTokens || 1024);
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
@@ -101,30 +100,7 @@ const OutputRanker: FC<OutputRankerProps> = ({
     }
   }, []);
   
-  // Update local state when external props change
-  useEffect(() => {
-    if (externalSelectedModel) {
-      setModelId(externalSelectedModel);
-    }
-    if (externalCustomModel) {
-      setCustomModelId(externalCustomModel);
-    }
-    if (externalTemperature) {
-      setTemperature(externalTemperature);
-    }
-    if (externalTopP) {
-      setTopP(externalTopP);
-    }
-    if (externalMaxTokens) {
-      setMaxTokens(externalMaxTokens);
-    }
-  }, [
-    externalSelectedModel,
-    externalCustomModel,
-    externalTemperature,
-    externalTopP,
-    externalMaxTokens
-  ]);
+  // No longer need to sync state since we'll use the props directly
 
   const handleSelectExample = (example: LogProbExample) => {
     setSelectedExample(example);
