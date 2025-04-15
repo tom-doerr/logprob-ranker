@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import MainLayout from '../components/MainLayout';
+import SocialPreview from '../components/SocialPreview';
 
 const Home: FC = () => {
   return (
@@ -7,6 +8,7 @@ const Home: FC = () => {
       <main className="flex-grow py-8">
         <MainLayout />
       </main>
+      <SocialPreview />
     </div>
   );
 };
