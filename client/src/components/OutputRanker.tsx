@@ -241,7 +241,6 @@ ${generatedOutput}`
         evaluationContent = evaluationResponse.text;
       }
 
-      // evaluationContent is already set by either browser model or API
       let logprob = 0;
       let attributeScores: AttributeScore[] = [];
       let rawEvaluation = evaluationContent;
@@ -318,20 +317,31 @@ ${generatedOutput}`
   };
 
   const generateOutputs = async () => {
-    if (!apiKey || !prompt.trim() || !logProbTemplate.trim()) {
+    if ((!apiKey && !useLocalModels) || !prompt.trim() || !logProbTemplate.trim()) {
       toast({
         title: 'Missing Information',
-        description: 'Please provide a prompt and a logprob template',
+        description: 'Please provide a prompt and a logprob template' + 
+          (!apiKey && !useLocalModels ? ' and either log in or enable browser model' : ''),
         variant: 'destructive',
       });
       return;
     }
     
-    // Validate that we have a properly formatted selectedModel
-    if (!selectedModel || !selectedModel.includes('/')) {
+    // Validate that we have a properly formatted selectedModel (only for API usage)
+    if (!useLocalModels && (!selectedModel || !selectedModel.includes('/'))) {
       toast({
         title: 'Invalid Model',
         description: 'Please select a valid model with proper format (e.g., "provider/model-name")',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check if we have a browser model loaded if using local models
+    if (useLocalModels && !browserModelEngine) {
+      toast({
+        title: 'Browser Model Not Loaded',
+        description: 'Please load a browser model first in the Chat Interface',
         variant: 'destructive',
       });
       return;
@@ -446,11 +456,17 @@ ${generatedOutput}`
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!apiKey ? (
-            <div className="p-8 text-center">
+          {!apiKey && !useLocalModels ? (
+            <div className="p-8 text-center space-y-4">
               <p className="text-gray-600 mb-4">
-                Please log in or enter an API key in the chat interface to use this feature.
+                Please log in, enter an API key, or enable browser-based models to use this feature.
               </p>
+              <Button 
+                onClick={() => setUseLocalModels(true)}
+                className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+              >
+                Enable Browser Model
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">
