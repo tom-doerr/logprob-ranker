@@ -716,19 +716,62 @@ ${generatedOutput}`
                         </p>
                       </div>
                       
+                      {isGenerating && (
+                        <div className="mt-4 mb-2 border border-[var(--eva-orange)] rounded-md p-3 bg-black/30">
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-[var(--eva-orange)] animate-pulse mr-2"></div>
+                              <span className="text-sm font-mono text-[var(--eva-orange)] uppercase tracking-wider">ANGEL ANALYSIS</span>
+                            </div>
+                            <span className="text-sm font-mono text-[var(--eva-green)]">
+                              {useAutoStop 
+                                ? `AUTO-CEASE: ${autoStopThreshold}`
+                                : `PROGRESS: ${rankedOutputs.length}/${numberOfVariants}`
+                              }
+                            </span>
+                          </div>
+                          
+                          <div className="w-full bg-black/40 rounded-full h-2.5 mb-2 border border-[var(--eva-orange)]/30">
+                            <div 
+                              className="bg-[var(--eva-orange)] h-2 rounded-full transition-all" 
+                              style={{
+                                width: `${useAutoStop ? Math.min(100, (rankedOutputs.length / (rankedOutputs.length + 5)) * 100) : Math.min(100, (rankedOutputs.length / numberOfVariants) * 100)}%`
+                              }}>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2 mt-3 text-xs font-mono">
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
+                              <div className="w-2 h-2 bg-[var(--eva-green)] rounded-full mr-1 animate-pulse"></div>
+                              <span className="text-[var(--eva-green)]">MAGI-1: MELCHIOR</span>
+                            </div>
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
+                              <div className="w-2 h-2 bg-[var(--eva-orange)] rounded-full mr-1 animate-pulse"></div>
+                              <span className="text-[var(--eva-orange)]">MAGI-2: BALTHASAR</span>
+                            </div>
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
+                              <div className="w-2 h-2 bg-[var(--eva-blue)] rounded-full mr-1 animate-pulse"></div>
+                              <span className="text-[var(--eva-blue)]">MAGI-3: CASPER</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-between text-xs font-mono mt-2">
+                            <span className="text-[var(--eva-text)]">A.T. FIELD ANALYSIS ACTIVE</span>
+                            <span className="text-[var(--eva-blue)]">THREADS: {threadCount}</span>
+                          </div>
+                        </div>
+                      )}
+                      
                       <Button 
                         onClick={generateOutputs} 
                         disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
-                        className="w-full mt-6 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
+                        className="w-full mt-3 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
                       >
                         {isGenerating ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin flex-shrink-0" />
                             <span className="truncate mx-1">
-                              {useAutoStop 
-                                ? `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}] AUTO-CEASE AFTER ${autoStopThreshold}` 
-                                : `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}/${numberOfVariants}]`
-                              }
+                              PROCESSING ANGEL PATTERN
                             </span>
                           </>
                         ) : (
@@ -791,13 +834,27 @@ ${generatedOutput}`
                   
                   <div className="space-y-4">
                     {rankedOutputs.map((output, idx) => (
-                      <div key={idx} className="border border-[var(--eva-orange)] rounded-md p-4">
+                      <div 
+                        key={idx} 
+                        className={`border ${rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index 
+                          ? 'border-[var(--eva-blue)] bg-[var(--eva-blue)]/5' 
+                          : 'border-[var(--eva-orange)]'} rounded-md p-4 relative`}
+                      >
+                        {rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index && (
+                          <div className="absolute top-0 right-0 border-t-2 border-r-2 border-[var(--eva-blue)] w-6 h-6"></div>
+                        )}
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center">
                             {idx === 0 && (
                               <span className="inline-flex items-center bg-[var(--eva-orange)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
                                 <Crown className="h-3 w-3 mr-1" />
                                 PRIME SUBJECT
+                              </span>
+                            )}
+                            {rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index && (
+                              <span className="inline-flex items-center bg-[var(--eva-blue)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
+                                <span className="h-2 w-2 bg-white rounded-full animate-pulse mr-1"></span>
+                                LATEST
                               </span>
                             )}
                             <span className="text-sm text-[var(--eva-text)] font-mono">
