@@ -19,7 +19,7 @@ import { createChatCompletion } from '../lib/openrouter';
 import { generateAuthUrl, exchangeCodeForToken } from '../lib/openrouter';
 import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } from '../utils/pkce';
 import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
-// TensorFlow.js removed
+import BrowserLLM from './BrowserLLM';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
