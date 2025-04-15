@@ -116,7 +116,22 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
         }
       }
       
-      // Create a new engine
+      // Initialize WebLLM first
+      try {
+        setProgressMessage('Initializing WebLLM...');
+        // @ts-ignore - isInitialized may not be exposed in type definitions
+        if (!webllm.isInitialized || !webllm.isInitialized()) {
+          // @ts-ignore - initWebLLM may not be exposed in type definitions
+          if (webllm.initWebLLM) {
+            await webllm.initWebLLM();
+          }
+        }
+      } catch (e) {
+        console.log('WebLLM initialization not needed or already initialized');
+      }
+      
+      // Create a new engine with available WebLLM model
+      setProgressMessage('Creating engine for model: ' + selectedModel);
       engineRef.current = await webllm.CreateMLCEngine(
         selectedModel, 
         {

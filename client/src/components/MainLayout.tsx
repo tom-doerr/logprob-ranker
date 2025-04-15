@@ -75,28 +75,28 @@ const MainLayout: FC = () => {
     }
   ];
 
-  // Browser model options
+  // Browser model options - using official WebLLM model IDs
   const browserModelOptions: BrowserModelOption[] = [
     {
-      id: 'Llama-3.1-8B-Q4_K_M',
+      id: 'Llama-3.1-8B-Instruct-q4f32_0',
       name: 'Llama 3.1 8B',
       source: 'Meta',
       description: 'Smaller Llama 3.1 model optimized for running in browser'
     },
     {
-      id: 'Phi-3-mini-4k-instruct-Q4_K_M',
+      id: 'Phi-3-mini-4k-instruct-q4f32_1',
       name: 'Phi-3 Mini',
       source: 'Microsoft',
       description: 'Compact yet powerful model for instruction following'
     },
     {
-      id: 'Gemma-2B-it-Q4_K_M',
+      id: 'Gemma-2B-it-q4f32_0',
       name: 'Gemma 2B',
       source: 'Google',
       description: 'Lightweight instruction-tuned model derived from Gemini'
     },
     {
-      id: 'Qwen2-0.5B-instruct-Q4_K_M',
+      id: 'Qwen2-0.5B-Instruct-q4f16_1',
       name: 'Qwen2 0.5B',
       source: 'Alibaba',
       description: 'Ultra-efficient model for basic tasks'
@@ -123,7 +123,22 @@ const MainLayout: FC = () => {
         }
       }
       
-      // Create a new engine
+      // Initialize WebLLM first
+      try {
+        setLoadingMessage('Initializing WebLLM...');
+        // @ts-ignore - isInitialized may not be exposed in type definitions
+        if (!webllm.isInitialized || !webllm.isInitialized()) {
+          // @ts-ignore - initWebLLM may not be exposed in type definitions
+          if (webllm.initWebLLM) {
+            await webllm.initWebLLM();
+          }
+        }
+      } catch (e) {
+        console.log('WebLLM initialization not needed or already initialized');
+      }
+      
+      // Create a new engine with available WebLLM model
+      setLoadingMessage('Creating engine for model: ' + selectedModel);
       const engine = await webllm.CreateMLCEngine(
         selectedModel, 
         {
