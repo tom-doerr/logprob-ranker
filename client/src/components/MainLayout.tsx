@@ -1,10 +1,63 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChatInterface from './ChatInterface';
 import OutputRanker from './OutputRanker';
-import { MessageSquare, BarChart2, Power } from 'lucide-react';
+import { MessageSquare, BarChart2, Power, Key, AlertCircle } from 'lucide-react';
+import { getApiKey } from '../utils/pkce';
+import { Button } from './ui/button';
 
 const MainLayout: FC = () => {
+  const [showAuthInfo, setShowAuthInfo] = useState(false);
+  const [activeTab, setActiveTab] = useState("output-ranker");
+  
+  // Check if API key exists on mount and monitor for changes
+  useEffect(() => {
+    const checkApiKey = () => {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        setShowAuthInfo(true);
+        // Default to chat tab when no API key is found
+        setActiveTab("chat");
+      }
+    };
+    
+    // Initial check
+    checkApiKey();
+    
+    // Listen for localStorage changes (for API key updates)
+    const handleStorageChange = () => {
+      const apiKey = getApiKey();
+      if (apiKey) {
+        setShowAuthInfo(false);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event to detect API key changes from within the app
+    const handleApiKeyChange = () => {
+      const apiKey = getApiKey();
+      if (apiKey) {
+        setShowAuthInfo(false);
+      }
+    };
+    
+    window.addEventListener('api-key-changed', handleApiKeyChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('api-key-changed', handleApiKeyChange);
+    };
+  }, []);
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+  
+  const closeAuthInfo = () => {
+    setShowAuthInfo(false);
+  };
+
   return (
     <div className="container mx-auto max-w-6xl p-4 relative">
       {/* Eva Interface Decorations */}
@@ -28,7 +81,64 @@ const MainLayout: FC = () => {
         NERV
       </div>
       
-      <Tabs defaultValue="output-ranker" className="w-full mt-8">
+      {/* Authentication Info Overlay */}
+      {showAuthInfo && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--eva-black)] max-w-2xl w-full border-2 border-[var(--eva-orange)] rounded-md p-6 relative">
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[var(--eva-orange)]"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[var(--eva-orange)]"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[var(--eva-orange)]"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[var(--eva-orange)]"></div>
+            
+            <h2 className="text-xl text-[var(--eva-orange)] font-mono uppercase tracking-wider mb-4 flex items-center">
+              <Key className="h-5 w-5 mr-2" />
+              NERV Authentication Required
+            </h2>
+            
+            <div className="space-y-4 text-[var(--eva-text)] font-mono">
+              <div className="flex items-start space-x-3 border border-[var(--eva-orange)]/30 p-3 bg-black/30 rounded-md">
+                <AlertCircle className="h-5 w-5 text-[var(--eva-orange)] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm mb-2">OpenRouter API key is required to use NERV systems.</p>
+                  <p className="text-xs text-[var(--eva-green)]">
+                    API key authentication available in the "NERV SYSTEM-B" tab. Once authenticated, you will have access to all NERV systems.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="border border-[var(--eva-orange)]/30 p-3 bg-black/30 rounded-md text-sm">
+                <p className="mb-2 text-[var(--eva-orange)]">INSTRUCTIONS:</p>
+                <ol className="list-decimal ml-5 space-y-1 text-xs">
+                  <li>Click "PROCEED TO AUTHENTICATION" below or navigate to "NERV SYSTEM-B" tab</li>
+                  <li>Enter your OpenRouter API key or create a new one via the OpenRouter authentication</li>
+                  <li>Once authorized, you'll have full access to all NERV systems</li>
+                </ol>
+              </div>
+            </div>
+            
+            <div className="flex justify-between mt-6">
+              <Button 
+                variant="outline" 
+                onClick={closeAuthInfo}
+                className="eva-button text-[var(--eva-text)] font-mono"
+              >
+                CLOSE MESSAGE
+              </Button>
+              <Button 
+                onClick={() => {
+                  setActiveTab("chat");
+                  closeAuthInfo();
+                }}
+                className="eva-button text-[var(--eva-orange)] font-mono"
+              >
+                PROCEED TO AUTHENTICATION
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
         <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
           <TabsTrigger value="output-ranker" className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">
             <BarChart2 className="h-4 w-4 mr-2" />

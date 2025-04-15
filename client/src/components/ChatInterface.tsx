@@ -155,9 +155,13 @@ const ChatInterface: FC = () => {
     setApiKey(manualApiKey);
     saveApiKey(manualApiKey);
     setManualApiKey('');
+    
+    // Dispatch event to notify other components of the API key change
+    window.dispatchEvent(new Event('api-key-changed'));
+    
     toast({
-      title: 'API Key Saved',
-      description: 'Your API key has been saved and will be used for chat',
+      title: 'AUTHENTICATION COMPLETE',
+      description: 'Your NERV credentials have been saved successfully',
     });
   };
 

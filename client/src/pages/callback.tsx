@@ -68,12 +68,15 @@ const Callback: FC = () => {
         saveApiKey(data.key);
         clearCodeVerifier(); // Clear the verifier as we no longer need it
         
+        // Dispatch event to notify other components of the API key change
+        window.dispatchEvent(new Event('api-key-changed'));
+        
         setSuccess(true);
         setIsLoading(false);
         
         toast({
-          title: 'Authentication successful',
-          description: 'You have successfully connected to OpenRouter',
+          title: 'NERV AUTHENTICATION COMPLETE',
+          description: 'OpenRouter synchronization successful',
         });
         
         // Redirect back to main page after a delay
