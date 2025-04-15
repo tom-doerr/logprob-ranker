@@ -294,7 +294,16 @@ const ChatInterface: FC = () => {
                   className="text-xs flex items-center font-mono eva-button text-[var(--eva-orange)]"
                 >
                   <Settings className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">PILOT:</span> {modelInfo.name}
+                  <span className="hidden sm:inline">PILOT:</span> {isUsingBrowserModel ? "Browser LLM" : modelInfo.name}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsUsingBrowserModel(!isUsingBrowserModel)}
+                  className="eva-button text-[var(--eva-orange)]"
+                >
+                  {isUsingBrowserModel ? <Send className="h-4 w-4 mr-2" /> : <Cpu className="h-4 w-4 mr-2" />}
+                  {isUsingBrowserModel ? "API" : "LOCAL"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout} className="eva-button text-[var(--eva-orange)]">
                   <LogOut className="h-4 w-4 mr-2" />
@@ -494,7 +503,32 @@ const ChatInterface: FC = () => {
                 <div className="border border-[var(--eva-blue)]/30 bg-black/20 rounded-md p-4">
                   <p className="text-xs text-[var(--eva-blue)] mb-2 font-mono flex items-center">
                     <span className="inline-block w-2 h-2 bg-[var(--eva-blue)] mr-2"></span>
-                    OPTION 3: GET AN API KEY MANUALLY:
+                    OPTION 3: USE BROWSER-BASED LLM:
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs text-[var(--eva-text)]/60 font-mono">
+                      Run language models directly in your browser (no API key required):
+                    </p>
+                    
+                    <Button 
+                      variant="outline" 
+                      className="w-full eva-button text-[var(--eva-blue)] uppercase font-mono tracking-wider border-[var(--eva-blue)]/30 hover:bg-[var(--eva-blue)]/10"
+                      onClick={() => {
+                        setIsUsingBrowserModel(true);
+                        setApiKey("browser-llm"); // Use placeholder token for browser model mode
+                      }}
+                    >
+                      <Cpu className="h-4 w-4 mr-2" />
+                      USE BROWSER LLM
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="border border-[var(--eva-blue)]/30 bg-black/20 rounded-md p-4">
+                  <p className="text-xs text-[var(--eva-blue)] mb-2 font-mono flex items-center">
+                    <span className="inline-block w-2 h-2 bg-[var(--eva-blue)] mr-2"></span>
+                    OPTION 4: GET AN API KEY MANUALLY:
                   </p>
                   
                   <div className="space-y-2">
