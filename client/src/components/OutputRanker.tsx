@@ -272,10 +272,10 @@ ${generatedOutput}`
       
       while (currentIndex < actualVariantsToGenerate) {
         // Check if we should stop based on auto-stop criteria
-        if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold && currentIndex >= numberOfVariants) {
+        if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold) {
           toast({
             title: 'Auto-Stop Triggered',
-            description: `No better outputs found after ${autoStopThreshold} iterations. Stopping at ${currentIndex} variants.`
+            description: `No better outputs found after ${autoStopThreshold} batch iterations. Stopping at ${results.length} variants.`
           });
           break;
         }
@@ -304,19 +304,27 @@ ${generatedOutput}`
         // Filter out null results and add to results array
         const validResults = batchResults.filter(result => result !== null) as RankedOutput[];
         
+        // For auto-stop: Check if this batch produced a better result
+        let batchImproved = false;
+        
         for (const result of validResults) {
           results.push(result);
           
-          // Check if this is a better result for auto-stop functionality
-          if (useAutoStop) {
-            if (result.logprob > bestScore) {
-              bestScore = result.logprob;
-              iterationsWithoutImprovement = 0;
-              console.log(`New best score found: ${result.logprob.toFixed(4)} at iteration ${result.index}`);
-            } else {
-              iterationsWithoutImprovement++;
-              console.log(`No improvement for ${iterationsWithoutImprovement} iterations. Current best: ${bestScore.toFixed(4)}`);
-            }
+          // Check if this result is better than our best score
+          if (useAutoStop && result.logprob > bestScore) {
+            bestScore = result.logprob;
+            batchImproved = true;
+            console.log(`New best score found: ${result.logprob.toFixed(4)} at iteration ${result.index}`);
+          }
+        }
+        
+        // Update improvement counter after processing the whole batch
+        if (useAutoStop) {
+          if (batchImproved) {
+            iterationsWithoutImprovement = 0;
+          } else {
+            iterationsWithoutImprovement++;
+            console.log(`No improvement for ${iterationsWithoutImprovement} batches. Current best: ${bestScore.toFixed(4)}`);
           }
         }
         
@@ -555,7 +563,7 @@ ${generatedOutput}`
                         
                         <div className={useAutoStop ? "block" : "hidden"}>
                           <p className="text-xs text-gray-500 mb-2">
-                            Stop after iterations without improvement:
+                            Stop after this many batches without improvement:
                           </p>
                           <Input
                             type="text"
@@ -712,7 +720,7 @@ ${generatedOutput}`
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             {useAutoStop 
-                              ? `Generating (${rankedOutputs.length} outputs, auto-stop enabled)` 
+                              ? `Generating (${rankedOutputs.length} outputs, auto-stop after ${autoStopThreshold} tries)` 
                               : `Generating (${rankedOutputs.length}/${numberOfVariants})`
                             }
                           </>
