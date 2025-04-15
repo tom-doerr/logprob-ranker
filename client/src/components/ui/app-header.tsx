@@ -19,36 +19,36 @@ export const AppHeader: React.FC = () => {
       <div className="container mx-auto px-4 flex h-16 items-center justify-between">
         <div className="flex items-center">
           <Link href="/">
-            <a className="flex items-center space-x-2 text-[var(--eva-orange)]">
+            <div className="flex items-center space-x-2 text-[var(--eva-orange)] cursor-pointer">
               <div className="relative">
                 <div className="eva-title text-xl font-bold tracking-wider">NERV</div>
                 <div className="absolute top-0 left-0 right-0 bottom-0 bg-[var(--eva-orange)] mix-blend-overlay opacity-30 animate-pulse"></div>
               </div>
               <span className="hidden sm:inline-block text-sm tracking-widest font-light text-[var(--eva-text)]">MAGI SYSTEM</span>
-            </a>
+            </div>
           </Link>
         </div>
 
         <nav className="hidden md:flex items-center space-x-1">
           <Link href="/">
-            <a className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+            <div className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 cursor-pointer ${
               location === '/' 
               ? 'bg-[var(--eva-orange)] text-black' 
               : 'text-[var(--eva-text)] hover:bg-black/40 hover:text-[var(--eva-orange)]'
             }`}>
               <MessageSquare className="h-4 w-4" />
               <span>Chat Interface</span>
-            </a>
+            </div>
           </Link>
           <Link href="/ranker">
-            <a className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+            <div className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 cursor-pointer ${
               location === '/ranker' 
               ? 'bg-[var(--eva-orange)] text-black' 
               : 'text-[var(--eva-text)] hover:bg-black/40 hover:text-[var(--eva-orange)]'
             }`}>
               <BarChart className="h-4 w-4" />
               <span>Output Ranker</span>
-            </a>
+            </div>
           </Link>
         </nav>
 
@@ -70,20 +70,20 @@ export const AppHeader: React.FC = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-black/95 border-[var(--eva-orange)]">
-              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black">
+              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black" asChild>
                 <Link href="/">
-                  <a className="flex items-center w-full">
+                  <div className="flex items-center w-full">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Chat Interface</span>
-                  </a>
+                  </div>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black">
+              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black" asChild>
                 <Link href="/ranker">
-                  <a className="flex items-center w-full">
+                  <div className="flex items-center w-full">
                     <BarChart className="mr-2 h-4 w-4" />
                     <span>Output Ranker</span>
-                  </a>
+                  </div>
                 </Link>
               </DropdownMenuItem>
               
