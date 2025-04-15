@@ -5,13 +5,16 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Callback from "@/pages/callback";
+import RankerPage from "@/pages/ranker";
 import { ModelConfigProvider } from "./hooks/use-model-config";
 import { AuthProvider } from "./hooks/use-auth";
+import AppHeader from "@/components/ui/app-header";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/ranker" component={RankerPage} />
       <Route path="/callback" component={Callback} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
@@ -24,7 +27,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ModelConfigProvider>
-          <Router />
+          <div className="flex flex-col min-h-screen bg-black">
+            <AppHeader />
+            <main className="flex-grow">
+              <Router />
+            </main>
+          </div>
           <Toaster />
         </ModelConfigProvider>
       </AuthProvider>
