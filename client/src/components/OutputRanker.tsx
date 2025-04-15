@@ -61,15 +61,9 @@ const examples: LogProbExample[] = [
   }
 ];
 
-interface OutputRankerProps {
-  isUsingBrowserModel?: boolean;
-  selectedModel?: string;
-  temperature?: number;
-  topP?: number;
-  maxTokens?: number;
-  customModel?: string;
-  browserModelEngine?: any;
-}
+import { ModelConfig } from '../lib/modelTypes';
+
+interface OutputRankerProps extends Partial<ModelConfig> {}
 
 const OutputRanker: FC<OutputRankerProps> = ({
   isUsingBrowserModel: externalIsUsingBrowserModel,
@@ -106,6 +100,31 @@ const OutputRanker: FC<OutputRankerProps> = ({
       setApiKey(storedApiKey);
     }
   }, []);
+  
+  // Update local state when external props change
+  useEffect(() => {
+    if (externalSelectedModel) {
+      setModelId(externalSelectedModel);
+    }
+    if (externalCustomModel) {
+      setCustomModelId(externalCustomModel);
+    }
+    if (externalTemperature) {
+      setTemperature(externalTemperature);
+    }
+    if (externalTopP) {
+      setTopP(externalTopP);
+    }
+    if (externalMaxTokens) {
+      setMaxTokens(externalMaxTokens);
+    }
+  }, [
+    externalSelectedModel,
+    externalCustomModel,
+    externalTemperature,
+    externalTopP,
+    externalMaxTokens
+  ]);
 
   const handleSelectExample = (example: LogProbExample) => {
     setSelectedExample(example);

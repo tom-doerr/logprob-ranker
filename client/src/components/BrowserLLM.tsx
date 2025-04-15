@@ -7,24 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import * as webllm from '@mlc-ai/web-llm';
 
-interface BrowserLLMProps {
-  onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
-  onMessageSent: (message: ChatMessage) => void;
-  onResponseReceived: (message: ChatMessage) => void;
-  isUsingBrowserModel: boolean;
-}
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface BrowserModelOption {
-  id: string;
-  name: string;
-  source: string;
-  description: string;
-}
+import { BrowserModelOption } from '../lib/modelTypes';
+import { ChatMessage } from '../lib/openrouter';
 
 // Props should include all the global LLM settings
 interface BrowserLLMProps {
