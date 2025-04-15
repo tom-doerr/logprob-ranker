@@ -406,8 +406,8 @@ ${generatedOutput}`
                         className="font-mono text-sm min-h-[120px] eva-input text-[var(--eva-green)]"
                       />
                       <div className="mt-2 space-y-2">
-                        <p className="text-xs text-gray-500">
-                          The template defines attributes to evaluate. Use LOGPROB_TRUE to indicate true evaluation.
+                        <p className="text-xs text-[var(--eva-text)] font-mono">
+                          TEMPLATE DEFINES ATTRIBUTES TO EVALUATE. USE LOGPROB_TRUE TO INDICATE.
                         </p>
                         
                         <div className="flex space-x-2 items-center">
@@ -543,8 +543,8 @@ ${generatedOutput}`
                             }
                           }}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Enter any number of variants to generate
+                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                          TOTAL OUTPUT GENERATION COUNT
                         </p>
                       </div>
                       
@@ -563,8 +563,8 @@ ${generatedOutput}`
                         </div>
                         
                         <div className={useAutoStop ? "block" : "hidden"}>
-                          <p className="text-xs text-gray-500 mb-2">
-                            Stop after this many batches without improvement:
+                          <p className="text-xs text-[var(--eva-text)] mb-2 font-mono">
+                            TERMINATE AFTER [BATCHES WITHOUT IMPROVEMENT]:
                           </p>
                           <Input
                             type="text"
@@ -673,8 +673,8 @@ ${generatedOutput}`
                           }}
                           className="w-full eva-input text-[var(--eva-green)]"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Controls randomness (0-2)
+                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                          ENTROPY CONTROL [0-2]
                         </p>
                       </div>
                       
@@ -707,8 +707,8 @@ ${generatedOutput}`
                           }}
                           className="w-full eva-input text-[var(--eva-green)]"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Maximum completion length
+                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                          OUTPUT BUFFER SIZE
                         </p>
                       </div>
                       
@@ -721,14 +721,14 @@ ${generatedOutput}`
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             {useAutoStop 
-                              ? `Generating (${rankedOutputs.length} outputs, auto-stop after ${autoStopThreshold} tries)` 
-                              : `Generating (${rankedOutputs.length}/${numberOfVariants})`
+                              ? `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}] AUTO-CEASE AFTER ${autoStopThreshold}` 
+                              : `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}/${numberOfVariants}]`
                             }
                           </>
                         ) : (
                           <>
                             <Flame className="mr-2 h-4 w-4" />
-                            Generate & Rank Outputs
+                            INITIATE EVANGELION
                           </>
                         )}
                       </Button>
@@ -791,7 +791,7 @@ ${generatedOutput}`
                             {idx === 0 && (
                               <span className="inline-flex items-center bg-[var(--eva-orange)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
                                 <Crown className="h-3 w-3 mr-1" />
-                                Top Ranked
+                                PRIME SUBJECT
                               </span>
                             )}
                             <span className="text-sm text-[var(--eva-text)] font-mono">
@@ -835,7 +835,7 @@ ${generatedOutput}`
                               onClick={() => setSelectedOutputIdx(selectedOutputIdx === idx ? null : idx)}
                               className="text-xs text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80"
                             >
-                              {selectedOutputIdx === idx ? 'Hide Details' : 'View Evaluation'}
+                              {selectedOutputIdx === idx ? 'CLOSE TERMINAL' : 'VIEW MAGI ANALYSIS'}
                             </Button>
                           </div>
                         )}
