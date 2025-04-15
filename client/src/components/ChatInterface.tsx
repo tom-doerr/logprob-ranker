@@ -19,7 +19,7 @@ import { createChatCompletion } from '../lib/openrouter';
 import { generateAuthUrl, exchangeCodeForToken } from '../lib/openrouter';
 import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } from '../utils/pkce';
 import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
-import TensorflowLLM from './TensorflowLLM';
+// TensorFlow.js removed
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -406,36 +406,27 @@ const ChatInterface: FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               
-              {isUsingBrowserModel ? (
-                <TensorflowLLM 
-                  onSelectBrowserModel={handleSelectBrowserModel}
-                  onMessageSent={handleBrowserModelMessageSent}
-                  onResponseReceived={handleBrowserModelResponseReceived}
-                  isUsingBrowserModel={isUsingBrowserModel}
+              <div className="flex space-x-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="ENTER COMMUNICATION DATA"
+                  className="flex-grow eva-input text-[var(--eva-green)] font-mono"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
                 />
-              ) : (
-                <div className="flex space-x-2">
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="ENTER COMMUNICATION DATA"
-                    className="flex-grow eva-input text-[var(--eva-green)] font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  <Button 
-                    onClick={handleSendMessage} 
-                    disabled={isLoading || !input.trim()}
-                    className="eva-button text-[var(--eva-orange)]"
-                  >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  </Button>
-                </div>
-              )}
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={isLoading || !input.trim()}
+                  className="eva-button text-[var(--eva-orange)]"
+                >
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-6 py-4">
@@ -500,35 +491,12 @@ const ChatInterface: FC = () => {
                   </div>
                 </div>
                 
-                <div className="border border-[var(--eva-blue)]/30 bg-black/20 rounded-md p-4">
-                  <p className="text-xs text-[var(--eva-blue)] mb-2 font-mono flex items-center">
-                    <span className="inline-block w-2 h-2 bg-[var(--eva-blue)] mr-2"></span>
-                    OPTION 3: USE TENSORFLOW.JS:
-                  </p>
-                  
-                  <div className="space-y-2">
-                    <p className="text-xs text-[var(--eva-text)]/60 font-mono">
-                      Run language models directly in your browser with TensorFlow.js (no API key required):
-                    </p>
-                    
-                    <Button 
-                      variant="outline" 
-                      className="w-full eva-button text-[var(--eva-blue)] uppercase font-mono tracking-wider border-[var(--eva-blue)]/30 hover:bg-[var(--eva-blue)]/10"
-                      onClick={() => {
-                        setIsUsingBrowserModel(true);
-                        setApiKey("browser-llm"); // Use placeholder token for browser model mode
-                      }}
-                    >
-                      <Cpu className="h-4 w-4 mr-2" />
-                      USE TENSORFLOW.JS
-                    </Button>
-                  </div>
-                </div>
+                {/* TensorFlow.js option removed */}
                 
                 <div className="border border-[var(--eva-blue)]/30 bg-black/20 rounded-md p-4">
                   <p className="text-xs text-[var(--eva-blue)] mb-2 font-mono flex items-center">
                     <span className="inline-block w-2 h-2 bg-[var(--eva-blue)] mr-2"></span>
-                    OPTION 4: GET AN API KEY MANUALLY:
+                    OPTION 3: GET AN API KEY MANUALLY:
                   </p>
                   
                   <div className="space-y-2">
