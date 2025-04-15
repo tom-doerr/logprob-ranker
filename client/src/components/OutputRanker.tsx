@@ -515,7 +515,7 @@ ${generatedOutput}`
                         </Tabs>
                       </div>
                       
-                      <div>
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
                         <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Number of Variants
                         </label>
@@ -548,14 +548,14 @@ ${generatedOutput}`
                         </p>
                       </div>
                       
-                      <div className="border rounded-md p-3">
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
                         <div className="flex items-center mb-2">
                           <input
                             type="checkbox"
                             id="use-auto-stop"
                             checked={useAutoStop}
                             onChange={(e) => setUseAutoStop(e.target.checked)}
-                            className="h-4 w-4 text-blue-600 rounded mr-2"
+                            className="h-4 w-4 text-[var(--eva-orange)] border-[var(--eva-orange)] rounded mr-2"
                           />
                           <label htmlFor="use-auto-stop" className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
                             Auto-stop Generation
@@ -603,7 +603,7 @@ ${generatedOutput}`
                         </div>
                       </div>
                       
-                      <div className="border rounded-md p-3">
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
                         <label htmlFor="thread-count" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">
                           Thread Count
                         </label>
@@ -678,7 +678,7 @@ ${generatedOutput}`
                         </p>
                       </div>
                       
-                      <div className="border rounded-md p-3">
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
                         <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Max Tokens
                         </label>
@@ -745,7 +745,7 @@ ${generatedOutput}`
                       <div 
                         key={idx}
                         onClick={() => handleSelectExample(example)}
-                        className="border rounded-md p-4 cursor-pointer hover:bg-blue-50 transition-colors"
+                        className="border border-[var(--eva-orange)] rounded-md p-4 cursor-pointer hover:bg-black/10 transition-colors"
                       >
                         <h3 className="font-medium mb-2">{example.prompt}</h3>
                         <p className="text-sm text-gray-500">
@@ -785,11 +785,11 @@ ${generatedOutput}`
                   
                   <div className="space-y-4">
                     {rankedOutputs.map((output, idx) => (
-                      <div key={idx} className="border rounded-md p-4">
+                      <div key={idx} className="border border-[var(--eva-orange)] rounded-md p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center">
                             {idx === 0 && (
-                              <span className="inline-flex items-center bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded mr-2">
+                              <span className="inline-flex items-center bg-[var(--eva-orange)] text-white text-xs font-medium px-2.5 py-0.5 rounded mr-2">
                                 <Crown className="h-3 w-3 mr-1" />
                                 Top Ranked
                               </span>
@@ -798,7 +798,7 @@ ${generatedOutput}`
                               Variant #{output.index + 1}
                             </span>
                           </div>
-                          <span className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                          <span className="text-sm font-medium bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded">
                             Score: {output.logprob.toFixed(4)}
                           </span>
                         </div>
@@ -817,7 +817,7 @@ ${generatedOutput}`
                                   className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
                                 >
                                   <span className="text-xs font-medium">{attr.name}:</span>
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                  <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
                                     {attr.score.toFixed(4)}
                                   </span>
                                 </div>
@@ -833,7 +833,7 @@ ${generatedOutput}`
                               variant="ghost" 
                               size="sm"
                               onClick={() => setSelectedOutputIdx(selectedOutputIdx === idx ? null : idx)}
-                              className="text-xs"
+                              className="text-xs text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80"
                             >
                               {selectedOutputIdx === idx ? 'Hide Details' : 'View Evaluation'}
                             </Button>
@@ -842,7 +842,7 @@ ${generatedOutput}`
                         
                         {/* Raw Evaluation */}
                         {selectedOutputIdx === idx && output.rawEvaluation && (
-                          <div className="mt-2 p-2 bg-gray-100 border border-gray-200 rounded-md text-xs font-mono whitespace-pre-wrap">
+                          <div className="mt-2 p-2 bg-black/5 border border-[var(--eva-orange)]/50 rounded-md text-xs font-mono whitespace-pre-wrap text-[var(--eva-green)]">
                             {output.rawEvaluation}
                           </div>
                         )}
