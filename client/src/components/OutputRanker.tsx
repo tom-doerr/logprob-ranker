@@ -806,17 +806,17 @@ ${generatedOutput}`
                 </TabsContent>
                 
                 <TabsContent value="examples" className="space-y-4 mt-4">
-                  <p className="text-sm text-[var(--eva-text)] mb-4 font-mono">
-                    SELECT EXAMPLE TEMPLATE:
+                  <p className="text-sm text-[var(--eva-text)] mb-4 font-mono nerv-blink">
+                    SELECT EXAMPLE TEMPLATE: <span className="nerv-glitch text-[var(--eva-orange)]">NERV CLASSIFICATION</span>
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {examples.map((example, idx) => (
                       <div 
                         key={idx}
                         onClick={() => handleSelectExample(example)}
-                        className="border border-[var(--eva-orange)] rounded-md p-4 cursor-pointer hover:bg-black/10 transition-colors"
+                        className="border border-[var(--eva-orange)] rounded-md p-4 cursor-pointer hover:bg-black/10 transition-colors nerv-scanline"
                       >
-                        <h3 className="font-medium mb-2 text-[var(--eva-orange)] uppercase tracking-wider">{example.prompt}</h3>
+                        <h3 className="font-medium mb-2 text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">{example.prompt}</h3>
                         <p className="text-sm text-[var(--eva-text)] font-mono">
                           VARIANTS: {example.variants}
                         </p>
@@ -831,9 +831,9 @@ ${generatedOutput}`
               
               {selectedExample && (
                 <div className="flex items-center">
-                  <div className="bg-[var(--eva-green-bg)] text-[var(--eva-green)] text-xs font-medium px-2.5 py-0.5 rounded flex items-center">
-                    <span>ACTIVE EXAMPLE</span>
-                    <button onClick={clearExample} className="ml-2 text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80">
+                  <div className="bg-[var(--eva-green-bg)] text-[var(--eva-green)] text-xs font-medium px-2.5 py-0.5 rounded flex items-center nerv-pulse">
+                    <span className="nerv-type">ACTIVE EXAMPLE</span>
+                    <button onClick={clearExample} className="ml-2 text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80 nerv-glitch">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -858,7 +858,7 @@ ${generatedOutput}`
                         key={idx} 
                         className={`border ${rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index 
                           ? 'border-[var(--eva-blue)] bg-[var(--eva-blue)]/5' 
-                          : 'border-[var(--eva-orange)]'} rounded-md p-4 relative`}
+                          : 'border-[var(--eva-orange)]'} rounded-md p-4 relative nerv-scanline`}
                       >
                         {rankedOutputs.length > 0 && output.index === rankedOutputs[rankedOutputs.length - 1].index && (
                           <div className="absolute top-0 right-0 border-t-2 border-r-2 border-[var(--eva-blue)] w-6 h-6"></div>
@@ -897,7 +897,7 @@ ${generatedOutput}`
                               {output.attributeScores.map((attr, attrIdx) => (
                                 <div 
                                   key={attrIdx} 
-                                  className="flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30"
+                                  className="flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-pulse"
                                 >
                                   <span className="text-xs font-medium text-[var(--eva-text)]">{attr.name}:</span>
                                   <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
@@ -925,8 +925,8 @@ ${generatedOutput}`
                         
                         {/* Raw Evaluation */}
                         {selectedOutputIdx === idx && output.rawEvaluation && (
-                          <div className="mt-2 p-2 bg-black/5 border border-[var(--eva-orange)]/50 rounded-md text-xs font-mono whitespace-pre-wrap text-[var(--eva-green)]">
-                            {output.rawEvaluation}
+                          <div className="mt-2 p-2 bg-black/5 border border-[var(--eva-orange)]/50 rounded-md text-xs font-mono whitespace-pre-wrap text-[var(--eva-green)] nerv-scan">
+                            <span className="nerv-blink">MAGI:</span> <span className="nerv-type">{output.rawEvaluation}</span>
                           </div>
                         )}
                       </div>
