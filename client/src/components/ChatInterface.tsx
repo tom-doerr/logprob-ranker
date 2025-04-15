@@ -123,6 +123,9 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   const [customModel, setCustomModel] = useState<string>('');
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
+  const [temperature, setTemperature] = useState(0.7);
+  const [topP, setTopP] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(1000);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API key on mount
@@ -157,6 +160,8 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
       const response = await createChatCompletion({
         model: modelToUse,
         messages: [...messages, userMessage],
+        temperature: temperature,
+        max_tokens: maxTokens,
       });
       
       if (response.choices && response.choices.length > 0) {
