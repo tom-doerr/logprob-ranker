@@ -94,7 +94,20 @@ const Callback: FC = () => {
           } catch (jsonError) {
             console.error("JSON parse error:", jsonError);
             console.error("Raw response that failed to parse:", responseText);
-            throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 100)}...`);
+            
+            // Create a more detailed error with both the error and the raw response
+            const jsonErrorMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
+            const rawResponsePreview = responseText.substring(0, 150) + (responseText.length > 150 ? '...' : '');
+            
+            // If we see a pattern that looks like an API key in the response, try to extract it
+            const possibleApiKey = responseText.match(/sk-or-v1-[a-zA-Z0-9]{32,}/);
+            if (possibleApiKey && possibleApiKey[0]) {
+              // Create a synthetic response with the key we found
+              console.log("Found potential API key in response, attempting to use it");
+              data = { key: possibleApiKey[0] };
+            } else {
+              throw new Error(`Invalid JSON response from server: ${jsonErrorMsg}\n\nRaw response: ${rawResponsePreview}`);
+            }
           }
         } catch (parseError) {
           console.error("Error accessing response:", parseError);
@@ -227,18 +240,32 @@ const Callback: FC = () => {
                       SHOW TECHNICAL DETAILS
                     </summary>
                     <div className="p-2 bg-black/50 rounded border border-[var(--eva-red)]/20 overflow-auto max-h-36">
-                      <p className="text-[var(--eva-text)]">
-                        The OpenRouter OAuth flow encountered an error when attempting to exchange the authorization code. 
-                        This could happen for various reasons:
-                        <br /><br />
-                        <span className="text-[var(--eva-yellow)]">1. Parameter mismatch in the authorization request</span>
-                        <br />
-                        <span className="text-[var(--eva-yellow)]">2. Code expiration (codes are typically valid for a short time)</span>
-                        <br />
-                        <span className="text-[var(--eva-yellow)]">3. Network errors or service disruptions</span>
-                        <br /><br />
-                        <span className="text-[var(--eva-green)]">You can try clicking SYNCHRONIZE WITH OPENROUTER again, or use direct API key input instead.</span>
-                      </p>
+                      <div className="text-[var(--eva-text)]">
+                        <p>
+                          The OpenRouter OAuth flow encountered an error when attempting to exchange the authorization code. 
+                          This could happen for various reasons:
+                        </p>
+                        <div className="my-2">
+                          <span className="text-[var(--eva-yellow)]">1. Parameter mismatch in the authorization request</span>
+                          <br />
+                          <span className="text-[var(--eva-yellow)]">2. Code expiration (codes are typically valid for a short time)</span>
+                          <br />
+                          <span className="text-[var(--eva-yellow)]">3. Network errors or service disruptions</span>
+                        </div>
+                        
+                        <div className="mb-2">
+                          <span className="text-[var(--eva-green)]">You can try clicking SYNCHRONIZE WITH OPENROUTER again, or use direct API key input instead.</span>
+                        </div>
+                        
+                        <details className="mt-3 border-t border-[var(--eva-blue)]/30 pt-2">
+                          <summary className="cursor-pointer text-[var(--eva-blue)] hover:text-[var(--eva-orange)]">
+                            FULL ERROR DETAILS
+                          </summary>
+                          <div className="mt-1 p-2 bg-black/70 rounded text-[var(--eva-yellow)] overflow-auto max-h-24 text-[10px] font-mono whitespace-pre-wrap">
+                            {error}
+                          </div>
+                        </details>
+                      </div>
                     </div>
                   </details>
                 </div>
