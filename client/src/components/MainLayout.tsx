@@ -7,24 +7,24 @@ import { MessageSquare, BarChart2 } from 'lucide-react';
 const MainLayout: FC = () => {
   return (
     <div className="container mx-auto max-w-6xl p-4">
-      <Tabs defaultValue="chat" className="w-full">
+      <Tabs defaultValue="output-ranker" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="chat" className="flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Chat
-          </TabsTrigger>
           <TabsTrigger value="output-ranker" className="flex items-center justify-center">
             <BarChart2 className="h-4 w-4 mr-2" />
             Output Ranker
           </TabsTrigger>
+          <TabsTrigger value="chat" className="flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Chat
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="chat">
-          <ChatInterface />
-        </TabsContent>
         
         <TabsContent value="output-ranker">
           <OutputRanker />
+        </TabsContent>
+        
+        <TabsContent value="chat">
+          <ChatInterface />
         </TabsContent>
       </Tabs>
     </div>
