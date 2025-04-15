@@ -262,8 +262,8 @@ ${generatedOutput}`
       let bestScore = -Infinity;
       let actualVariantsToGenerate = useAutoStop ? 1000 : numberOfVariants; // Large number if using auto-stop
       
-      // Limit threads to be no more than the number of variants
-      const effectiveThreadCount = Math.min(threadCount, numberOfVariants);
+      // Use user-defined thread count, but don't exceed number of variants if auto-stop is disabled
+      const effectiveThreadCount = useAutoStop ? threadCount : Math.min(threadCount, numberOfVariants);
       let currentIndex = 0;
       
       while (currentIndex < actualVariantsToGenerate) {
@@ -593,7 +593,6 @@ ${generatedOutput}`
                               id="thread-count"
                               type="number"
                               min={1}
-                              max={8}
                               value={threadCount}
                               onChange={(e) => {
                                 const inputValue = e.target.value;
@@ -602,8 +601,8 @@ ${generatedOutput}`
                                 } else {
                                   const value = parseInt(inputValue);
                                   if (!isNaN(value)) {
-                                    // Ensure value is between 1 and 8
-                                    setThreadCount(Math.max(1, Math.min(value, 8)));
+                                    // Ensure value is at least 1
+                                    setThreadCount(Math.max(1, value));
                                   }
                                 }
                               }}
@@ -611,14 +610,12 @@ ${generatedOutput}`
                                 // Ensure we have a valid value when user leaves the field
                                 if (threadCount < 1) {
                                   setThreadCount(1);
-                                } else if (threadCount > 8) {
-                                  setThreadCount(8);
                                 }
                               }}
                               className="w-full"
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                              Number of parallel requests to make (1-8). Higher values generate faster but may hit rate limits.
+                              Number of parallel requests to make. Higher values generate faster but may hit rate limits.
                             </p>
                           </div>
                         </div>
