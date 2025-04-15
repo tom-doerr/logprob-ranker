@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import * as webllm from '@mlc-ai/web-llm';
 
-import { BrowserModelOption } from '../lib/modelTypes';
+import { BrowserModelOption, BROWSER_MODEL_OPTIONS } from '../lib/modelTypes';
 import { ChatMessage } from '../lib/openrouter';
 
 // Props should include all the global LLM settings
@@ -21,33 +21,6 @@ interface BrowserLLMProps {
   maxTokens?: number;
 }
 
-const browserModelOptions: BrowserModelOption[] = [
-  {
-    id: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
-    name: 'Llama 3.1 8B Instruct',
-    source: 'Meta',
-    description: 'Compact but capable instruction-following model'
-  },
-  {
-    id: 'Phi-3-mini-4k-Instruct-q4f32_1-MLC',
-    name: 'Phi-3 Mini 4K Instruct',
-    source: 'Microsoft',
-    description: 'Efficient small model with strong reasoning abilities'
-  },
-  {
-    id: 'Gemma-2B-it-q4f32_1-MLC',
-    name: 'Gemma 2B Instruct',
-    source: 'Google',
-    description: 'Lightweight yet effective conversational model'
-  },
-  {
-    id: 'Qwen2-1.5B-Instruct-q4f32_1-MLC',
-    name: 'Qwen2 1.5B Instruct',
-    source: 'Alibaba',
-    description: 'Efficient multilingual instruction model'
-  }
-];
-
 const BrowserLLM: FC<BrowserLLMProps> = ({ 
   onSelectBrowserModel, 
   onMessageSent, 
@@ -59,7 +32,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
 }) => {
   const { toast } = useToast();
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState<string>(browserModelOptions[0].id);
+  const [selectedModel, setSelectedModel] = useState<string>(BROWSER_MODEL_OPTIONS[0].id);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -299,7 +272,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
                     <SelectValue placeholder="Select a model" />
                   </SelectTrigger>
                   <SelectContent className="eva-select-content">
-                    {browserModelOptions.map((model) => (
+                    {BROWSER_MODEL_OPTIONS.map((model) => (
                       <SelectItem key={model.id} value={model.id} className="font-mono">
                         {model.name} ({model.source})
                       </SelectItem>
@@ -307,7 +280,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-[var(--eva-text)]/60 font-mono pt-2">
-                  {browserModelOptions.find(m => m.id === selectedModel)?.description || 'Select a model to continue'}
+                  {BROWSER_MODEL_OPTIONS.find(m => m.id === selectedModel)?.description || 'Select a model to continue'}
                 </p>
               </div>
             </div>
