@@ -19,7 +19,7 @@ import { createChatCompletion } from '../lib/openrouter';
 import { generateAuthUrl, exchangeCodeForToken } from '../lib/openrouter';
 import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } from '../utils/pkce';
 import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
-import BrowserLLM from './BrowserLLM';
+import TensorflowLLM from './TensorflowLLM';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -123,7 +123,7 @@ const ChatInterface: FC = () => {
   const handleSendMessage = async () => {
     if (!input.trim() || (!apiKey && !isUsingBrowserModel)) return;
     
-    // If using browser model, let BrowserLLM component handle the message
+    // If using browser model, let TensorflowLLM component handle the message
     if (isUsingBrowserModel) {
       return;
     }
@@ -407,7 +407,7 @@ const ChatInterface: FC = () => {
               </div>
               
               {isUsingBrowserModel ? (
-                <BrowserLLM 
+                <TensorflowLLM 
                   onSelectBrowserModel={handleSelectBrowserModel}
                   onMessageSent={handleBrowserModelMessageSent}
                   onResponseReceived={handleBrowserModelResponseReceived}
