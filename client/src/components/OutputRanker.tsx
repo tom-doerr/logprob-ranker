@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createChatCompletion, ChatMessage } from '../lib/openrouter';
 import { getApiKey } from '../utils/pkce';
-import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow } from 'lucide-react';
+import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
 import { NervScanline, NervBlink, NervType, NervPulse } from '@/components/ui/nerv-animations';
 import MagiProgress from '@/components/ui/magi-progress';
