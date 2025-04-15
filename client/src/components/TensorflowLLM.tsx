@@ -20,12 +20,6 @@ interface ModelOption {
 
 const MODEL_OPTIONS: ModelOption[] = [
   {
-    id: 'simulation',
-    name: 'TensorFlow.js (Simulation)',
-    source: 'Demo',
-    description: 'Simulated TensorFlow.js mode for demonstration'
-  },
-  {
     id: 'text-generation',
     name: 'TensorFlow.js Text Generation',
     source: 'TensorFlow',
@@ -68,72 +62,8 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
       setLoadingProgress(20);
       setLoadingMessage('TensorFlow.js ready, preparing model...');
 
-      // Simulation mode doesn't load a real model
-      if (modelId === 'simulation') {
-        // Simulate a loading process
-        const totalSteps = 5;
-        const messages = [
-          'Loading TensorFlow.js environment...',
-          'Initializing tokenizer...',
-          'Preparing model architecture...',
-          'Loading model weights...',
-          'Configuring inference parameters...'
-        ];
-
-        for (let i = 0; i < totalSteps; i++) {
-          setLoadingMessage(messages[i]);
-          setLoadingProgress(20 + ((i + 1) / totalSteps) * 70);
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
-
-        // Set up mock model with chat.completions.create API that matches our interface
-        const mockModel = {
-          chat: {
-            completions: {
-              create: async ({ messages }: { messages: any[] }) => {
-                // Extract the user's message
-                const userMessage = messages[messages.length - 1]?.content || '';
-                
-                // Simulate processing time
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Generate response based on input
-                let response = '';
-                
-                if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
-                  response = "Hello! I'm running on TensorFlow.js in your browser. How can I help you today?";
-                } else if (userMessage.toLowerCase().includes('help')) {
-                  response = "I'm a TensorFlow.js-powered AI assistant running directly in your browser. This means all processing happens locally without sending your data to external servers. How can I assist you?";
-                } else if (userMessage.toLowerCase().includes('tensorflow')) {
-                  response = "TensorFlow.js is a JavaScript library for training and deploying machine learning models in the browser and in Node.js. It provides flexible and intuitive APIs for building and training models from scratch, as well as for loading and using pre-trained models.";
-                } else {
-                  response = `Thanks for your message: "${userMessage}". This is a TensorFlow.js simulation running in your browser. In a real implementation, I would process your request with an actual machine learning model.`;
-                }
-                
-                // Return in a format compatible with OpenRouter API
-                return {
-                  choices: [
-                    {
-                      message: {
-                        role: 'assistant',
-                        content: response
-                      }
-                    }
-                  ]
-                };
-              }
-            }
-          }
-        };
-
-        setModel(mockModel);
-        setIsModelReady(true);
-        setLoadingProgress(100);
-        setLoadingMessage('TensorFlow.js simulation ready!');
-        console.log('TensorFlow.js simulation mode initialized');
-      }
-      // A real TensorFlow.js implementation would go here
-      else if (modelId === 'text-generation') {
+      // TensorFlow.js text generation model
+      if (modelId === 'text-generation') {
         setLoadingMessage('This would load a real text generation model. Currently in simulation mode.');
         setLoadingProgress(30);
         
@@ -468,7 +398,7 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
             No API key required - all processing happens locally.
           </p>
           <p className="text-xs mt-2 text-[var(--eva-text)]/70 font-mono">
-            Note: TensorFlow.js leverages hardware acceleration when available. Select "Simulation" for the best demo experience.
+            Note: TensorFlow.js leverages hardware acceleration when available. Models run entirely in your browser.
           </p>
           
           <div className="mt-3">
