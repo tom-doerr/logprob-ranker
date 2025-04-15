@@ -369,7 +369,7 @@ const DemoSection: FC = () => {
               
               <div className="bg-neutral-50 p-3 rounded-md mb-4">
                 <div className="flex flex-col text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-1">
                     <span className="text-neutral-700 font-medium">Authorization Code:</span>
                     <button 
                       onClick={() => copyToClipboard(authCode, 'Authorization code')}
@@ -378,23 +378,34 @@ const DemoSection: FC = () => {
                       <i className="far fa-copy"></i> Copy
                     </button>
                   </div>
-                  <code className="text-neutral-500 font-mono text-xs break-all my-1">{authCode}</code>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      className="flex-1 p-2 text-sm font-mono border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                      placeholder="Enter authorization code here"
+                    />
+                    {authCode.startsWith('auth_') && (
+                      <span className="text-xs text-amber-600">Demo code</span>
+                    )}
+                  </div>
                 </div>
               </div>
               
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
                 <p className="text-sm text-amber-800">
                   <i className="fas fa-info-circle mr-2"></i>
-                  <strong>Demo mode:</strong> When using the "Connect to OpenRouter" button, we'll try to open 
-                  a new tab with a localhost callback URL (http://localhost:3000/callback). 
-                  For this demo, we're also generating a simulated auth code so you can continue even if 
-                  the real authentication fails.
+                  <strong>Using a real code:</strong> If you have a real authorization code from OpenRouter,
+                  you can paste it in the field above to replace the simulated one. This will allow you to
+                  make real API calls using your OpenRouter account.
                 </p>
               </div>
               
               <button 
                 onClick={handleExchangeCode}
-                disabled={isExchanging}
+                disabled={isExchanging || !authCode}
                 className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70"
               >
                 {isExchanging ? (
@@ -439,14 +450,24 @@ const DemoSection: FC = () => {
                 </div>
               </div>
               
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-                <p className="text-sm text-amber-800">
-                  <i className="fas fa-info-circle mr-2"></i>
-                  <strong>Demo mode:</strong> In this demonstration, you're receiving a simulated API key. 
-                  In a production application with proper OpenRouter integration, you would receive a real 
-                  API key that could be used to access OpenRouter services.
-                </p>
-              </div>
+              {apiKey && apiKey.includes('demo') ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                  <p className="text-sm text-amber-800">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    <strong>Demo mode:</strong> You're using a simulated API key. In a production application
+                    with proper OpenRouter integration using a real authorization code, you would receive a real
+                    API key that could be used to access OpenRouter services.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+                  <p className="text-sm text-green-800">
+                    <i className="fas fa-check-circle mr-2"></i>
+                    <strong>Real API key:</strong> You're using a real OpenRouter API key. You can now make
+                    actual API calls to OpenRouter services and receive real responses.
+                  </p>
+                </div>
+              )}
               
               <div className="flex flex-col sm:flex-row gap-2">
                 <button 
