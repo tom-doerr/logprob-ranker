@@ -19,7 +19,7 @@ import { createChatCompletion } from '../lib/openrouter';
 import { generateAuthUrl, exchangeCodeForToken } from '../lib/openrouter';
 import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } from '../utils/pkce';
 import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
-import BrowserLLM from './BrowserLLM';
+import { useModelConfig } from '@/hooks/use-model-config';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
@@ -98,28 +98,25 @@ import { ModelConfig } from '../lib/modelTypes';
 
 interface ChatInterfaceProps extends Partial<ModelConfig> {}
 
-const ChatInterface: FC<ChatInterfaceProps> = ({
-  isUsingBrowserModel: externalIsUsingBrowserModel,
-  selectedModel: externalSelectedModel,
-  temperature: externalTemperature,
-  topP: externalTopP,
-  maxTokens: externalMaxTokens,
-  customModel: externalCustomModel,
-  browserModelEngine
-}) => {
+const ChatInterface: FC = () => {
+  const { 
+    isUsingBrowserModel,
+    selectedModel: configSelectedModel, 
+    temperature: configTemperature, 
+    topP: configTopP, 
+    maxTokens: configMaxTokens, 
+    customModel: configCustomModel,
+    browserModelEngine
+  } = useModelConfig();
+  
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [manualApiKey, setManualApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState<string>(externalSelectedModel || 'google/gemini-2.0-flash-001');
-  const [customModel, setCustomModel] = useState<string>(externalCustomModel || '');
-
-  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(externalIsUsingBrowserModel ?? false);
-  const [temperature, setTemperature] = useState(externalTemperature || 0.7);
-  const [topP, setTopP] = useState(externalTopP || 0.9);
-  const [maxTokens, setMaxTokens] = useState(externalMaxTokens || 1000);
+  
+  // No longer need local state for these as they come from context
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API key on mount
@@ -135,39 +132,12 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-  // Update local state when external props change
-  useEffect(() => {
-    if (externalIsUsingBrowserModel !== undefined) {
-      setIsUsingBrowserModel(externalIsUsingBrowserModel);
-    }
-    if (externalSelectedModel) {
-      setSelectedModel(externalSelectedModel);
-    }
-    if (externalCustomModel) {
-      setCustomModel(externalCustomModel);
-    }
-    if (externalTemperature) {
-      setTemperature(externalTemperature);
-    }
-    if (externalTopP) {
-      setTopP(externalTopP);
-    }
-    if (externalMaxTokens) {
-      setMaxTokens(externalMaxTokens);
-    }
-  }, [
-    externalIsUsingBrowserModel,
-    externalSelectedModel,
-    externalCustomModel,
-    externalTemperature,
-    externalTopP,
-    externalMaxTokens
-  ]);
+  // We no longer need this effect as we're using context directly
 
   const handleSendMessage = async () => {
     if (!input.trim() || (!apiKey && !isUsingBrowserModel)) return;
     
-    // If using browser model, let TensorflowLLM component handle the message
+    // If using browser model, let BrowserModels component handle the message
     if (isUsingBrowserModel) {
       return;
     }
@@ -178,13 +148,13 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     setIsLoading(true);
     
     try {
-      const modelToUse = selectedModel === 'custom' ? customModel : selectedModel;
+      const modelToUse = configSelectedModel === 'custom' ? configCustomModel : configSelectedModel;
       
       const response = await createChatCompletion({
         model: modelToUse,
         messages: [...messages, userMessage],
-        temperature: temperature,
-        max_tokens: maxTokens,
+        temperature: configTemperature,
+        max_tokens: configMaxTokens,
       });
       
       if (response.choices && response.choices.length > 0) {
@@ -211,10 +181,7 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
     setMessages(prev => [...prev, message]);
   };
   
-  // Toggle between browser model and API model
-  const handleSelectBrowserModel = (newValue: boolean) => {
-    setIsUsingBrowserModel(newValue);
-  };
+  // No longer needed as we're using the centralized model config
 
   const handleApiKeySubmit = () => {
     if (!manualApiKey.trim()) return;
@@ -292,14 +259,14 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   };
 
   const getModelInfo = () => {
-    if (selectedModel === 'custom') {
+    if (configSelectedModel === 'custom') {
       return {
         name: 'Custom Model',
-        description: customModel || 'Enter custom model ID',
+        description: configCustomModel || 'Enter custom model ID',
       };
     }
 
-    const model = popularModels.find(m => m.id === selectedModel);
+    const model = popularModels.find(m => m.id === configSelectedModel);
     return {
       name: model?.name || 'Select a model',
       description: model?.description || '',
