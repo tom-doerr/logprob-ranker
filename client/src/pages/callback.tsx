@@ -1,7 +1,6 @@
 import { FC, useEffect, useState } from 'react';
-import { useLocation, useRoute } from 'wouter';
+import { useLocation } from 'wouter';
 import { getCodeVerifier, saveApiKey, clearCodeVerifier } from '../utils/pkce';
-import { exchangeCodeForToken } from '../lib/openrouter';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,14 +35,31 @@ const Callback: FC = () => {
         }
         
         // Exchange code for token
-        const response = await exchangeCodeForToken(code, codeVerifier);
+        const response = await fetch('/api/exchange-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            code,
+            codeVerifier,
+            codeMethod: 'S256'
+          })
+        });
         
-        if (!response.key) {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to exchange code for API key');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.key) {
           throw new Error('No API key returned from server');
         }
         
         // Store the token
-        saveApiKey(response.key);
+        saveApiKey(data.key);
         clearCodeVerifier(); // Clear the verifier as we no longer need it
         
         setSuccess(true);

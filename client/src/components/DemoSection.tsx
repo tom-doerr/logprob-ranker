@@ -9,7 +9,8 @@ import {
   getCodeVerifier, 
   clearCodeVerifier,
   getApiKey,
-  clearApiKey
+  clearApiKey,
+  saveApiKey
 } from '../utils/pkce';
 
 enum DemoStep {
@@ -76,37 +77,62 @@ const DemoSection: FC = () => {
       return;
     }
 
-    // In a real implementation, this redirect would take the user to OpenRouter
-    // For this demo, we'll just move to the next step with a simulated auth code
-    setAuthCode(`auth_${Math.random().toString(36).substring(2, 15)}`);
-    setCurrentStep(DemoStep.Authenticate);
+    // Construct the callback URL (using the current origin)
+    const callbackUrl = `${window.location.origin}/callback`;
+    
+    // Construct the OpenRouter auth URL
+    const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
+    
+    // Redirect to OpenRouter auth page
+    window.location.href = authUrl;
   };
 
   const handleExchangeCode = async () => {
-    // This would usually make a call to the backend to exchange the code
-    // but for demo purposes we'll simulate it
     try {
       setIsExchanging(true);
       
-      setTimeout(() => {
-        const mockApiKey = `or-${Math.random().toString(36).substring(2, 15)}`;
-        setApiKey(mockApiKey);
-        localStorage.setItem('openrouter_api_key', mockApiKey);
-        setCurrentStep(DemoStep.UseApiKey);
-        setIsExchanging(false);
-        
-        toast({
-          title: "API key obtained",
-          description: "Successfully exchanged code for API key",
-        });
-      }, 1500);
+      // For demo/testing purposes, we can exchange the simulated auth code
+      // with our backend that proxies to OpenRouter
+      const response = await fetch('/api/exchange-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code: authCode,
+          codeVerifier,
+          codeMethod: 'S256'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to exchange code for API key');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.key) {
+        throw new Error('No API key returned from server');
+      }
+      
+      // Store the API key
+      setApiKey(data.key);
+      saveApiKey(data.key);
+      setCurrentStep(DemoStep.UseApiKey);
+      
+      toast({
+        title: "API key obtained",
+        description: "Successfully exchanged code for API key",
+      });
     } catch (error) {
       console.error("Error exchanging code:", error);
       toast({
         title: "Error exchanging code",
-        description: "There was a problem obtaining the API key",
+        description: error instanceof Error ? error.message : "There was a problem obtaining the API key",
         variant: "destructive",
       });
+    } finally {
       setIsExchanging(false);
     }
   };
@@ -116,45 +142,50 @@ const DemoSection: FC = () => {
       setIsTesting(true);
       setApiResponse(null);
       
-      // Simulate an API response
-      setTimeout(() => {
-        const mockResponse = {
-          id: `chatcmpl-${Math.random().toString(36).substring(2, 10)}`,
-          object: "chat.completion",
-          created: Math.floor(Date.now() / 1000),
-          model: "openai/gpt-4o",
-          choices: [
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+      
+      // Make a real API request to our proxy endpoint
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiKey,
+          model: 'openai/gpt-3.5-turbo',
+          messages: [
             {
-              index: 0,
-              message: {
-                role: "assistant",
-                content: "Hello! I'm GPT-4o. How can I assist you today?"
-              },
-              finish_reason: "stop"
+              role: 'user',
+              content: 'Hello! Say hi and introduce yourself briefly.'
             }
           ],
-          usage: {
-            prompt_tokens: 8,
-            completion_tokens: 13,
-            total_tokens: 21
-          }
-        };
-        
-        setApiResponse(mockResponse);
-        setIsTesting(false);
-        
-        toast({
-          title: "API request successful",
-          description: "Received response from OpenRouter",
-        });
-      }, 1500);
+          max_tokens: 150,
+          temperature: 0.7
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to complete chat request');
+      }
+      
+      const data = await response.json();
+      setApiResponse(data);
+      
+      toast({
+        title: "API request successful",
+        description: "Received response from OpenRouter",
+      });
     } catch (error) {
       console.error("Error testing API:", error);
       toast({
         title: "API request failed",
-        description: "There was a problem making the API request",
+        description: error instanceof Error ? error.message : "There was a problem making the API request",
         variant: "destructive",
       });
+    } finally {
       setIsTesting(false);
     }
   };
