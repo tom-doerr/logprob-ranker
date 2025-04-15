@@ -19,16 +19,23 @@ interface LogProbExample {
   results: RankedOutput[];
 }
 
+interface AttributeScore {
+  name: string;
+  score: number;
+}
+
 interface RankedOutput {
   output: string;
   logprob: number;
   index: number;
+  attributeScores?: AttributeScore[];
+  rawEvaluation?: string;
 }
 
 const defaultTemplate = `{
-  "interesting": true | false,
-  "creative": true | false,
-  "useful": true | false
+  "interesting": LOGPROB_TRUE,
+  "creative": LOGPROB_TRUE,
+  "useful": LOGPROB_TRUE
 }`;
 
 const examples: LogProbExample[] = [
@@ -64,6 +71,8 @@ const OutputRanker: FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
+  const [newAttribute, setNewAttribute] = useState('');
+  const [selectedOutputIdx, setSelectedOutputIdx] = useState<number | null>(null);
 
   // Load API key on mount
   useEffect(() => {
@@ -140,12 +149,24 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
           // Extract the evaluation part
           const evalMatch = output.match(/EVALUATION:\s*({[\s\S]*})/i);
           let logprob = 0;
+          let attributeScores: AttributeScore[] = [];
+          let rawEvaluation = '';
           
           if (evalMatch && evalMatch[1]) {
             try {
-              // In a real implementation, we would calculate logprobs here
-              // For this demo, we'll simulate with a random value
-              logprob = Math.random(); // Simulate a logprob score
+              rawEvaluation = evalMatch[1].trim();
+              const evaluationJson = JSON.parse(rawEvaluation);
+              
+              // Extract attribute scores
+              attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
+                // For each attribute, generate a random score to simulate logprob
+                // In a real implementation, this would be calculated from actual logprobs
+                const score = Math.random();
+                return { name, score };
+              });
+              
+              // Calculate overall logprob as average of all attribute scores
+              logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
             } catch (error) {
               console.error('Error parsing evaluation JSON:', error);
             }
@@ -155,7 +176,9 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
           results.push({
             output: output.split(/EVALUATION:/i)[0].trim(),
             logprob,
-            index: i
+            index: i,
+            attributeScores,
+            rawEvaluation
           });
           
           // Update the ranked outputs as they come in
@@ -232,9 +255,55 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
                         onChange={(e) => setLogProbTemplate(e.target.value)}
                         className="font-mono text-sm min-h-[120px]"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        The template defines attributes to evaluate. Use LOGPROB_TRUE to indicate true evaluation.
-                      </p>
+                      <div className="mt-2 space-y-2">
+                        <p className="text-xs text-gray-500">
+                          The template defines attributes to evaluate. Use LOGPROB_TRUE to indicate true evaluation.
+                        </p>
+                        
+                        <div className="flex space-x-2 items-center">
+                          <Input
+                            placeholder="Add attribute..."
+                            value={newAttribute}
+                            onChange={(e) => setNewAttribute(e.target.value)}
+                            className="flex-grow text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (newAttribute.trim()) {
+                                // Parse current template as JSON
+                                try {
+                                  // Extract the content between curly braces
+                                  const templateContent = logProbTemplate.trim()
+                                    .replace(/^\{/, '')
+                                    .replace(/\}$/, '')
+                                    .trim();
+                                  
+                                  // Add the new attribute
+                                  const newTemplate = `{
+  ${templateContent}${templateContent ? ',' : ''}
+  "${newAttribute}": LOGPROB_TRUE
+}`;
+                                  
+                                  setLogProbTemplate(newTemplate);
+                                  setNewAttribute('');
+                                } catch (error) {
+                                  toast({
+                                    title: 'Invalid Template Format',
+                                    description: 'Could not parse the template as JSON',
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }
+                            }}
+                            disabled={!newAttribute.trim()}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="space-y-4">
@@ -362,6 +431,47 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
                         <div className="mt-2 p-3 bg-gray-50 rounded-md whitespace-pre-wrap">
                           {output.output}
                         </div>
+                        
+                        {/* Attribute Scores Display */}
+                        {output.attributeScores && output.attributeScores.length > 0 && (
+                          <div className="mt-3 border-t border-gray-200 pt-3">
+                            <h4 className="text-sm font-medium mb-2">Attribute Scores:</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {output.attributeScores.map((attr, attrIdx) => (
+                                <div 
+                                  key={attrIdx} 
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                >
+                                  <span className="text-xs font-medium">{attr.name}:</span>
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                    {attr.score.toFixed(4)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* View Raw Evaluation Button */}
+                        {output.rawEvaluation && (
+                          <div className="mt-2 flex justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setSelectedOutputIdx(selectedOutputIdx === idx ? null : idx)}
+                              className="text-xs"
+                            >
+                              {selectedOutputIdx === idx ? 'Hide Details' : 'View Evaluation'}
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Raw Evaluation */}
+                        {selectedOutputIdx === idx && output.rawEvaluation && (
+                          <div className="mt-2 p-2 bg-gray-100 border border-gray-200 rounded-md text-xs font-mono whitespace-pre-wrap">
+                            {output.rawEvaluation}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
