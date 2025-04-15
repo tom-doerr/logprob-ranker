@@ -26,6 +26,17 @@ interface BrowserModelOption {
   description: string;
 }
 
+// Props should include all the global LLM settings
+interface BrowserLLMProps {
+  onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
+  onMessageSent: (message: ChatMessage) => void;
+  onResponseReceived: (message: ChatMessage) => void;
+  isUsingBrowserModel: boolean;
+  temperature?: number;
+  topP?: number;
+  maxTokens?: number;
+}
+
 const browserModelOptions: BrowserModelOption[] = [
   {
     id: 'Llama-3.1-8B-Instruct-q4f32_1-MLC',
@@ -57,7 +68,10 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   onSelectBrowserModel, 
   onMessageSent, 
   onResponseReceived,
-  isUsingBrowserModel 
+  isUsingBrowserModel,
+  temperature = 0.7,
+  topP = 0.9,
+  maxTokens = 1000
 }) => {
   const { toast } = useToast();
   const [input, setInput] = useState('');
@@ -181,10 +195,12 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
         userMessage
       ];
       
-      // Get streamed response from the WebLLM engine
+      // Get streamed response from the WebLLM engine - using global settings
       const stream = await engineRef.current.chat.completions.create({
         messages,
-        temperature: 0.7,
+        temperature: temperature,
+        top_p: topP,
+        max_tokens: maxTokens,
         stream: true,
         stream_options: { include_usage: true }
       } as any);
