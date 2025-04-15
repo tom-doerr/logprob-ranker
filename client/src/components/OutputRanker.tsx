@@ -737,8 +737,8 @@ ${generatedOutput}`
                 </TabsContent>
                 
                 <TabsContent value="examples" className="space-y-4 mt-4">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Click on an example to load it into the generator:
+                  <p className="text-sm text-[var(--eva-text)] mb-4 font-mono">
+                    SELECT EXAMPLE TEMPLATE:
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {examples.map((example, idx) => (
@@ -762,9 +762,9 @@ ${generatedOutput}`
               
               {selectedExample && (
                 <div className="flex items-center">
-                  <div className="bg-blue-50 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center">
-                    <span>Using example</span>
-                    <button onClick={clearExample} className="ml-2 text-blue-700 hover:text-blue-900">
+                  <div className="bg-[var(--eva-green-bg)] text-[var(--eva-green)] text-xs font-medium px-2.5 py-0.5 rounded flex items-center">
+                    <span>ACTIVE EXAMPLE</span>
+                    <button onClick={clearExample} className="ml-2 text-[var(--eva-orange)] hover:text-[var(--eva-orange)]/80">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -774,11 +774,11 @@ ${generatedOutput}`
               {rankedOutputs.length > 0 && (
                 <div className="mt-8">
                   <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-medium flex items-center">
-                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-blue-500" />
+                    <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider">
+                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)]" />
                       Ranked Outputs
                     </h3>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-[var(--eva-text)]">
                       (sorted by logprob score)
                     </span>
                   </div>
@@ -794,29 +794,29 @@ ${generatedOutput}`
                                 Top Ranked
                               </span>
                             )}
-                            <span className="text-sm text-gray-500">
-                              Variant #{output.index + 1}
+                            <span className="text-sm text-[var(--eva-text)] font-mono">
+                              {"VARIANT-" + String(output.index + 1).padStart(3, '0')}
                             </span>
                           </div>
                           <span className="text-sm font-medium bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded">
                             Score: {output.logprob.toFixed(4)}
                           </span>
                         </div>
-                        <div className="mt-2 p-3 bg-gray-50 rounded-md whitespace-pre-wrap">
+                        <div className="mt-2 p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30">
                           {output.output}
                         </div>
                         
                         {/* Attribute Scores Display */}
                         {output.attributeScores && output.attributeScores.length > 0 && (
                           <div className="mt-3 border-t border-gray-200 pt-3">
-                            <h4 className="text-sm font-medium mb-2">Attribute Scores:</h4>
+                            <h4 className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">Attribute Scores</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                               {output.attributeScores.map((attr, attrIdx) => (
                                 <div 
                                   key={attrIdx} 
-                                  className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                  className="flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30"
                                 >
-                                  <span className="text-xs font-medium">{attr.name}:</span>
+                                  <span className="text-xs font-medium text-[var(--eva-text)]">{attr.name}:</span>
                                   <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
                                     {attr.score.toFixed(4)}
                                   </span>
