@@ -386,6 +386,7 @@ ${generatedOutput}`
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Column 1: LogProb Template */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         LogProb Template
@@ -447,6 +448,7 @@ ${generatedOutput}`
                       </div>
                     </div>
                     
+                    {/* Column 2: Model & Variants */}
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -504,203 +506,207 @@ ${generatedOutput}`
                         </Tabs>
                       </div>
                       
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Number of Variants
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Number of Variants
+                        </label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={numberOfVariants}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '') {
+                              setNumberOfVariants(1); // Default to 1 if empty
+                            } else {
+                              const value = parseInt(inputValue);
+                              if (!isNaN(value)) {
+                                // Ensure value is at least 1
+                                setNumberOfVariants(Math.max(1, value));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            // Ensure we have a minimum value of 1 when user leaves the field
+                            if (numberOfVariants < 1) {
+                              setNumberOfVariants(1);
+                            }
+                          }}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Enter any number of variants to generate
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-md p-3">
+                        <div className="flex items-center mb-2">
+                          <input
+                            type="checkbox"
+                            id="use-auto-stop"
+                            checked={useAutoStop}
+                            onChange={(e) => setUseAutoStop(e.target.checked)}
+                            className="h-4 w-4 text-blue-600 rounded mr-2"
+                          />
+                          <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
+                            Auto-stop Generation
                           </label>
+                        </div>
+                        
+                        <div className={useAutoStop ? "block" : "hidden"}>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Stop after iterations without improvement:
+                          </p>
                           <Input
-                            type="number"
+                            type="text"
                             min={1}
-                            value={numberOfVariants}
+                            max={100}
+                            value={autoStopThreshold.toString()}
                             onChange={(e) => {
+                              // Allow empty string for typing
                               const inputValue = e.target.value;
-                              if (inputValue === '') {
-                                setNumberOfVariants(1); // Default to 1 if empty
-                              } else {
-                                const value = parseInt(inputValue);
-                                if (!isNaN(value)) {
-                                  // Ensure value is at least 1
-                                  setNumberOfVariants(Math.max(1, value));
-                                }
+                              
+                              // If the input is empty or just a minus sign, allow it temporarily
+                              if (inputValue === '' || inputValue === '-') {
+                                setAutoStopThreshold(inputValue === '' ? 5 : 1);
+                                return;
+                              }
+                              
+                              // Convert to number if possible
+                              const value = parseInt(inputValue);
+                              if (!isNaN(value)) {
+                                // Ensure value is between 1 and 100
+                                setAutoStopThreshold(Math.max(1, Math.min(value, 100)));
                               }
                             }}
                             onBlur={() => {
-                              // Ensure we have a minimum value of 1 when user leaves the field
-                              if (numberOfVariants < 1) {
-                                setNumberOfVariants(1);
+                              // Ensure we have a valid value when user leaves the field
+                              if (typeof autoStopThreshold !== 'number' || 
+                                  autoStopThreshold < 1) {
+                                setAutoStopThreshold(5);
+                              } else if (autoStopThreshold > 100) {
+                                setAutoStopThreshold(100);
                               }
                             }}
                             className="w-full"
+                            disabled={!useAutoStop}
                           />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Enter any number of variants to generate (higher values may take longer)
-                          </p>
                         </div>
-                        
-                        <div className="space-y-4">
-                          <div className="border rounded-md p-3">
-                            <div className="flex items-center mb-2">
-                              <input
-                                type="checkbox"
-                                id="use-auto-stop"
-                                checked={useAutoStop}
-                                onChange={(e) => setUseAutoStop(e.target.checked)}
-                                className="h-4 w-4 text-blue-600 rounded mr-2"
-                              />
-                              <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
-                                Auto-stop Generation
-                              </label>
-                            </div>
-                            
-                            <div className={useAutoStop ? "block" : "hidden"}>
-                              <p className="text-xs text-gray-500 mb-2">
-                                Continue generating until no better output is found for this many consecutive iterations:
-                              </p>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={autoStopThreshold}
-                                onChange={(e) => {
-                                  // Handle empty string case properly
-                                  const inputValue = e.target.value;
-                                  if (inputValue === '') {
-                                    setAutoStopThreshold(1); // Default to 1 if empty
-                                  } else {
-                                    const value = parseInt(inputValue);
-                                    if (!isNaN(value)) {
-                                      // Ensure value is between 1 and 100
-                                      setAutoStopThreshold(Math.max(1, Math.min(value, 100)));
-                                    }
-                                  }
-                                }}
-                                onBlur={() => {
-                                  // Ensure we have a valid value when user leaves the field
-                                  if (autoStopThreshold < 1) {
-                                    setAutoStopThreshold(1);
-                                  } else if (autoStopThreshold > 100) {
-                                    setAutoStopThreshold(100);
-                                  }
-                                }}
-                                className="w-full"
-                                disabled={!useAutoStop}
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="border rounded-md p-3">
-                            <label htmlFor="thread-count" className="block text-sm font-medium text-gray-700 mb-2">
-                              Thread Count
-                            </label>
-                            <Input
-                              id="thread-count"
-                              type="number"
-                              min={1}
-                              value={threadCount}
-                              onChange={(e) => {
-                                const inputValue = e.target.value;
-                                if (inputValue === '') {
-                                  setThreadCount(1); // Default to 1 if empty
-                                } else {
-                                  const value = parseInt(inputValue);
-                                  if (!isNaN(value)) {
-                                    // Ensure value is at least 1
-                                    setThreadCount(Math.max(1, value));
-                                  }
-                                }
-                              }}
-                              onBlur={() => {
-                                // Ensure we have a valid value when user leaves the field
-                                if (threadCount < 1) {
-                                  setThreadCount(1);
-                                }
-                              }}
-                              className="w-full"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Number of parallel requests to make. Higher values generate faster but may hit rate limits.
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Temperature
-                            </label>
-                            <Input
-                              id="temperature"
-                              type="number"
-                              min={0}
-                              max={2}
-                              step={0.1}
-                              value={temperature}
-                              onChange={(e) => {
-                                const inputValue = e.target.value;
-                                if (inputValue === '') {
-                                  setTemperature(0.9); // Default to 0.9 if empty
-                                } else {
-                                  const value = parseFloat(inputValue);
-                                  if (!isNaN(value)) {
-                                    // Ensure value is between 0 and 2
-                                    setTemperature(Math.max(0, Math.min(value, 2)));
-                                  }
-                                }
-                              }}
-                              onBlur={() => {
-                                // Ensure we have a valid value when user leaves the field
-                                if (temperature < 0) {
-                                  setTemperature(0);
-                                } else if (temperature > 2) {
-                                  setTemperature(2);
-                                }
-                              }}
-                              className="w-full"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Controls randomness (0-2). Lower values are more focused, higher values more creative.
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Max Tokens
-                            </label>
-                            <Input
-                              id="max-tokens"
-                              type="number"
-                              min={1}
-                              value={maxTokens}
-                              onChange={(e) => {
-                                const inputValue = e.target.value;
-                                if (inputValue === '') {
-                                  setMaxTokens(1024); // Default to 1024 if empty
-                                } else {
-                                  const value = parseInt(inputValue);
-                                  if (!isNaN(value)) {
-                                    // Ensure value is at least 1
-                                    setMaxTokens(Math.max(1, value));
-                                  }
-                                }
-                              }}
-                              onBlur={() => {
-                                // Ensure we have a valid value when user leaves the field
-                                if (maxTokens < 1) {
-                                  setMaxTokens(1);
-                                }
-                              }}
-                              className="w-full"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Maximum completion length. Higher values allow longer responses.
-                            </p>
-                          </div>
-                        </div>
+                      </div>
+                      
+                      <div className="border rounded-md p-3">
+                        <label htmlFor="thread-count" className="block text-sm font-medium text-gray-700 mb-2">
+                          Thread Count
+                        </label>
+                        <Input
+                          id="thread-count"
+                          type="number"
+                          min={1}
+                          value={threadCount}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '') {
+                              setThreadCount(1); // Default to 1 if empty
+                            } else {
+                              const value = parseInt(inputValue);
+                              if (!isNaN(value)) {
+                                // Ensure value is at least 1
+                                setThreadCount(Math.max(1, value));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            // Ensure we have a valid value when user leaves the field
+                            if (threadCount < 1) {
+                              setThreadCount(1);
+                            }
+                          }}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Number of parallel requests to make
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Column 3: Generation Parameters */}
+                    <div className="space-y-4">
+                      <div className="border rounded-md p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Temperature
+                        </label>
+                        <Input
+                          id="temperature"
+                          type="number"
+                          min={0}
+                          max={2}
+                          step={0.1}
+                          value={temperature}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '') {
+                              setTemperature(0.9); // Default to 0.9 if empty
+                            } else {
+                              const value = parseFloat(inputValue);
+                              if (!isNaN(value)) {
+                                // Ensure value is between 0 and 2
+                                setTemperature(Math.max(0, Math.min(value, 2)));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            // Ensure we have a valid value when user leaves the field
+                            if (temperature < 0) {
+                              setTemperature(0);
+                            } else if (temperature > 2) {
+                              setTemperature(2);
+                            }
+                          }}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Controls randomness (0-2)
+                        </p>
+                      </div>
+                      
+                      <div className="border rounded-md p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Max Tokens
+                        </label>
+                        <Input
+                          id="max-tokens"
+                          type="number"
+                          min={1}
+                          value={maxTokens}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '') {
+                              setMaxTokens(1024); // Default to 1024 if empty
+                            } else {
+                              const value = parseInt(inputValue);
+                              if (!isNaN(value)) {
+                                // Ensure value is at least 1
+                                setMaxTokens(Math.max(1, value));
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            // Ensure we have a valid value when user leaves the field
+                            if (maxTokens < 1) {
+                              setMaxTokens(1);
+                            }
+                          }}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Maximum completion length
+                        </p>
                       </div>
                       
                       <Button 
                         onClick={generateOutputs} 
                         disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
-                        className="w-full"
+                        className="w-full mt-6"
                       >
                         {isGenerating ? (
                           <>
