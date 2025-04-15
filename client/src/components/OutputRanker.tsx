@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
-import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown } from 'lucide-react';
+import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
 import { useAuth } from '@/hooks/use-auth';
 import { apiService } from '@/services/api-service';
@@ -555,74 +555,96 @@ ${generatedOutput}`
                     
                     {/* Column 2: Model & Variants */}
                     <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
+                        <div className="flex justify-between items-center mb-3">
                           <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
-                            MAGI System Model
+                            MODEL SELECTION
                           </label>
-                          <div className="flex items-center space-x-2">
-                            <label className="text-xs text-[var(--eva-text)]">Use Browser Model</label>
-                            <Switch
-                              checked={useLocalModels}
-                              onCheckedChange={setUseLocalModels}
-                              className="data-[state=checked]:bg-[var(--eva-orange)]"
-                            />
+                          <div className="flex items-center space-x-2 bg-black/20 px-3 py-1 rounded">
+                            <label className="text-xs text-[var(--eva-text)]">Mode:</label>
+                            <div className="flex items-center space-x-1 bg-black/30 rounded-md p-1">
+                              <span className={`text-xs px-2 py-0.5 rounded ${!useLocalModels ? "bg-[var(--eva-orange)] text-black" : "text-[var(--eva-text)]"}`}>
+                                API
+                              </span>
+                              <Switch
+                                checked={useLocalModels}
+                                onCheckedChange={setUseLocalModels}
+                                className="mx-1 data-[state=checked]:bg-[var(--eva-orange)]"
+                              />
+                              <span className={`text-xs px-2 py-0.5 rounded ${useLocalModels ? "bg-[var(--eva-orange)] text-black" : "text-[var(--eva-text)]"}`}>
+                                Browser
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <Tabs defaultValue="predefined" className="w-full">
-                          <TabsList className="grid w-full grid-cols-2 mb-2 border border-[var(--eva-orange)] bg-opacity-20">
-                            <TabsTrigger value="predefined" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Casper</TabsTrigger>
-                            <TabsTrigger value="custom" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Custom</TabsTrigger>
-                          </TabsList>
-                          
-                          <TabsContent value="predefined">
-                            <Select 
-                              value={selectedModel} 
-                              onValueChange={setSelectedModel}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a model" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
-                                <SelectItem value="deepseek/deepseek-chat-v3-0324">DeepSeek Chat v3</SelectItem>
-                                <SelectItem value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</SelectItem>
-                                <SelectItem value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</SelectItem>
-                                <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
-                                <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                                <SelectItem value="openai/gpt-4o-mini">GPT-4o Mini</SelectItem>
-                                <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TabsContent>
-                          
-                          <TabsContent value="custom">
-                            <div className="space-y-2">
-                              <Input
-                                placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
-                                value={customModel}
-                                onChange={(e) => setCustomModel(e.target.value)}
-                                className="w-full eva-input text-[var(--eva-green)]"
-                              />
-                              <Button 
-                                size="sm" 
-                                onClick={() => {
-                                  if (customModel && customModel.trim()) {
-                                    setSelectedModel(customModel);
-                                    toast({
-                                      title: 'Custom Model Set',
-                                      description: `Using custom model: ${customModel}`
-                                    });
-                                  }
-                                }}
-                                disabled={!customModel || !customModel.trim()} 
-                                className="w-full eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
-                              >
-                                Use Custom Model
-                              </Button>
+                        
+                        {useLocalModels ? (
+                          <div className="bg-black/20 p-3 rounded-md">
+                            <div className="text-sm font-medium text-[var(--eva-orange)]">
+                              BROWSER MODEL: {browserModelEngine ? 
+                                <span className="text-[var(--eva-green)]">{browserModelEngine._config?.model_list[0]?.model_id || "Active"}</span> : 
+                                <span className="text-red-400">Not Loaded</span>}
                             </div>
-                          </TabsContent>
-                        </Tabs>
+                            <p className="text-xs text-[var(--eva-text)] mt-1">
+                              Browser models run locally without API calls. Load a model in the Chat Interface first.
+                            </p>
+                          </div>
+                        ) : (
+                          <Tabs defaultValue="predefined" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 mb-2 border border-[var(--eva-orange)] bg-opacity-20">
+                              <TabsTrigger value="predefined" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Cloud Models</TabsTrigger>
+                              <TabsTrigger value="custom" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Custom</TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="predefined">
+                              <Select 
+                                value={selectedModel} 
+                                onValueChange={setSelectedModel}
+                              >
+                                <SelectTrigger className="bg-black/20">
+                                  <SelectValue placeholder="Select a model" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-black/90 border-[var(--eva-orange)]">
+                                  <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
+                                  <SelectItem value="deepseek/deepseek-chat-v3-0324">DeepSeek Chat v3</SelectItem>
+                                  <SelectItem value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</SelectItem>
+                                  <SelectItem value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</SelectItem>
+                                  <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
+                                  <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                                  <SelectItem value="openai/gpt-4o-mini">GPT-4o Mini</SelectItem>
+                                  <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TabsContent>
+                            
+                            <TabsContent value="custom">
+                              <div className="space-y-2">
+                                <Input
+                                  placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
+                                  value={customModel}
+                                  onChange={(e) => setCustomModel(e.target.value)}
+                                  className="w-full eva-input text-[var(--eva-green)] bg-black/20"
+                                />
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => {
+                                    if (customModel && customModel.trim()) {
+                                      setSelectedModel(customModel);
+                                      toast({
+                                        title: 'Custom Model Set',
+                                        description: `Using custom model: ${customModel}`
+                                      });
+                                    }
+                                  }}
+                                  disabled={!customModel || !customModel.trim()} 
+                                  className="w-full eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+                                >
+                                  Use Custom Model
+                                </Button>
+                              </div>
+                            </TabsContent>
+                          </Tabs>
+                        )}
                       </div>
                       
                       <div className="border border-[var(--eva-orange)] rounded-md p-3">
@@ -751,76 +773,100 @@ ${generatedOutput}`
                     {/* Column 3: Generation Parameters */}
                     <div className="space-y-4">
                       <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
-                          Temperature
-                        </label>
-                        <Input
-                          id="temperature"
-                          type="number"
-                          min={0}
-                          max={2}
-                          step={0.1}
-                          value={temperature}
-                          onChange={(e) => {
-                            const inputValue = e.target.value;
-                            if (inputValue === '') {
-                              // Default to 0.9 if empty
-                              if (setTemperature) setTemperature(0.9);
-                            } else {
-                              const value = parseFloat(inputValue);
-                              if (!isNaN(value)) {
-                                // Ensure value is between 0 and 2
-                                if (setTemperature) setTemperature(Math.max(0, Math.min(value, 2)));
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            // Ensure we have a valid value when user leaves the field
-                            if (!temperature || temperature < 0) {
-                              if (setTemperature) setTemperature(0);
-                            } else if (temperature > 2) {
-                              if (setTemperature) setTemperature(2);
-                            }
-                          }}
-                          className="w-full eva-input text-[var(--eva-green)]"
-                        />
-                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
-                          ENTROPY CONTROL [0-2]
-                        </p>
-                      </div>
-                      
-                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
-                          Max Tokens
-                        </label>
-                        <Input
-                          id="max-tokens"
-                          type="number"
-                          min={1}
-                          value={maxTokens}
-                          onChange={(e) => {
-                            const inputValue = e.target.value;
-                            if (inputValue === '') {
-                              if (setMaxTokens) setMaxTokens(1024); // Default to 1024 if empty
-                            } else {
-                              const value = parseInt(inputValue);
-                              if (!isNaN(value) && setMaxTokens) {
-                                // Ensure value is at least 1
-                                setMaxTokens(Math.max(1, value));
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            // Ensure we have a valid value when user leaves the field
-                            if (setMaxTokens && (!maxTokens || maxTokens < 1)) {
-                              setMaxTokens(1);
-                            }
-                          }}
-                          className="w-full eva-input text-[var(--eva-green)]"
-                        />
-                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
-                          OUTPUT BUFFER SIZE
-                        </p>
+                        <h3 className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-3 flex items-center">
+                          <Flame className="h-4 w-4 mr-2 text-[var(--eva-orange)]" />
+                          GENERATION PARAMETERS
+                        </h3>
+                        
+                        <div className="space-y-4">
+                          <div className="bg-black/20 p-3 rounded-md">
+                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                              Temperature
+                            </label>
+                            <div className="relative">
+                              <Input
+                                id="temperature"
+                                type="range"
+                                min={0}
+                                max={2}
+                                step={0.1}
+                                value={temperature}
+                                onChange={(e) => {
+                                  const value = parseFloat(e.target.value);
+                                  if (!isNaN(value)) {
+                                    if (setTemperature) setTemperature(value);
+                                  }
+                                }}
+                                className="w-full eva-slider"
+                              />
+                              <div className="flex justify-between text-xs text-[var(--eva-text)]">
+                                <span>0</span>
+                                <span>1</span>
+                                <span>2</span>
+                              </div>
+                              <div className="absolute right-0 top-[-25px] bg-black/40 rounded px-2 py-0.5 text-xs text-[var(--eva-green)]">
+                                {temperature.toFixed(1)}
+                              </div>
+                            </div>
+                            <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                              ENTROPY CONTROL: {temperature < 0.3 ? "FOCUSED" : temperature > 1.5 ? "CREATIVE" : "BALANCED"}
+                            </p>
+                          </div>
+                          
+                          <div className="bg-black/20 p-3 rounded-md">
+                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                              Max Tokens
+                            </label>
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                id="max-tokens"
+                                type="number"
+                                min={1}
+                                value={maxTokens}
+                                onChange={(e) => {
+                                  const inputValue = e.target.value;
+                                  if (inputValue === '') {
+                                    if (setMaxTokens) setMaxTokens(1024);
+                                  } else {
+                                    const value = parseInt(inputValue);
+                                    if (!isNaN(value) && setMaxTokens) {
+                                      setMaxTokens(Math.max(1, value));
+                                    }
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (setMaxTokens && (!maxTokens || maxTokens < 1)) {
+                                    setMaxTokens(1);
+                                  }
+                                }}
+                                className="w-full eva-input text-[var(--eva-green)]"
+                              />
+                              <div className="flex flex-col items-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setMaxTokens && setMaxTokens(maxTokens + 512)}
+                                  className="h-6 w-6 p-0 rounded-none rounded-t-sm border-[var(--eva-orange)]"
+                                >
+                                  <span className="sr-only">Increase</span>
+                                  <ArrowUp className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setMaxTokens && setMaxTokens(Math.max(1, maxTokens - 512))}
+                                  className="h-6 w-6 p-0 rounded-none rounded-b-sm border-t-0 border-[var(--eva-orange)]"
+                                >
+                                  <span className="sr-only">Decrease</span>
+                                  <ArrowDown className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                              OUTPUT BUFFER SIZE
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       
                       <MagiProgress 
