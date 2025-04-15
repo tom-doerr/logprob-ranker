@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
 import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
@@ -103,6 +104,9 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   // Use the auth context for authentication state
   const { apiKey, isAuthenticated } = useAuth();
   
+  // Track whether we're using local browser models
+  const [useLocalModels, setUseLocalModels] = useState(false);
+  
   // No longer need to sync state since we'll use the props directly
 
   const handleSelectExample = (example: LogProbExample) => {
@@ -133,21 +137,49 @@ const OutputRanker: FC<OutputRankerProps> = () => {
         content: prompt
       };
 
-      // Generate a variant using the API service
-      const generationResponse = await apiService.generateChatCompletion(
-        [generateSystemMessage, userMessage],
-        { 
-          selectedModel: selectedModel || '',
-          temperature, 
-          maxTokens
+      let generatedOutput = '';
+
+      if (useLocalModels && browserModelEngine) {
+        // Use the browser model engine instead of API service
+        try {
+          // Format messages for browser model
+          const promptForBrowserModel = `${generateSystemMessage.content}\n\n${userMessage.content}`;
+          const response = await browserModelEngine.chat.completions.create({
+            messages: [
+              { role: 'system', content: generateSystemMessage.content },
+              { role: 'user', content: userMessage.content }
+            ],
+            temperature: temperature,
+            max_tokens: maxTokens,
+          });
+          
+          if (response.choices && response.choices.length > 0) {
+            generatedOutput = response.choices[0].message.content;
+          } else {
+            console.error('No response from browser model');
+            return null;
+          }
+        } catch (error) {
+          console.error('Error using browser model:', error);
+          return null;
         }
-      );
-      
-      if (!generationResponse || !generationResponse.text) {
-        return null;
+      } else {
+        // Use the API service as before
+        const generationResponse = await apiService.generateChatCompletion(
+          [generateSystemMessage, userMessage],
+          { 
+            selectedModel: selectedModel || '',
+            temperature, 
+            maxTokens
+          }
+        );
+        
+        if (!generationResponse || !generationResponse.text) {
+          return null;
+        }
+        
+        generatedOutput = generationResponse.text;
       }
-      
-      const generatedOutput = generationResponse.text;
       
       // Step 2: Evaluate the generated output
       const evaluateSystemMessage: ChatMessage = {
@@ -167,21 +199,49 @@ ${generatedOutput}`
         content: 'Provide your evaluation as JSON.'
       };
       
-      // Generate the evaluation using API service
-      const evaluationResponse = await apiService.generateChatCompletion(
-        [evaluateSystemMessage, evaluateUserMessage],
-        {
-          selectedModel: selectedModel || '',
-          temperature: 0.1, // Lower temperature for more consistent evaluation
-          maxTokens: 500, // Fixed size for evaluations is sufficient
+      let evaluationContent = '';
+      
+      if (useLocalModels && browserModelEngine) {
+        // Use browser model for evaluation as well
+        try {
+          const response = await browserModelEngine.chat.completions.create({
+            messages: [
+              { role: 'system', content: evaluateSystemMessage.content },
+              { role: 'user', content: evaluateUserMessage.content }
+            ],
+            temperature: 0.1, // Lower temperature for evaluation
+            max_tokens: 500,
+          });
+          
+          if (response.choices && response.choices.length > 0) {
+            evaluationContent = response.choices[0].message.content;
+          } else {
+            console.error('No evaluation response from browser model');
+            return null;
+          }
+        } catch (error) {
+          console.error('Error using browser model for evaluation:', error);
+          return null;
         }
-      );
-
-      if (!evaluationResponse || !evaluationResponse.text) {
-        return null;
+      } else {
+        // Use API service for evaluation
+        const evaluationResponse = await apiService.generateChatCompletion(
+          [evaluateSystemMessage, evaluateUserMessage],
+          {
+            selectedModel: selectedModel || '',
+            temperature: 0.1, // Lower temperature for more consistent evaluation
+            maxTokens: 500, // Fixed size for evaluations is sufficient
+          }
+        );
+        
+        if (!evaluationResponse || !evaluationResponse.text) {
+          return null;
+        }
+        
+        evaluationContent = evaluationResponse.text;
       }
 
-      const evaluationContent = evaluationResponse.text;
+      // evaluationContent is already set by either browser model or API
       let logprob = 0;
       let attributeScores: AttributeScore[] = [];
       let rawEvaluation = evaluationContent;
@@ -480,9 +540,19 @@ ${generatedOutput}`
                     {/* Column 2: Model & Variants */}
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
-                          MAGI System Model
-                        </label>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
+                            MAGI System Model
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <label className="text-xs text-[var(--eva-text)]">Use Browser Model</label>
+                            <Switch
+                              checked={useLocalModels}
+                              onCheckedChange={setUseLocalModels}
+                              className="data-[state=checked]:bg-[var(--eva-orange)]"
+                            />
+                          </div>
+                        </div>
                         <Tabs defaultValue="predefined" className="w-full">
                           <TabsList className="grid w-full grid-cols-2 mb-2 border border-[var(--eva-orange)] bg-opacity-20">
                             <TabsTrigger value="predefined" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Casper</TabsTrigger>
