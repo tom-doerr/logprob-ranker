@@ -104,6 +104,7 @@ const ChatInterface: FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.0-flash-001');
   const [customModel, setCustomModel] = useState<string>('');
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API key on mount

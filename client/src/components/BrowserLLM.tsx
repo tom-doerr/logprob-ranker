@@ -2,7 +2,7 @@ import { FC, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { ChatCompletionRequest, ChatMessage } from '../lib/openrouter';
 import { ArrowUp, Cpu, Loader2 } from 'lucide-react';
-import { ChatModule, InitProgressReport } from '@mlc-ai/web-llm';
+import { Chat, CreateMLCEngine, InitProgressReport } from '@mlc-ai/web-llm';
 
 interface BrowserLLMProps {
   onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
@@ -46,7 +46,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   isUsingBrowserModel
 }) => {
   const [selectedModel, setSelectedModel] = useState<string>(LOCAL_MODELS[0].id);
-  const [chat, setChat] = useState<ChatModule | null>(null);
+  const [chat, setChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -62,21 +62,18 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       setLoadingMessage('Initializing WebLLM...');
       setLoadingProgress(0);
 
-      const chatInstance = new webllm.ChatModule();
-      
-      // Register progress callback
-      chatInstance.setInitProgressCallback((report: webllm.InitProgressReport) => {
-        setLoadingMessage(report.text);
-        if (report.progress !== undefined) {
-          setLoadingProgress(report.progress * 100);
+      // Create engine and register progress callback
+      const engine = await CreateMLCEngine(modelId, {}, {
+        callback: (report: InitProgressReport) => {
+          setLoadingMessage(report.text);
+          if (report.progress !== undefined) {
+            setLoadingProgress(report.progress * 100);
+          }
         }
       });
       
-      // Initialize with the selected model
-      await chatInstance.init({
-        model: modelId
-      });
-      
+      // Create a chat instance
+      const chatInstance = new Chat(engine);
       setChat(chatInstance);
       setIsModelReady(true);
       console.log('WebLLM initialized successfully');
@@ -112,19 +109,24 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     setIsLoading(true);
     
     try {
-      // Generate a response
-      const reply = await chat.generate(input, {
+      // Generate a response using chat completions API
+      const response = await chat.completions.create({
+        messages: [{ role: 'user', content: input }],
         temperature: 0.7,
-        max_gen_len: 1024
+        max_tokens: 1024
       });
       
-      const assistantMessage: ChatMessage = { role: 'assistant', content: reply.message };
+      const assistantMessage: ChatMessage = { 
+        role: 'assistant', 
+        content: response.choices[0].message.content 
+      };
+      
       onResponseReceived(assistantMessage);
     } catch (error) {
       console.error('Error generating response:', error);
       onResponseReceived({ 
         role: 'assistant', 
-        content: `Error: Unable to generate a response. ${error instanceof Error ? error.message : String(error)}` 
+        content: `Error: Unable to generate a response. ${error instanceof Error ? error.message : String(error)}` as string
       });
     } finally {
       setIsLoading(false);
@@ -147,10 +149,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   // Cleanup function
   useEffect(() => {
     return () => {
-      // Cleanup WebLLM if needed
-      if (chat) {
-        // No explicit cleanup needed for now
-      }
+      // No explicit cleanup needed for now
     };
   }, [chat]);
 
