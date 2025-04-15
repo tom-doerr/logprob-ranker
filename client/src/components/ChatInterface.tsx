@@ -63,8 +63,8 @@ const popularModels: ModelOption[] = [
     pricing: '$3/M input, $15/M output'
   },
   {
-    id: 'google/gemini-2.0-flash-experimental',
-    name: 'Google: Gemini 2.0 Flash Experimental',
+    id: 'google/gemini-2.0-flash-001',
+    name: 'Google: Gemini 2.0 Flash',
     description: 'Faster TTFT, quality on par with larger models',
     contextSize: '1.05M',
     pricing: 'Free'

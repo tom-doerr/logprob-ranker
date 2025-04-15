@@ -376,7 +376,7 @@ ${generatedOutput}`
                           <SelectContent>
                             <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
                             <SelectItem value="meta-llama/llama-3.1-8b-instruct">Meta Llama 3.1 8B</SelectItem>
-                            <SelectItem value="google/gemini-2.0-flash-experimental">Gemini 2.0 Flash</SelectItem>
+                            <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
                             <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
                           </SelectContent>
                         </Select>
