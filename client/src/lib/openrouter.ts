@@ -71,12 +71,12 @@ export async function createChatCompletion(
  * Generates the authorization URL with PKCE parameters
  */
 export function generateAuthUrl(codeChallenge: string, callbackUrl: string): string {
-  // Use redirect_uri (standard OAuth 2.0 parameter name) instead of callback_url
+  // Use callback_url as specified in OpenRouter's documentation
   const params = new URLSearchParams({
-    redirect_uri: callbackUrl,
+    callback_url: callbackUrl,  // OpenRouter uses callback_url, not redirect_uri
     code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    scope: 'key.create' // Add explicit scope
+    code_challenge_method: 'S256'
+    // Remove scope as it's not mentioned in documentation
   });
   
   // Full URL with parameters

@@ -7,17 +7,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Exchange code for OpenRouter API key
   app.post("/api/exchange-code", async (req, res) => {
     try {
-      const { code, codeVerifier, codeMethod } = req.body;
+      // Use the exact parameter names that OpenRouter expects
+      const { code, code_verifier, code_challenge_method } = req.body;
       
       if (!code) {
         return res.status(400).json({ message: "Missing authorization code" });
       }
 
+      // Use the exact parameter names that OpenRouter expects in its API
       const body: Record<string, string> = { code };
       
-      // Add code verifier and challenge method if provided
-      if (codeVerifier) body.code_verifier = codeVerifier;
-      if (codeMethod) body.code_challenge_method = codeMethod;
+      // Add code verifier and challenge method if provided - using the exact naming from OpenRouter docs
+      if (code_verifier) body.code_verifier = code_verifier;
+      if (code_challenge_method) body.code_challenge_method = code_challenge_method;
 
       try {
         // Log request details for debugging

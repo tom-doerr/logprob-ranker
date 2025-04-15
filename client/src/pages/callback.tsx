@@ -46,15 +46,22 @@ const Callback: FC = () => {
         // Exchange code for token
         let response;
         try {
+          // Log the exchange request details
+          console.log("Exchanging code for token with:", {
+            code: code,
+            code_verifier: codeVerifier,
+            code_challenge_method: 'S256'
+          });
+          
           response = await fetch('/api/exchange-code', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              code,
-              codeVerifier,
-              codeMethod: 'S256'
+              code: code,
+              code_verifier: codeVerifier,
+              code_challenge_method: 'S256' // Note: using underscores in parameter names as per OpenRouter docs
             })
           });
         } catch (fetchError) {
