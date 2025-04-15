@@ -12,6 +12,9 @@ const Callback: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Store the authorization code
+  const [authCode, setAuthCode] = useState<string | null>(null);
+
   useEffect(() => {
     async function handleCallback() {
       try {
@@ -24,12 +27,15 @@ const Callback: FC = () => {
           setIsLoading(false);
           return;
         }
+
+        // Store the code for display
+        setAuthCode(code);
         
         // Get the code verifier from storage
         const codeVerifier = getCodeVerifier();
         
         if (!codeVerifier) {
-          setError('No code verifier found. Please try again with a new authentication request.');
+          setError('No code verifier found in browser storage. This could happen if you started the OAuth flow in a different browser tab or cleared your storage. Please copy this code and use it in the main application.');
           setIsLoading(false);
           return;
         }
@@ -107,9 +113,36 @@ const Callback: FC = () => {
           )}
           
           {error && (
-            <div className="text-red-500 py-2">
-              <p className="font-medium">Error:</p>
-              <p>{error}</p>
+            <div className="py-2">
+              <p className="font-medium text-red-500">Error:</p>
+              <p className="text-red-500">{error}</p>
+              
+              {authCode && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <p className="text-sm font-medium text-amber-800 mb-2">
+                    <i className="fas fa-info-circle mr-2"></i>
+                    You can still copy this authorization code and use it in the main application:
+                  </p>
+                  <div className="bg-white p-2 rounded border border-amber-200 flex items-center justify-between">
+                    <code className="text-sm font-mono text-neutral-700 break-all">{authCode}</code>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(authCode);
+                        toast({
+                          title: "Copied to clipboard",
+                          description: "Authorization code copied successfully",
+                        });
+                      }}
+                      className="ml-2 text-amber-600 hover:text-amber-700"
+                    >
+                      <i className="far fa-copy"></i>
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-700 mt-2">
+                    Return to the main page and paste this code in the Step 2 input field.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           

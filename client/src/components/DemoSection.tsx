@@ -354,13 +354,14 @@ const DemoSection: FC = () => {
             <div className="border border-neutral-200 rounded-lg bg-white p-4 mb-4">
               <h4 className="font-medium text-neutral-900 mb-1">Step 2: Authentication</h4>
               <p className="text-sm text-neutral-600 mb-3">
-                In a real app, after the user authorizes your app at OpenRouter, they would be redirected 
-                back to your callback URL with an authorization code. 
+                After the user authorizes your app at OpenRouter, they will be redirected 
+                back to your callback URL with an authorization code. You can either use the auto-generated
+                code below or paste a real code from an OpenRouter callback.
               </p>
               
               <div className="bg-neutral-50 p-3 rounded-md mb-4">
                 <div className="flex flex-col text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-neutral-700 font-medium">Authorization Code:</span>
                     <button 
                       onClick={() => copyToClipboard(authCode, 'Authorization code')}
@@ -369,32 +370,95 @@ const DemoSection: FC = () => {
                       <i className="far fa-copy"></i> Copy
                     </button>
                   </div>
-                  <code className="text-neutral-500 font-mono text-xs break-all my-1">{authCode}</code>
+                  
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm font-mono text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                      placeholder="Enter authorization code"
+                    />
+                    <button
+                      onClick={() => setAuthCode(`auth_${Math.random().toString(36).substring(2, 15)}`)}
+                      className="text-xs bg-neutral-200 text-neutral-700 px-2 py-2 rounded-md hover:bg-neutral-300"
+                      title="Generate a simulated code"
+                    >
+                      <i className="fas fa-sync-alt mr-1"></i> Generate Demo Code
+                    </button>
+                  </div>
                 </div>
               </div>
               
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
                 <p className="text-sm text-amber-800">
                   <i className="fas fa-info-circle mr-2"></i>
-                  <strong>Demo mode:</strong> When using the "Connect to OpenRouter" button, we'll try to open 
-                  a new tab with a localhost callback URL (http://localhost:3000/callback). 
-                  For this demo, we're also generating a simulated auth code so you can continue even if 
-                  the real authentication fails.
+                  <strong>Getting a real code:</strong> Complete the OAuth flow by clicking "Connect to OpenRouter", 
+                  which opens a new tab with a localhost callback URL (http://localhost:3000/callback). 
+                  After authentication, you can copy the code from the URL parameter and paste it here.
                 </p>
+              </div>
+              
+              <div className="flex flex-col gap-4 mb-4">
+                <div className="flex flex-row items-center">
+                  <div className="flex-grow border-t border-neutral-200"></div>
+                  <span className="mx-4 text-xs text-neutral-500">OR</span>
+                  <div className="flex-grow border-t border-neutral-200"></div>
+                </div>
+                
+                <div>
+                  <label className="text-sm text-neutral-700 font-medium mb-1 block">
+                    Already have an API key? Paste it directly:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      placeholder="sk-or-v1-..."
+                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm font-mono text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                      onChange={(e) => {
+                        const key = e.target.value.trim();
+                        if (key) {
+                          setApiKey(key);
+                          saveApiKey(key);
+                          setCurrentStep(DemoStep.UseApiKey);
+                          toast({
+                            title: "API key set manually",
+                            description: "You can now use this key to make API requests",
+                          });
+                        }
+                      }}
+                    />
+                    <button 
+                      className="bg-neutral-200 text-neutral-700 py-2 px-4 rounded-md hover:bg-neutral-300 flex items-center justify-center"
+                      onClick={() => {
+                        setCurrentStep(DemoStep.UseApiKey);
+                        const demoKey = `sk-or-v1-demo-${Math.random().toString(36).substring(2, 10)}`;
+                        setApiKey(demoKey);
+                        saveApiKey(demoKey);
+                        toast({
+                          title: "Demo key generated",
+                          description: "Using a simulated API key for demo purposes",
+                        });
+                      }}
+                    >
+                      <i className="fas fa-magic mr-2"></i> Use Demo Key
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <button 
                 onClick={handleExchangeCode}
-                disabled={isExchanging}
-                className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70"
+                disabled={isExchanging || !authCode}
+                className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70 w-full"
               >
                 {isExchanging ? (
                   <>
-                    <i className="fas fa-spinner fa-spin mr-2"></i> Exchanging...
+                    <i className="fas fa-spinner fa-spin mr-2"></i> Exchanging Auth Code for API Key
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-exchange-alt mr-2"></i> Exchange for API Key
+                    <i className="fas fa-exchange-alt mr-2"></i> Exchange Auth Code for API Key
                   </>
                 )}
               </button>
@@ -409,7 +473,7 @@ const DemoSection: FC = () => {
               
               <div className="bg-neutral-50 p-3 rounded-md mb-4">
                 <div className="flex flex-col text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-neutral-700 font-medium">API Key:</span>
                     <button 
                       onClick={() => apiKey && copyToClipboard(apiKey, 'API key')}
@@ -418,9 +482,25 @@ const DemoSection: FC = () => {
                       <i className="far fa-copy"></i> Copy
                     </button>
                   </div>
-                  <code className="text-neutral-500 font-mono text-xs break-all my-1">
-                    {apiKey ? '•••••••••••••••••••••••••••••••' : 'No API key available'}
-                  </code>
+                  
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      value={apiKey || ''}
+                      onChange={(e) => {
+                        setApiKey(e.target.value);
+                        if (e.target.value) saveApiKey(e.target.value);
+                      }}
+                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm font-mono text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                      placeholder="Enter OpenRouter API key"
+                    />
+                  </div>
+                  
+                  <p className="mt-2 text-xs text-neutral-500">
+                    {apiKey?.includes('demo') 
+                      ? 'This is a simulated API key. Test calls will return simulated responses.' 
+                      : 'This appears to be a real API key. Test calls will attempt to connect to OpenRouter.'}
+                  </p>
                 </div>
               </div>
               
