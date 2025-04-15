@@ -29,8 +29,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           body: JSON.stringify(body),
         });
 
+        // Handle non-JSON responses
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const textResponse = await response.text();
+          console.error("Non-JSON response:", textResponse);
+          return res.status(response.status).json({ 
+            message: `OpenRouter API returned non-JSON response (${response.status})` 
+          });
+        }
+        
         if (!response.ok) {
-          throw new Error(`OpenRouter API returned ${response.status}: ${await response.text()}`);
+          const errorData = await response.json();
+          return res.status(response.status).json({ 
+            message: errorData.error || `OpenRouter API error: ${response.status}` 
+          });
         }
 
         const data = await response.json();

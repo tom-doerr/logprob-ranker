@@ -11,12 +11,10 @@ const Callback: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  // Store the authorization code
   const [authCode, setAuthCode] = useState<string | null>(null);
 
   useEffect(() => {
-    async function handleCallback() {
+    const processCallback = async () => {
       try {
         // Get the code from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -28,51 +26,69 @@ const Callback: FC = () => {
           return;
         }
 
-        // Store the code for display
+        // Store the code for display if needed
         setAuthCode(code);
         
         // Get the code verifier from storage
         const codeVerifier = getCodeVerifier();
         
         if (!codeVerifier) {
-          setError('No code verifier found in browser storage. This could happen if you started the OAuth flow in a different browser tab or cleared your storage. Please copy this code and use it in the main application.');
+          setError('No code verifier found in browser storage. This could happen if you started the OAuth flow in a different browser tab or cleared your storage.');
           setIsLoading(false);
           return;
         }
         
         // Exchange code for token
-        const response = await fetch('/api/exchange-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            code,
-            codeVerifier,
-            codeMethod: 'S256'
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to exchange code for API key');
+        let response;
+        try {
+          response = await fetch('/api/exchange-code', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              code,
+              codeVerifier,
+              codeMethod: 'S256'
+            })
+          });
+        } catch (fetchError) {
+          throw new Error('Network error while contacting authorization server');
         }
         
-        const data = await response.json();
+        // Handle non-OK responses
+        if (!response.ok) {
+          let errorMessage: string;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || `Error ${response.status}`;
+          } catch (jsonError) {
+            // If response is not JSON
+            errorMessage = `Error ${response.status}: ${await response.text().catch(() => 'Unknown error')}`;
+          }
+          throw new Error(errorMessage);
+        }
         
-        if (!data.key) {
+        // Parse response data
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          throw new Error('Invalid JSON response from server');
+        }
+        
+        if (!data || !data.key) {
           throw new Error('No API key returned from server');
         }
         
-        // Store the token
+        // Store the token and update application state
         saveApiKey(data.key);
-        clearCodeVerifier(); // Clear the verifier as we no longer need it
+        clearCodeVerifier();
         
-        // Dispatch event to notify other components of the API key change
+        // Notify other components about the API key change
         window.dispatchEvent(new Event('api-key-changed'));
         
         setSuccess(true);
-        setIsLoading(false);
         
         toast({
           title: 'NERV AUTHENTICATION COMPLETE',
@@ -84,13 +100,14 @@ const Callback: FC = () => {
           setLocation('/');
         }, 3000);
       } catch (err) {
-        console.error('Error in callback handling:', err);
+        console.error('Authentication error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      } finally {
         setIsLoading(false);
       }
-    }
-    
-    handleCallback();
+    };
+
+    processCallback();
   }, [setLocation, toast]);
 
   return (
@@ -166,7 +183,7 @@ const Callback: FC = () => {
                       variant="outline"
                       size="icon"
                       onClick={() => {
-                        navigator.clipboard.writeText(authCode);
+                        navigator.clipboard.writeText(authCode || '');
                         toast({
                           title: "CODE COPIED",
                           description: "Authentication code transferred to clipboard",
