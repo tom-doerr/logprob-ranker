@@ -516,13 +516,14 @@ ${generatedOutput}`
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Number of Variants
                         </label>
                         <Input
                           type="number"
                           min={1}
                           value={numberOfVariants}
+                          className="w-full eva-input text-[var(--eva-green)]"
                           onChange={(e) => {
                             const inputValue = e.target.value;
                             if (inputValue === '') {
@@ -541,7 +542,6 @@ ${generatedOutput}`
                               setNumberOfVariants(1);
                             }
                           }}
-                          className="w-full"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Enter any number of variants to generate
