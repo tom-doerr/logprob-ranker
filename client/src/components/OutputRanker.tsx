@@ -71,6 +71,7 @@ const OutputRanker: FC = () => {
   const [customModelId, setCustomModelId] = useState('');
   const [useAutoStop, setUseAutoStop] = useState(false);
   const [autoStopThreshold, setAutoStopThreshold] = useState(5);
+  const [threadCount, setThreadCount] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
@@ -97,6 +98,138 @@ const OutputRanker: FC = () => {
     setPrompt('');
     setLogProbTemplate(defaultTemplate);
     setNumberOfVariants(5);
+  };
+
+  // Helper function to generate and evaluate a single output
+  const generateAndEvaluateOutput = async (index: number): Promise<RankedOutput | null> => {
+    try {
+      // Step 1: Generate content without evaluation criteria
+      const generateSystemMessage: ChatMessage = {
+        role: 'system',
+        content: `You are a helpful AI assistant. Please respond to the user's request.`
+      };
+
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content: prompt
+      };
+
+      // Generate a variant
+      const generationResponse = await createChatCompletion({
+        model: modelId,
+        messages: [generateSystemMessage, userMessage],
+        temperature: 0.9, // Higher temperature for more diversity
+      });
+      
+      if (!generationResponse.choices || generationResponse.choices.length === 0) {
+        return null;
+      }
+      
+      const generatedOutput = generationResponse.choices[0].message.content;
+      
+      // Step 2: Evaluate the generated output
+      const evaluateSystemMessage: ChatMessage = {
+        role: 'system',
+        content: `You are an evaluator. Evaluate the following text based on the criteria.
+Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false).
+
+CRITERIA:
+${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
+
+TEXT TO EVALUATE:
+${generatedOutput}`
+      };
+      
+      const evaluateUserMessage: ChatMessage = {
+        role: 'user',
+        content: 'Provide your evaluation as JSON.'
+      };
+      
+      // Generate the evaluation
+      const evaluationResponse = await createChatCompletion({
+        model: modelId,
+        messages: [evaluateSystemMessage, evaluateUserMessage],
+        temperature: 0.1, // Lower temperature for more consistent evaluation
+      });
+
+      if (!evaluationResponse.choices || evaluationResponse.choices.length === 0) {
+        return null;
+      }
+
+      const evaluationContent = evaluationResponse.choices[0].message.content;
+      let logprob = 0;
+      let attributeScores: AttributeScore[] = [];
+      let rawEvaluation = evaluationContent;
+      
+      try {
+        // Basic cleanup of common JSON formatting issues
+        const cleanedJson = evaluationContent
+          .replace(/'/g, '"')
+          .replace(/True/g, 'true')
+          .replace(/False/g, 'false')
+          // Remove any non-JSON text
+          .replace(/^[^{]*/, '')
+          .replace(/[^}]*$/, '');
+          
+        const evaluationJson = JSON.parse(cleanedJson);
+        
+        // Extract attributes from the logProbTemplate
+        const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
+        const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
+        
+        // Create attribute scores
+        if (Object.keys(evaluationJson).length > 0) {
+          attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
+            // Generate scores based on the value - higher for true
+            const score = typeof value === 'boolean' ? 
+              (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3) : 
+              Math.random();
+            return { name, score };
+          });
+        } else {
+          // Fallback: create scores for attributes from template
+          attributeScores = templateAttrs.map(name => ({
+            name,
+            score: 0.5 + Math.random() * 0.5
+          }));
+        }
+        
+        // Calculate overall logprob as average of all attribute scores
+        if (attributeScores.length > 0) {
+          logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
+        } else {
+          logprob = Math.random();
+        }
+      } catch (error) {
+        console.error('Error parsing evaluation JSON:', error);
+        
+        // Even if parsing fails, extract attributes from template and create simulated scores
+        const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
+        const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
+        
+        attributeScores = templateAttrs.map(name => ({
+          name,
+          score: 0.5 + Math.random() * 0.5
+        }));
+        
+        if (attributeScores.length > 0) {
+          logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
+        } else {
+          logprob = Math.random();
+        }
+      }
+      
+      return {
+        output: generatedOutput,
+        logprob,
+        index,
+        attributeScores,
+        rawEvaluation
+      };
+    } catch (error) {
+      console.error(`Error generating output at index ${index}:`, error);
+      return null;
+    }
   };
 
   const generateOutputs = async () => {
@@ -129,159 +262,65 @@ const OutputRanker: FC = () => {
       let bestScore = -Infinity;
       let actualVariantsToGenerate = useAutoStop ? 1000 : numberOfVariants; // Large number if using auto-stop
       
-      // Generate variants
-      for (let i = 0; i < actualVariantsToGenerate; i++) {
+      // Limit threads to be no more than the number of variants
+      const effectiveThreadCount = Math.min(threadCount, numberOfVariants);
+      let currentIndex = 0;
+      
+      while (currentIndex < actualVariantsToGenerate) {
         // Check if we should stop based on auto-stop criteria
-        if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold && i >= numberOfVariants) {
+        if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold && currentIndex >= numberOfVariants) {
           toast({
             title: 'Auto-Stop Triggered',
-            description: `No better outputs found after ${autoStopThreshold} iterations. Stopping at ${i} variants.`
+            description: `No better outputs found after ${autoStopThreshold} iterations. Stopping at ${currentIndex} variants.`
           });
           break;
         }
         
         // If not using auto-stop and we've reached the number of variants, break
-        if (!useAutoStop && i >= numberOfVariants) {
+        if (!useAutoStop && currentIndex >= numberOfVariants) {
           break;
         }
         
-        // Step 1: Generate content without evaluation criteria
-        const generateSystemMessage: ChatMessage = {
-          role: 'system',
-          content: `You are a helpful AI assistant. Please respond to the user's request.`
-        };
-
-        const userMessage: ChatMessage = {
-          role: 'user',
-          content: prompt
-        };
-
-        // Generate a variant
-        const generationResponse = await createChatCompletion({
-          model: modelId,
-          messages: [generateSystemMessage, userMessage],
-          temperature: 0.9, // Higher temperature for more diversity
-        });
+        // Calculate how many threads to use in this batch
+        const remainingVariants = useAutoStop ? 
+          actualVariantsToGenerate - currentIndex : 
+          numberOfVariants - currentIndex;
+        const batchSize = Math.min(effectiveThreadCount, remainingVariants);
         
-        if (!generationResponse.choices || generationResponse.choices.length === 0) {
-          continue;
-        }
+        console.log(`Starting batch of ${batchSize} parallel requests (threads: ${effectiveThreadCount})`);
         
-        const generatedOutput = generationResponse.choices[0].message.content;
+        // Create a batch of promises for parallel generation
+        const batch = Array.from({ length: batchSize }, (_, i) => 
+          generateAndEvaluateOutput(currentIndex + i)
+        );
         
-        // Step 2: Evaluate the generated output
-        const evaluateSystemMessage: ChatMessage = {
-          role: 'system',
-          content: `You are an evaluator. Evaluate the following text based on the criteria.
-Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false).
-
-CRITERIA:
-${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
-
-TEXT TO EVALUATE:
-${generatedOutput}`
-        };
+        // Wait for all promises in the batch to resolve
+        const batchResults = await Promise.all(batch);
         
-        const evaluateUserMessage: ChatMessage = {
-          role: 'user',
-          content: 'Provide your evaluation as JSON.'
-        };
+        // Filter out null results and add to results array
+        const validResults = batchResults.filter(result => result !== null) as RankedOutput[];
         
-        // Generate the evaluation
-        const evaluationResponse = await createChatCompletion({
-          model: modelId,
-          messages: [evaluateSystemMessage, evaluateUserMessage],
-          temperature: 0.1, // Lower temperature for more consistent evaluation
-        });
-
-        if (evaluationResponse.choices && evaluationResponse.choices.length > 0) {
-          const evaluationContent = evaluationResponse.choices[0].message.content;
-          let logprob = 0;
-          let attributeScores: AttributeScore[] = [];
-          let rawEvaluation = evaluationContent;
-          
-          try {
-            // Basic cleanup of common JSON formatting issues
-            const cleanedJson = evaluationContent
-              .replace(/'/g, '"')
-              .replace(/True/g, 'true')
-              .replace(/False/g, 'false')
-              // Remove any non-JSON text
-              .replace(/^[^{]*/, '')
-              .replace(/[^}]*$/, '');
-              
-            const evaluationJson = JSON.parse(cleanedJson);
-            
-            // Extract attributes from the logProbTemplate
-            const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
-            const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
-            
-            // Create attribute scores
-            if (Object.keys(evaluationJson).length > 0) {
-              attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
-                // Generate scores based on the value - higher for true
-                const score = typeof value === 'boolean' ? 
-                  (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3) : 
-                  Math.random();
-                return { name, score };
-              });
-            } else {
-              // Fallback: create scores for attributes from template
-              attributeScores = templateAttrs.map(name => ({
-                name,
-                score: 0.5 + Math.random() * 0.5
-              }));
-            }
-            
-            // Calculate overall logprob as average of all attribute scores
-            if (attributeScores.length > 0) {
-              logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
-            } else {
-              logprob = Math.random();
-            }
-          } catch (error) {
-            console.error('Error parsing evaluation JSON:', error);
-            
-            // Even if parsing fails, extract attributes from template and create simulated scores
-            const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
-            const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
-            
-            attributeScores = templateAttrs.map(name => ({
-              name,
-              score: 0.5 + Math.random() * 0.5
-            }));
-            
-            if (attributeScores.length > 0) {
-              logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
-            } else {
-              logprob = Math.random();
-            }
-          }
-          
-          // Add to results
-          results.push({
-            output: generatedOutput,
-            logprob,
-            index: i,
-            attributeScores,
-            rawEvaluation
-          });
+        for (const result of validResults) {
+          results.push(result);
           
           // Check if this is a better result for auto-stop functionality
           if (useAutoStop) {
-            if (logprob > bestScore) {
-              bestScore = logprob;
+            if (result.logprob > bestScore) {
+              bestScore = result.logprob;
               iterationsWithoutImprovement = 0;
-              console.log(`New best score found: ${logprob.toFixed(4)} at iteration ${i}`);
+              console.log(`New best score found: ${result.logprob.toFixed(4)} at iteration ${result.index}`);
             } else {
               iterationsWithoutImprovement++;
               console.log(`No improvement for ${iterationsWithoutImprovement} iterations. Current best: ${bestScore.toFixed(4)}`);
             }
           }
-          
-          // Update the ranked outputs as they come in
-          setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
         }
+        
+        // Update the ranked outputs as they come in
+        setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
+        
+        // Increment the index by batch size
+        currentIndex += batchSize;
       }
       
       // Sort results by logprob (higher is better)
@@ -495,53 +534,92 @@ ${generatedOutput}`
                           </p>
                         </div>
                         
-                        <div className="border rounded-md p-3">
-                          <div className="flex items-center mb-2">
-                            <input
-                              type="checkbox"
-                              id="use-auto-stop"
-                              checked={useAutoStop}
-                              onChange={(e) => setUseAutoStop(e.target.checked)}
-                              className="h-4 w-4 text-blue-600 rounded mr-2"
-                            />
-                            <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
-                              Auto-stop Generation
-                            </label>
+                        <div className="space-y-4">
+                          <div className="border rounded-md p-3">
+                            <div className="flex items-center mb-2">
+                              <input
+                                type="checkbox"
+                                id="use-auto-stop"
+                                checked={useAutoStop}
+                                onChange={(e) => setUseAutoStop(e.target.checked)}
+                                className="h-4 w-4 text-blue-600 rounded mr-2"
+                              />
+                              <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
+                                Auto-stop Generation
+                              </label>
+                            </div>
+                            
+                            <div className={useAutoStop ? "block" : "hidden"}>
+                              <p className="text-xs text-gray-500 mb-2">
+                                Continue generating until no better output is found for this many consecutive iterations:
+                              </p>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={autoStopThreshold}
+                                onChange={(e) => {
+                                  // Handle empty string case properly
+                                  const inputValue = e.target.value;
+                                  if (inputValue === '') {
+                                    setAutoStopThreshold(1); // Default to 1 if empty
+                                  } else {
+                                    const value = parseInt(inputValue);
+                                    if (!isNaN(value)) {
+                                      // Ensure value is between 1 and 100
+                                      setAutoStopThreshold(Math.max(1, Math.min(value, 100)));
+                                    }
+                                  }
+                                }}
+                                onBlur={() => {
+                                  // Ensure we have a valid value when user leaves the field
+                                  if (autoStopThreshold < 1) {
+                                    setAutoStopThreshold(1);
+                                  } else if (autoStopThreshold > 100) {
+                                    setAutoStopThreshold(100);
+                                  }
+                                }}
+                                className="w-full"
+                                disabled={!useAutoStop}
+                              />
+                            </div>
                           </div>
                           
-                          <div className={useAutoStop ? "block" : "hidden"}>
-                            <p className="text-xs text-gray-500 mb-2">
-                              Continue generating until no better output is found for this many consecutive iterations:
-                            </p>
+                          <div className="border rounded-md p-3">
+                            <label htmlFor="thread-count" className="block text-sm font-medium text-gray-700 mb-2">
+                              Thread Count
+                            </label>
                             <Input
+                              id="thread-count"
                               type="number"
                               min={1}
-                              max={100}
-                              value={autoStopThreshold}
+                              max={8}
+                              value={threadCount}
                               onChange={(e) => {
-                                // Handle empty string case properly
                                 const inputValue = e.target.value;
                                 if (inputValue === '') {
-                                  setAutoStopThreshold(1); // Default to 1 if empty
+                                  setThreadCount(1); // Default to 1 if empty
                                 } else {
                                   const value = parseInt(inputValue);
                                   if (!isNaN(value)) {
-                                    // Ensure value is between 1 and 100
-                                    setAutoStopThreshold(Math.max(1, Math.min(value, 100)));
+                                    // Ensure value is between 1 and 8
+                                    setThreadCount(Math.max(1, Math.min(value, 8)));
                                   }
                                 }
                               }}
                               onBlur={() => {
                                 // Ensure we have a valid value when user leaves the field
-                                if (autoStopThreshold < 1) {
-                                  setAutoStopThreshold(1);
-                                } else if (autoStopThreshold > 100) {
-                                  setAutoStopThreshold(100);
+                                if (threadCount < 1) {
+                                  setThreadCount(1);
+                                } else if (threadCount > 8) {
+                                  setThreadCount(8);
                                 }
                               }}
                               className="w-full"
-                              disabled={!useAutoStop}
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Number of parallel requests to make (1-8). Higher values generate faster but may hit rate limits.
+                            </p>
                           </div>
                         </div>
                       </div>
