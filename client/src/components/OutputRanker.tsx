@@ -67,7 +67,7 @@ const OutputRanker: FC = () => {
   const [prompt, setPrompt] = useState('');
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
   const [numberOfVariants, setNumberOfVariants] = useState(5);
-  const [modelId, setModelId] = useState('deepseek/deepseek-r1');
+  const [modelId, setModelId] = useState('google/gemini-2.0-flash-001');
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);

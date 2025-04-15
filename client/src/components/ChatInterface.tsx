@@ -85,7 +85,7 @@ const ChatInterface: FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [manualApiKey, setManualApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState<string>('deepseek/deepseek-r1');
+  const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.0-flash-001');
   const [customModel, setCustomModel] = useState<string>('');
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
