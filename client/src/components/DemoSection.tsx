@@ -91,8 +91,8 @@ const DemoSection: FC = () => {
     try {
       setIsExchanging(true);
       
-      // For demo/testing purposes, we can exchange the simulated auth code
-      // with our backend that proxies to OpenRouter
+      // Exchange the auth code through our server-side proxy endpoint
+
       const response = await fetch('/api/exchange-code', {
         method: 'POST',
         headers: {
@@ -344,38 +344,18 @@ const DemoSection: FC = () => {
           {currentStep === DemoStep.Authenticate && (
             <div className="border border-neutral-200 rounded-lg bg-white p-4 mb-4">
               <h4 className="font-medium text-neutral-900 mb-1">Step 2: Authentication</h4>
-              <p className="text-sm text-neutral-600 mb-3">After redirection, extract the code from the URL:</p>
+              <p className="text-sm text-neutral-600 mb-3">
+                You're being redirected to OpenRouter to authenticate. After authentication, 
+                you'll be redirected back with an authorization code.
+              </p>
               
-              <div className="bg-neutral-50 p-3 rounded-md mb-4">
-                <div className="flex flex-col text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-neutral-700 font-medium">Authorization Code:</span>
-                    <button 
-                      onClick={() => copyToClipboard(authCode, 'Authorization code')}
-                      className="text-[#4F46E5] hover:text-[#6366F1] text-xs"
-                    >
-                      <i className="far fa-copy"></i> Copy
-                    </button>
-                  </div>
-                  <code className="text-neutral-500 font-mono text-xs break-all my-1">{authCode}</code>
-                </div>
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4F46E5]"></div>
               </div>
               
-              <button 
-                onClick={handleExchangeCode}
-                disabled={isExchanging}
-                className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70"
-              >
-                {isExchanging ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin mr-2"></i> Exchanging...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-exchange-alt mr-2"></i> Exchange for API Key
-                  </>
-                )}
-              </button>
+              <p className="text-center text-sm text-neutral-600">
+                If you're not redirected automatically, check your browser's popup blocker settings.
+              </p>
             </div>
           )}
           
