@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { createChatCompletion, ChatMessage } from '../lib/openrouter';
 import { getApiKey } from '../utils/pkce';
 import { Loader2, ArrowUpDown, Crown, Flame, X, Plus, BarChart, ArrowDownWideNarrow } from 'lucide-react';
+import { useModelConfig } from '@/hooks/use-model-config';
 
 interface LogProbExample {
   prompt: string;
@@ -63,19 +64,24 @@ const examples: LogProbExample[] = [
 
 import { ModelConfig } from '../lib/modelTypes';
 
-interface OutputRankerProps extends Partial<ModelConfig> {}
+interface OutputRankerProps {}
 
-const OutputRanker: FC<OutputRankerProps> = (props) => {
-  // Destructure props directly where needed
+const OutputRanker: FC<OutputRankerProps> = () => {
+  // Use the centralized model config directly
   const { 
     isUsingBrowserModel,
     selectedModel,
     temperature, 
     topP,
     maxTokens,
-    customModel, 
-    browserModelEngine 
-  } = props;
+    customModel,
+    browserModelEngine,
+    setSelectedModel,
+    setTemperature,
+    setTopP,
+    setMaxTokens,
+    setCustomModel 
+  } = useModelConfig();
 
   // Local UI state only
   const { toast } = useToast();
@@ -132,7 +138,7 @@ const OutputRanker: FC<OutputRankerProps> = (props) => {
 
       // Generate a variant
       const generationResponse = await createChatCompletion({
-        model: modelId,
+        model: selectedModel || '',
         messages: [generateSystemMessage, userMessage],
         temperature: temperature, // Use temperature from the user setting
         max_tokens: maxTokens, // Use max tokens from the user setting
@@ -164,7 +170,7 @@ ${generatedOutput}`
       
       // Generate the evaluation
       const evaluationResponse = await createChatCompletion({
-        model: modelId,
+        model: selectedModel || '',
         messages: [evaluateSystemMessage, evaluateUserMessage],
         temperature: 0.1, // Lower temperature for more consistent evaluation
         max_tokens: 500, // Fixed size for evaluations is sufficient
@@ -260,12 +266,11 @@ ${generatedOutput}`
       return;
     }
     
-    // If modelId is not in predefined models and not a custom model, show error
-    if (!['deepseek/deepseek-r1', 'meta-llama/llama-3.1-8b-instruct', 'google/gemini-2.0-flash-001', 'openai/gpt-3.5-turbo'].includes(modelId) && 
-        !modelId.includes('/')) {
+    // Validate that we have a properly formatted selectedModel
+    if (!selectedModel || !selectedModel.includes('/')) {
       toast({
         title: 'Invalid Model',
-        description: 'Please select a valid model or enter a custom model ID with proper format (e.g., "provider/model-name")',
+        description: 'Please select a valid model with proper format (e.g., "provider/model-name")',
         variant: 'destructive',
       });
       return;
@@ -485,8 +490,8 @@ ${generatedOutput}`
                           
                           <TabsContent value="predefined">
                             <Select 
-                              value={modelId} 
-                              onValueChange={setModelId}
+                              value={selectedModel} 
+                              onValueChange={setSelectedModel}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a model" />
@@ -508,22 +513,22 @@ ${generatedOutput}`
                             <div className="space-y-2">
                               <Input
                                 placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
-                                value={customModelId}
-                                onChange={(e) => setCustomModelId(e.target.value)}
+                                value={customModel}
+                                onChange={(e) => setCustomModel(e.target.value)}
                                 className="w-full eva-input text-[var(--eva-green)]"
                               />
                               <Button 
                                 size="sm" 
                                 onClick={() => {
-                                  if (customModelId.trim()) {
-                                    setModelId(customModelId);
+                                  if (customModel && customModel.trim()) {
+                                    setSelectedModel(customModel);
                                     toast({
                                       title: 'Custom Model Set',
-                                      description: `Using custom model: ${customModelId}`
+                                      description: `Using custom model: ${customModel}`
                                     });
                                   }
                                 }}
-                                disabled={!customModelId.trim()} 
+                                disabled={!customModel || !customModel.trim()} 
                                 className="w-full eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
                               >
                                 Use Custom Model
@@ -672,21 +677,22 @@ ${generatedOutput}`
                           onChange={(e) => {
                             const inputValue = e.target.value;
                             if (inputValue === '') {
-                              setTemperature(0.9); // Default to 0.9 if empty
+                              // Default to 0.9 if empty
+                              if (setTemperature) setTemperature(0.9);
                             } else {
                               const value = parseFloat(inputValue);
                               if (!isNaN(value)) {
                                 // Ensure value is between 0 and 2
-                                setTemperature(Math.max(0, Math.min(value, 2)));
+                                if (setTemperature) setTemperature(Math.max(0, Math.min(value, 2)));
                               }
                             }
                           }}
                           onBlur={() => {
                             // Ensure we have a valid value when user leaves the field
-                            if (temperature < 0) {
-                              setTemperature(0);
+                            if (!temperature || temperature < 0) {
+                              if (setTemperature) setTemperature(0);
                             } else if (temperature > 2) {
-                              setTemperature(2);
+                              if (setTemperature) setTemperature(2);
                             }
                           }}
                           className="w-full eva-input text-[var(--eva-green)]"
@@ -708,10 +714,10 @@ ${generatedOutput}`
                           onChange={(e) => {
                             const inputValue = e.target.value;
                             if (inputValue === '') {
-                              setMaxTokens(1024); // Default to 1024 if empty
+                              if (setMaxTokens) setMaxTokens(1024); // Default to 1024 if empty
                             } else {
                               const value = parseInt(inputValue);
-                              if (!isNaN(value)) {
+                              if (!isNaN(value) && setMaxTokens) {
                                 // Ensure value is at least 1
                                 setMaxTokens(Math.max(1, value));
                               }
@@ -719,7 +725,7 @@ ${generatedOutput}`
                           }}
                           onBlur={() => {
                             // Ensure we have a valid value when user leaves the field
-                            if (maxTokens < 1) {
+                            if (setMaxTokens && (!maxTokens || maxTokens < 1)) {
                               setMaxTokens(1);
                             }
                           }}
