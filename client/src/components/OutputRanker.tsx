@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
 import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown } from 'lucide-react';
+import { getRankerSettings, saveRankerSettings, SavedTemplate } from '@/utils/settings-storage';
+import TemplateManager from '@/components/ui/template-manager';
 import { useModelConfig } from '@/hooks/use-model-config';
 import { useAuth } from '@/hooks/use-auth';
 import { apiService } from '@/services/api-service';
@@ -87,7 +89,7 @@ const OutputRanker: FC<OutputRankerProps> = () => {
     setCustomModel 
   } = useModelConfig();
 
-  // Local UI state only
+  // Local UI state
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
@@ -106,6 +108,66 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   
   // Track whether we're using local browser models
   const [useLocalModels, setUseLocalModels] = useState(false);
+  
+  // Save settings whenever they change
+  const saveSettings = () => {
+    try {
+      saveRankerSettings({
+        numberOfVariants,
+        useAutoStop,
+        autoStopThreshold,
+        threadCount,
+        temperature,
+        maxTokens,
+        useLocalModels,
+        lastUsedModel: selectedModel
+      });
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    }
+  };
+  
+  // Import settings from storage on component mount
+  useEffect(() => {
+    try {
+      const { 
+        numberOfVariants: storedVariants,
+        useAutoStop: storedUseAutoStop,
+        autoStopThreshold: storedThreshold,
+        threadCount: storedThreadCount,
+        temperature: storedTemperature,
+        maxTokens: storedMaxTokens,
+        useLocalModels: storedUseLocalModels,
+        lastUsedModel: storedModel
+      } = getRankerSettings();
+      
+      setNumberOfVariants(storedVariants);
+      setUseAutoStop(storedUseAutoStop);
+      setAutoStopThreshold(storedThreshold);
+      setThreadCount(storedThreadCount);
+      setUseLocalModels(storedUseLocalModels);
+      
+      // Only set these if the hooks are available
+      if (setTemperature && storedTemperature) {
+        setTemperature(storedTemperature);
+      }
+      
+      if (setMaxTokens && storedMaxTokens) {
+        setMaxTokens(storedMaxTokens);
+      }
+      
+      if (setSelectedModel && storedModel && !useLocalModels) {
+        setSelectedModel(storedModel);
+      }
+    } catch (error) {
+      console.error('Failed to load saved settings:', error);
+    }
+  }, []);
+  
+  // Save settings whenever key settings change
+  useEffect(() => {
+    saveSettings();
+  }, [numberOfVariants, useAutoStop, autoStopThreshold, threadCount, temperature, maxTokens, useLocalModels, selectedModel]);
   
   // No longer need to sync state since we'll use the props directly
 
