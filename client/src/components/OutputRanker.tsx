@@ -557,7 +557,7 @@ ${generatedOutput}`
                             onChange={(e) => setUseAutoStop(e.target.checked)}
                             className="h-4 w-4 text-blue-600 rounded mr-2"
                           />
-                          <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
+                          <label htmlFor="use-auto-stop" className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
                             Auto-stop Generation
                           </label>
                         </div>
@@ -597,14 +597,14 @@ ${generatedOutput}`
                                 setAutoStopThreshold(100);
                               }
                             }}
-                            className="w-full"
+                            className="w-full eva-input text-[var(--eva-green)]"
                             disabled={!useAutoStop}
                           />
                         </div>
                       </div>
                       
                       <div className="border rounded-md p-3">
-                        <label htmlFor="thread-count" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="thread-count" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">
                           Thread Count
                         </label>
                         <Input
@@ -630,7 +630,7 @@ ${generatedOutput}`
                               setThreadCount(1);
                             }
                           }}
-                          className="w-full"
+                          className="w-full eva-input text-[var(--eva-green)]"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Number of parallel requests to make
@@ -640,8 +640,8 @@ ${generatedOutput}`
                     
                     {/* Column 3: Generation Parameters */}
                     <div className="space-y-4">
-                      <div className="border rounded-md p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
+                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Temperature
                         </label>
                         <Input
@@ -671,7 +671,7 @@ ${generatedOutput}`
                               setTemperature(2);
                             }
                           }}
-                          className="w-full"
+                          className="w-full eva-input text-[var(--eva-green)]"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Controls randomness (0-2)
@@ -679,7 +679,7 @@ ${generatedOutput}`
                       </div>
                       
                       <div className="border rounded-md p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Max Tokens
                         </label>
                         <Input
@@ -705,7 +705,7 @@ ${generatedOutput}`
                               setMaxTokens(1);
                             }
                           }}
-                          className="w-full"
+                          className="w-full eva-input text-[var(--eva-green)]"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Maximum completion length
