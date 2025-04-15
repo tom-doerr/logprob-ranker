@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Link } from 'wouter';
+import { MessageSquare } from 'lucide-react';
 
 const Header: FC = () => {
   return (
@@ -10,9 +11,9 @@ const Header: FC = () => {
             <Link to="/">
               <div className="flex items-center space-x-2">
                 <div className="h-8 w-8 bg-[#4F46E5] rounded-md flex items-center justify-center">
-                  <i className="fas fa-link text-white"></i>
+                  <MessageSquare size={18} className="text-white" />
                 </div>
-                <span className="text-white font-semibold text-xl">OpenRouter Auth</span>
+                <span className="text-white font-semibold text-xl">OpenRouter Chat</span>
               </div>
             </Link>
           </div>
@@ -21,8 +22,6 @@ const Header: FC = () => {
           <div className="flex items-center space-x-4">
             <a href="https://openrouter.ai/docs" target="_blank" rel="noopener noreferrer" className="text-neutral-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Documentation</a>
             <a href="https://openrouter.ai/api" target="_blank" rel="noopener noreferrer" className="text-neutral-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">API</a>
-            <a href="https://openrouter.ai/examples" target="_blank" rel="noopener noreferrer" className="text-neutral-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Examples</a>
-            <a href="#demo" className="bg-[#4F46E5] hover:bg-[#6366F1] text-white px-3 py-2 rounded-md text-sm font-medium">Get Started</a>
           </div>
         </div>
       </div>
