@@ -82,27 +82,18 @@ const DemoSection: FC = () => {
     const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
     
     toast({
-      title: "Demo Mode Activating",
-      description: "We'll attempt real OpenRouter authentication and also continue with a simulated flow"
+      title: "Redirecting to OpenRouter",
+      description: "You will be redirected to OpenRouter for authentication"
     });
     
-    // Attempt to open OpenRouter auth in a new tab
-    try {
-      window.open(authUrl, '_blank');
-    } catch (e) {
-      console.error("Failed to open auth URL:", e);
-    }
+    // Open in a new tab to avoid issues with redirects in the Replit environment
+    window.open(authUrl, '_blank');
     
-    // For the demo, we'll proceed with a simulated auth code regardless of OpenRouter result
+    // For demo purposes, we'll also set a simulated code after a delay
     setTimeout(() => {
       setAuthCode(`auth_${Math.random().toString(36).substring(2, 15)}`);
       setCurrentStep(DemoStep.Authenticate);
-      
-      toast({
-        title: "Demo Code Generated",
-        description: "Continuing with simulated authentication code for demonstration",
-      });
-    }, 2000);
+    }, 1500);
   };
 
   const handleExchangeCode = async () => {
@@ -369,7 +360,7 @@ const DemoSection: FC = () => {
               
               <div className="bg-neutral-50 p-3 rounded-md mb-4">
                 <div className="flex flex-col text-sm">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between">
                     <span className="text-neutral-700 font-medium">Authorization Code:</span>
                     <button 
                       onClick={() => copyToClipboard(authCode, 'Authorization code')}
@@ -378,34 +369,23 @@ const DemoSection: FC = () => {
                       <i className="far fa-copy"></i> Copy
                     </button>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={authCode}
-                      onChange={(e) => setAuthCode(e.target.value)}
-                      className="flex-1 p-2 text-sm font-mono border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
-                      placeholder="Enter authorization code here"
-                    />
-                    {authCode.startsWith('auth_') && (
-                      <span className="text-xs text-amber-600">Demo code</span>
-                    )}
-                  </div>
+                  <code className="text-neutral-500 font-mono text-xs break-all my-1">{authCode}</code>
                 </div>
               </div>
               
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
                 <p className="text-sm text-amber-800">
                   <i className="fas fa-info-circle mr-2"></i>
-                  <strong>Using a real code:</strong> If you have a real authorization code from OpenRouter,
-                  you can paste it in the field above to replace the simulated one. This will allow you to
-                  make real API calls using your OpenRouter account.
+                  <strong>Demo mode:</strong> When using the "Connect to OpenRouter" button, we'll try to open 
+                  a new tab with a localhost callback URL (http://localhost:3000/callback). 
+                  For this demo, we're also generating a simulated auth code so you can continue even if 
+                  the real authentication fails.
                 </p>
               </div>
               
               <button 
                 onClick={handleExchangeCode}
-                disabled={isExchanging || !authCode}
+                disabled={isExchanging}
                 className="bg-[#4F46E5] text-white py-2 px-4 rounded-md hover:bg-[#6366F1] flex items-center justify-center disabled:opacity-70"
               >
                 {isExchanging ? (
@@ -439,35 +419,10 @@ const DemoSection: FC = () => {
                     </button>
                   </div>
                   <code className="text-neutral-500 font-mono text-xs break-all my-1">
-                    {apiKey || 'No API key available'}
+                    {apiKey ? '•••••••••••••••••••••••••••••••' : 'No API key available'}
                   </code>
-                  {apiKey && apiKey.includes('demo') && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      <i className="fas fa-info-circle mr-1"></i> 
-                      This is a simulated demo API key for testing purposes
-                    </p>
-                  )}
                 </div>
               </div>
-              
-              {apiKey && apiKey.includes('demo') ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-                  <p className="text-sm text-amber-800">
-                    <i className="fas fa-info-circle mr-2"></i>
-                    <strong>Demo mode:</strong> You're using a simulated API key. In a production application
-                    with proper OpenRouter integration using a real authorization code, you would receive a real
-                    API key that could be used to access OpenRouter services.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-                  <p className="text-sm text-green-800">
-                    <i className="fas fa-check-circle mr-2"></i>
-                    <strong>Real API key:</strong> You're using a real OpenRouter API key. You can now make
-                    actual API calls to OpenRouter services and receive real responses.
-                  </p>
-                </div>
-              )}
               
               <div className="flex flex-col sm:flex-row gap-2">
                 <button 
