@@ -18,7 +18,8 @@ import { getApiKey, saveApiKey, clearApiKey } from '../utils/pkce';
 import { createChatCompletion } from '../lib/openrouter';
 import { generateAuthUrl, exchangeCodeForToken } from '../lib/openrouter';
 import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } from '../utils/pkce';
-import { Loader2, Send, Key, LogOut, Settings, Sparkles } from 'lucide-react';
+import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
+import BrowserLLM from './BrowserLLM';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
