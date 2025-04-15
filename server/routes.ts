@@ -40,10 +40,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         if (!response.ok) {
-          const errorData = await response.json();
-          return res.status(response.status).json({ 
-            message: errorData.error || `OpenRouter API error: ${response.status}` 
-          });
+          try {
+            const errorData = await response.json();
+            const errorMessage = typeof errorData === 'object' && errorData && 'error' in errorData
+              ? String(errorData.error)
+              : `OpenRouter API error: ${response.status}`;
+              
+            return res.status(response.status).json({ message: errorMessage });
+          } catch (jsonError) {
+            return res.status(response.status).json({ 
+              message: `OpenRouter API error: ${response.status}` 
+            });
+          }
         }
 
         const data = await response.json();
