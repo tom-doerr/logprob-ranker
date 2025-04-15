@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const data = await response.json();
         return res.json(data);
-      } catch (apiError) {
+      } catch (apiError: unknown) {
         console.warn("Using fallback simulation due to API error:", apiError);
         
         // Fallback to simulation for demo purposes
