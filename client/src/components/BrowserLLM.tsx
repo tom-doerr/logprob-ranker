@@ -2,7 +2,7 @@ import { FC, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { ChatCompletionRequest, ChatMessage } from '../lib/openrouter';
 import { ArrowUp, Cpu, Loader2 } from 'lucide-react';
-import * as webllm from '@mlc-ai/web-llm';
+import { ChatModule, InitProgressReport } from '@mlc-ai/web-llm';
 
 interface BrowserLLMProps {
   onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
@@ -46,7 +46,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   isUsingBrowserModel
 }) => {
   const [selectedModel, setSelectedModel] = useState<string>(LOCAL_MODELS[0].id);
-  const [chat, setChat] = useState<webllm.ChatModule | null>(null);
+  const [chat, setChat] = useState<ChatModule | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
