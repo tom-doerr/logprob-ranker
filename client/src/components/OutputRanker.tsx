@@ -719,20 +719,22 @@ ${generatedOutput}`
                       <Button 
                         onClick={generateOutputs} 
                         disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
-                        className="w-full mt-6 eva-button text-[var(--eva-orange)] font-bold py-3"
+                        className="w-full mt-6 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
                       >
                         {isGenerating ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {useAutoStop 
-                              ? `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}] AUTO-CEASE AFTER ${autoStopThreshold}` 
-                              : `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}/${numberOfVariants}]`
-                            }
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin flex-shrink-0" />
+                            <span className="truncate mx-1">
+                              {useAutoStop 
+                                ? `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}] AUTO-CEASE AFTER ${autoStopThreshold}` 
+                                : `ANGEL ANALYSIS IN PROGRESS [${rankedOutputs.length}/${numberOfVariants}]`
+                              }
+                            </span>
                           </>
                         ) : (
                           <>
-                            <Flame className="mr-2 h-4 w-4" />
-                            INITIATE EVANGELION
+                            <Flame className="mr-2 h-4 w-4 flex-shrink-0" />
+                            <span>INITIATE EVANGELION</span>
                           </>
                         )}
                       </Button>
