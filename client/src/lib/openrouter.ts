@@ -1,19 +1,19 @@
 import { apiRequest } from './queryClient';
 import { getApiKey } from '../utils/pkce';
 
-interface ChatMessage {
+export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
-interface ChatCompletionRequest {
+export interface ChatCompletionRequest {
   model: string;
   messages: ChatMessage[];
   max_tokens?: number;
   temperature?: number;
 }
 
-interface ChatCompletionResponse {
+export interface ChatCompletionResponse {
   id: string;
   object: string;
   created: number;

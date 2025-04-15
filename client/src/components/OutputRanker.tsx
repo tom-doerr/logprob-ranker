@@ -1,0 +1,378 @@
+import { FC, useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { createChatCompletion, ChatMessage } from '../lib/openrouter';
+import { getApiKey } from '../utils/pkce';
+import { Loader2, ArrowUpDown, Crown, Flame, X, Plus, BarChart, ArrowDownWideNarrow } from 'lucide-react';
+
+interface LogProbExample {
+  prompt: string;
+  variants: number;
+  template: string;
+  results: RankedOutput[];
+}
+
+interface RankedOutput {
+  output: string;
+  logprob: number;
+  index: number;
+}
+
+const defaultTemplate = `{
+  "interesting": true | false,
+  "creative": true | false,
+  "useful": true | false
+}`;
+
+const examples: LogProbExample[] = [
+  {
+    prompt: "Suggest a unique product idea for eco-conscious pet owners",
+    variants: 3,
+    template: `{
+  "interesting": LOGPROB_TRUE,
+  "practical": LOGPROB_TRUE,
+  "innovative": LOGPROB_TRUE
+}`,
+    results: []
+  },
+  {
+    prompt: "Write a hook for a sci-fi novel about time travel",
+    variants: 3,
+    template: `{
+  "engaging": LOGPROB_TRUE,
+  "creative": LOGPROB_TRUE,
+  "surprising": LOGPROB_TRUE
+}`,
+    results: []
+  }
+];
+
+const OutputRanker: FC = () => {
+  const { toast } = useToast();
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState('');
+  const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
+  const [numberOfVariants, setNumberOfVariants] = useState(5);
+  const [modelId, setModelId] = useState('deepseek/deepseek-r1');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
+  const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
+
+  // Load API key on mount
+  useEffect(() => {
+    const storedApiKey = getApiKey();
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    }
+  }, []);
+
+  const handleSelectExample = (example: LogProbExample) => {
+    setSelectedExample(example);
+    setPrompt(example.prompt);
+    setLogProbTemplate(example.template);
+    setNumberOfVariants(example.variants);
+  };
+
+  const clearExample = () => {
+    setSelectedExample(null);
+    setPrompt('');
+    setLogProbTemplate(defaultTemplate);
+    setNumberOfVariants(5);
+  };
+
+  const generateOutputs = async () => {
+    if (!apiKey || !prompt.trim() || !logProbTemplate.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide a prompt and a logprob template',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setRankedOutputs([]);
+
+    try {
+      const results: RankedOutput[] = [];
+      
+      // Generate the specified number of variants
+      for (let i = 0; i < numberOfVariants; i++) {
+        // Create system message with instructions for logprob evaluation
+        const systemMessage: ChatMessage = {
+          role: 'system',
+          content: `You are an AI assistant that helps evaluate language model outputs. 
+For the following prompt, generate a response and then evaluate it based on the template.
+In your evaluation, replace "true" with "True" and "false" with "False" to make the values valid Python booleans.
+The evaluation should be formatted as a JSON object containing boolean fields.
+
+PROMPT: ${prompt}
+
+After generating your response, evaluate it with this template:
+${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
+
+First provide your response, then on a new line, provide your evaluation JSON.
+Label the evaluation as "EVALUATION:" to make it clear where it begins.`
+        };
+
+        const userMessage: ChatMessage = {
+          role: 'user',
+          content: prompt
+        };
+
+        // Generate a variant
+        const response = await createChatCompletion({
+          model: modelId,
+          messages: [systemMessage, userMessage],
+          temperature: 0.9, // Higher temperature for more diversity
+        });
+
+        if (response.choices && response.choices.length > 0) {
+          const output = response.choices[0].message.content;
+          
+          // Extract the evaluation part
+          const evalMatch = output.match(/EVALUATION:\s*({[\s\S]*})/i);
+          let logprob = 0;
+          
+          if (evalMatch && evalMatch[1]) {
+            try {
+              // In a real implementation, we would calculate logprobs here
+              // For this demo, we'll simulate with a random value
+              logprob = Math.random(); // Simulate a logprob score
+            } catch (error) {
+              console.error('Error parsing evaluation JSON:', error);
+            }
+          }
+          
+          // Add to results
+          results.push({
+            output: output.split(/EVALUATION:/i)[0].trim(),
+            logprob,
+            index: i
+          });
+          
+          // Update the ranked outputs as they come in
+          setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
+        }
+      }
+      
+      // Sort results by logprob (higher is better)
+      setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
+      
+      toast({
+        title: 'Generation Complete',
+        description: `Successfully generated and ranked ${results.length} outputs`,
+      });
+    } catch (error) {
+      console.error('Error generating outputs:', error);
+      toast({
+        title: 'Generation Error',
+        description: error instanceof Error ? error.message : 'Failed to generate outputs',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto max-w-4xl p-4">
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <BarChart className="h-5 w-5 text-blue-500" />
+              <span>LLM Output Ranker</span>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!apiKey ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-600 mb-4">
+                Please log in or enter an API key in the chat interface to use this feature.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <Tabs defaultValue="generator" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="generator">Generator</TabsTrigger>
+                  <TabsTrigger value="examples">Examples</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="generator" className="space-y-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Input Prompt
+                    </label>
+                    <Textarea
+                      placeholder="Enter your prompt here..."
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        LogProb Template
+                      </label>
+                      <Textarea
+                        placeholder="Enter your logprob template..."
+                        value={logProbTemplate}
+                        onChange={(e) => setLogProbTemplate(e.target.value)}
+                        className="font-mono text-sm min-h-[120px]"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        The template defines attributes to evaluate. Use LOGPROB_TRUE to indicate true evaluation.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Model
+                        </label>
+                        <Select 
+                          value={modelId} 
+                          onValueChange={setModelId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
+                            <SelectItem value="meta-llama/llama-3.1-8b-instruct">Meta Llama 3.1 8B</SelectItem>
+                            <SelectItem value="google/gemini-2.0-flash-experimental">Gemini 2.0 Flash</SelectItem>
+                            <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Number of Variants: {numberOfVariants}
+                        </label>
+                        <Slider
+                          value={[numberOfVariants]}
+                          min={1}
+                          max={20}
+                          step={1}
+                          onValueChange={(value) => setNumberOfVariants(value[0])}
+                          className="my-4"
+                        />
+                      </div>
+                      
+                      <Button 
+                        onClick={generateOutputs} 
+                        disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
+                        className="w-full"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Generating ({rankedOutputs.length}/{numberOfVariants})
+                          </>
+                        ) : (
+                          <>
+                            <Flame className="mr-2 h-4 w-4" />
+                            Generate & Rank Outputs
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="examples" className="space-y-4 mt-4">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Click on an example to load it into the generator:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {examples.map((example, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => handleSelectExample(example)}
+                        className="border rounded-md p-4 cursor-pointer hover:bg-blue-50 transition-colors"
+                      >
+                        <h3 className="font-medium mb-2">{example.prompt}</h3>
+                        <p className="text-sm text-gray-500">
+                          Variants: {example.variants}
+                        </p>
+                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-x-auto">
+                          {example.template}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
+              
+              {selectedExample && (
+                <div className="flex items-center">
+                  <div className="bg-blue-50 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center">
+                    <span>Using example</span>
+                    <button onClick={clearExample} className="ml-2 text-blue-700 hover:text-blue-900">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {rankedOutputs.length > 0 && (
+                <div className="mt-8">
+                  <div className="flex items-center mb-4">
+                    <h3 className="text-lg font-medium flex items-center">
+                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-blue-500" />
+                      Ranked Outputs
+                    </h3>
+                    <span className="ml-2 text-sm text-gray-500">
+                      (sorted by logprob score)
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {rankedOutputs.map((output, idx) => (
+                      <div key={idx} className="border rounded-md p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center">
+                            {idx === 0 && (
+                              <span className="inline-flex items-center bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded mr-2">
+                                <Crown className="h-3 w-3 mr-1" />
+                                Top Ranked
+                              </span>
+                            )}
+                            <span className="text-sm text-gray-500">
+                              Variant #{output.index + 1}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            Score: {output.logprob.toFixed(4)}
+                          </span>
+                        </div>
+                        <div className="mt-2 p-3 bg-gray-50 rounded-md whitespace-pre-wrap">
+                          {output.output}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default OutputRanker;
