@@ -119,13 +119,13 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [manualApiKey, setManualApiKey] = useState('');
-  const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.0-flash-001');
-  const [customModel, setCustomModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>(externalSelectedModel || 'google/gemini-2.0-flash-001');
+  const [customModel, setCustomModel] = useState<string>(externalCustomModel || '');
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
-  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
-  const [temperature, setTemperature] = useState(0.7);
-  const [topP, setTopP] = useState(0.9);
-  const [maxTokens, setMaxTokens] = useState(1000);
+  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(externalIsUsingBrowserModel ?? false);
+  const [temperature, setTemperature] = useState(externalTemperature || 0.7);
+  const [topP, setTopP] = useState(externalTopP || 0.9);
+  const [maxTokens, setMaxTokens] = useState(externalMaxTokens || 1000);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load API key on mount
@@ -140,6 +140,35 @@ const ChatInterface: FC<ChatInterfaceProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Update local state when external props change
+  useEffect(() => {
+    if (externalIsUsingBrowserModel !== undefined) {
+      setIsUsingBrowserModel(externalIsUsingBrowserModel);
+    }
+    if (externalSelectedModel) {
+      setSelectedModel(externalSelectedModel);
+    }
+    if (externalCustomModel) {
+      setCustomModel(externalCustomModel);
+    }
+    if (externalTemperature) {
+      setTemperature(externalTemperature);
+    }
+    if (externalTopP) {
+      setTopP(externalTopP);
+    }
+    if (externalMaxTokens) {
+      setMaxTokens(externalMaxTokens);
+    }
+  }, [
+    externalIsUsingBrowserModel,
+    externalSelectedModel,
+    externalCustomModel,
+    externalTemperature,
+    externalTopP,
+    externalMaxTokens
+  ]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || (!apiKey && !isUsingBrowserModel)) return;
