@@ -121,7 +121,12 @@ const ChatInterface: FC = () => {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!input.trim() || !apiKey) return;
+    if (!input.trim() || (!apiKey && !isUsingBrowserModel)) return;
+    
+    // If using browser model, let BrowserLLM component handle the message
+    if (isUsingBrowserModel) {
+      return;
+    }
     
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -149,6 +154,20 @@ const ChatInterface: FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Handle messages from BrowserLLM
+  const handleBrowserModelMessageSent = (message: Message) => {
+    setMessages(prev => [...prev, message]);
+  };
+  
+  const handleBrowserModelResponseReceived = (message: Message) => {
+    setMessages(prev => [...prev, message]);
+  };
+  
+  // Toggle between browser model and API model
+  const handleSelectBrowserModel = (newValue: boolean) => {
+    setIsUsingBrowserModel(newValue);
   };
 
   const handleApiKeySubmit = () => {
@@ -378,27 +397,36 @@ const ChatInterface: FC = () => {
                 <div ref={messagesEndRef} />
               </div>
               
-              <div className="flex space-x-2">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="ENTER COMMUNICATION DATA"
-                  className="flex-grow eva-input text-[var(--eva-green)] font-mono"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
+              {isUsingBrowserModel ? (
+                <BrowserLLM 
+                  onSelectBrowserModel={handleSelectBrowserModel}
+                  onMessageSent={handleBrowserModelMessageSent}
+                  onResponseReceived={handleBrowserModelResponseReceived}
+                  isUsingBrowserModel={isUsingBrowserModel}
                 />
-                <Button 
-                  onClick={handleSendMessage} 
-                  disabled={isLoading || !input.trim()}
-                  className="eva-button text-[var(--eva-orange)]"
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
+              ) : (
+                <div className="flex space-x-2">
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="ENTER COMMUNICATION DATA"
+                    className="flex-grow eva-input text-[var(--eva-green)] font-mono"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={isLoading || !input.trim()}
+                    className="eva-button text-[var(--eva-orange)]"
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-6 py-4">

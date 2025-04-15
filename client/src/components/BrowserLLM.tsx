@@ -2,7 +2,7 @@ import { FC, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { ChatCompletionRequest, ChatMessage } from '../lib/openrouter';
 import { ArrowUp, Cpu, Loader2 } from 'lucide-react';
-import { Chat, CreateMLCEngine, InitProgressReport } from '@mlc-ai/web-llm';
+import * as webllm from '@mlc-ai/web-llm';
 
 interface BrowserLLMProps {
   onSelectBrowserModel: (isUsingBrowserModel: boolean) => void;
@@ -46,7 +46,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   isUsingBrowserModel
 }) => {
   const [selectedModel, setSelectedModel] = useState<string>(LOCAL_MODELS[0].id);
-  const [chat, setChat] = useState<Chat | null>(null);
+  const [engine, setEngine] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -54,7 +54,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   const [isInitializing, setIsInitializing] = useState(false);
   const [input, setInput] = useState('');
 
-  // Initialize the WebLLM chat module
+  // Initialize the WebLLM 
   const initializeChat = useCallback(async (modelId: string) => {
     try {
       setIsInitializing(true);
@@ -62,19 +62,18 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       setLoadingMessage('Initializing WebLLM...');
       setLoadingProgress(0);
 
-      // Create engine and register progress callback
-      const engine = await CreateMLCEngine(modelId, {}, {
-        callback: (report: InitProgressReport) => {
-          setLoadingMessage(report.text);
-          if (report.progress !== undefined) {
-            setLoadingProgress(report.progress * 100);
-          }
+      // Create ML engine
+      const mlengine = await webllm.CreateMLCEngine(modelId);
+      
+      // Set progress callback
+      mlengine.setInitProgressCallback((report: any) => {
+        setLoadingMessage(report.text);
+        if (report.progress !== undefined) {
+          setLoadingProgress(report.progress * 100);
         }
       });
       
-      // Create a chat instance
-      const chatInstance = new Chat(engine);
-      setChat(chatInstance);
+      setEngine(mlengine);
       setIsModelReady(true);
       console.log('WebLLM initialized successfully');
     } catch (error) {
@@ -100,7 +99,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
 
   // Send a message using the browser model
   const handleSendMessage = async () => {
-    if (!chat || !isModelReady || !input.trim()) return;
+    if (!engine || !isModelReady || !input.trim()) return;
     
     const userMessage: ChatMessage = { role: 'user', content: input };
     onMessageSent(userMessage);
@@ -109,16 +108,19 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     setIsLoading(true);
     
     try {
-      // Generate a response using chat completions API
-      const response = await chat.completions.create({
+      // Generate a response using completions API
+      const response = await engine.chat.completions.create({
         messages: [{ role: 'user', content: input }],
         temperature: 0.7,
         max_tokens: 1024
       });
       
+      // The content should always be a string, but add the "as string" to satisfy TypeScript
+      const content = response.choices[0].message.content || "";
+      
       const assistantMessage: ChatMessage = { 
         role: 'assistant', 
-        content: response.choices[0].message.content 
+        content: content 
       };
       
       onResponseReceived(assistantMessage);
@@ -126,7 +128,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       console.error('Error generating response:', error);
       onResponseReceived({ 
         role: 'assistant', 
-        content: `Error: Unable to generate a response. ${error instanceof Error ? error.message : String(error)}` as string
+        content: `Error: Unable to generate a response. ${error instanceof Error ? error.message : String(error)}` 
       });
     } finally {
       setIsLoading(false);
@@ -151,7 +153,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     return () => {
       // No explicit cleanup needed for now
     };
-  }, [chat]);
+  }, [engine]);
 
   return (
     <div className="w-full p-4 border border-[var(--eva-orange)] rounded-md bg-[var(--eva-black)] text-[var(--eva-text)]">
