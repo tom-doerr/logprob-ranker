@@ -1,8 +1,8 @@
-import React from 'react';
-import OutputRanker from '@/components/OutputRanker';
+import { FC } from 'react';
 import MainLayout from '@/components/MainLayout';
+import OutputRanker from '@/components/OutputRanker';
 
-const RankerPage: React.FC = () => {
+const RankerPage: FC = () => {
   return (
     <MainLayout>
       <OutputRanker />

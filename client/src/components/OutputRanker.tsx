@@ -540,9 +540,21 @@ ${generatedOutput}`
                 
                 <TabsContent value="generator" className="space-y-4 mt-4">
                   <div>
-                    <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
-                      Input Prompt
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
+                        Input Prompt
+                      </label>
+                      <div className="flex space-x-2">
+                        <TemplateManager
+                          currentPrompt={prompt}
+                          currentTemplate={logProbTemplate}
+                          onSelectTemplate={(template: SavedTemplate) => {
+                            setPrompt(template.prompt);
+                            setLogProbTemplate(template.template);
+                          }}
+                        />
+                      </div>
+                    </div>
                     <Textarea
                       placeholder="Enter your prompt here..."
                       value={prompt}

@@ -28,7 +28,6 @@ function App() {
       <AuthProvider>
         <ModelConfigProvider>
           <div className="flex flex-col min-h-screen bg-black">
-            <AppHeader />
             <main className="flex-grow">
               <Router />
             </main>

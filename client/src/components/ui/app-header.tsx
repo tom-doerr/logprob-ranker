@@ -1,54 +1,105 @@
 import React from 'react';
-import { useLocation, Link } from 'wouter';
-import { BrainCog, BarChart, Settings, User } from 'lucide-react';
+import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
+import { MessageSquare, BarChart, Menu, Github, Settings } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 
 export const AppHeader: React.FC = () => {
   const [location] = useLocation();
-  const { apiKey, isAuthenticated } = useAuth();
-  
-  const navItems = [
-    { path: '/', label: 'Chat Interface', icon: <BrainCog className="h-4 w-4 mr-2" /> },
-    { path: '/ranker', label: 'Output Ranker', icon: <BarChart className="h-4 w-4 mr-2" /> }
-  ];
+  const { isAuthenticated, apiKey, logout } = useAuth();
 
   return (
-    <header className="border-b border-[var(--eva-orange)] bg-black/30 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto py-2 px-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-1">
-            <div className="text-[var(--eva-orange)] eva-title text-lg mr-6 flex items-center">
-              <span className="nerv-blink">NERV</span>
-              <span className="ml-2 text-sm text-[var(--eva-text)]">MAGI SYSTEM</span>
+    <header className="sticky top-0 z-50 w-full bg-black/70 backdrop-blur-md border-b border-[var(--eva-orange)] shadow-lg">
+      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
+        <div className="flex items-center">
+          <Link href="/">
+            <a className="flex items-center space-x-2 text-[var(--eva-orange)]">
+              <div className="relative">
+                <div className="eva-title text-xl font-bold tracking-wider">NERV</div>
+                <div className="absolute top-0 left-0 right-0 bottom-0 bg-[var(--eva-orange)] mix-blend-overlay opacity-30 animate-pulse"></div>
+              </div>
+              <span className="hidden sm:inline-block text-sm tracking-widest font-light text-[var(--eva-text)]">MAGI SYSTEM</span>
+            </a>
+          </Link>
+        </div>
+
+        <nav className="hidden md:flex items-center space-x-1">
+          <Link href="/">
+            <a className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+              location === '/' 
+              ? 'bg-[var(--eva-orange)] text-black' 
+              : 'text-[var(--eva-text)] hover:bg-black/40 hover:text-[var(--eva-orange)]'
+            }`}>
+              <MessageSquare className="h-4 w-4" />
+              <span>Chat Interface</span>
+            </a>
+          </Link>
+          <Link href="/ranker">
+            <a className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 ${
+              location === '/ranker' 
+              ? 'bg-[var(--eva-orange)] text-black' 
+              : 'text-[var(--eva-text)] hover:bg-black/40 hover:text-[var(--eva-orange)]'
+            }`}>
+              <BarChart className="h-4 w-4" />
+              <span>Output Ranker</span>
+            </a>
+          </Link>
+        </nav>
+
+        <div className="flex items-center space-x-3">
+          {isAuthenticated && (
+            <div className="text-xs text-[var(--eva-green)] px-2 py-1 bg-[var(--eva-green-bg)] rounded-md hidden sm:block">
+              API Key Active
             </div>
-            
-            <nav className="flex space-x-1">
-              {navItems.map(item => (
-                <Link key={item.path} href={item.path}>
-                  <a className={`flex items-center px-3 py-1.5 text-sm rounded-md ${location === item.path 
-                    ? 'bg-[var(--eva-orange)] text-black font-medium' 
-                    : 'text-[var(--eva-text)] hover:bg-black/20'}`}>
-                    {item.icon}
-                    {item.label}
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="border-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 bg-black/95 border-[var(--eva-orange)]">
+              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black">
+                <Link href="/">
+                  <a className="flex items-center w-full">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>Chat Interface</span>
                   </a>
                 </Link>
-              ))}
-            </nav>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <span className={`px-2 py-1 rounded-md text-xs ${isAuthenticated 
-              ? 'bg-[var(--eva-green-bg)] text-[var(--eva-green)]' 
-              : 'bg-[var(--eva-red-bg)] text-[var(--eva-red)]'}`}>
-              {isAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}
-            </span>
-            
-            <Button variant="outline" size="sm" className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)]">
-              <User className="h-4 w-4 mr-1" />
-              Account
-            </Button>
-          </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black">
+                <Link href="/ranker">
+                  <a className="flex items-center w-full">
+                    <BarChart className="mr-2 h-4 w-4" />
+                    <span>Output Ranker</span>
+                  </a>
+                </Link>
+              </DropdownMenuItem>
+              
+              {isAuthenticated && (
+                <DropdownMenuItem 
+                  className="text-[var(--eva-red)] focus:bg-[var(--eva-red)] focus:text-white" 
+                  onClick={logout}
+                >
+                  <div className="flex items-center w-full">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Logout / Clear API Key</span>
+                  </div>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

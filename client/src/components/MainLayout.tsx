@@ -9,6 +9,7 @@ import NervContainer from './ui/nerv-container';
 import AuthModal from './ui/auth-modal';
 import ModelSelection from './ModelSelection';
 import BrowserModels from './BrowserModels';
+import AppHeader from './ui/app-header';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -75,51 +76,54 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <NervContainer className="max-w-6xl">
-      {/* Authentication Modal */}
-      {showAuthInfo && <AuthModal onClose={closeAuthInfo} onProceed={proceedToAuth} />}
-      
-      {/* Unified Model Configuration */}
-      {!showAuthInfo && <ModelSelection />}
-      
-      {/* Browser Models section - only visible when local mode is active */}
-      {!showAuthInfo && isUsingBrowserModel && <BrowserModels />}
+    <>
+      <AppHeader />
+      <NervContainer className="max-w-6xl">
+        {/* Authentication Modal */}
+        {showAuthInfo && <AuthModal onClose={closeAuthInfo} onProceed={proceedToAuth} />}
+        
+        {/* Unified Model Configuration */}
+        {!showAuthInfo && <ModelSelection />}
+        
+        {/* Browser Models section - only visible when local mode is active */}
+        {!showAuthInfo && isUsingBrowserModel && <BrowserModels />}
 
-      {/* If children are provided, render them, otherwise use the tabs system */}
-      {children ? (
-        <div className="mt-8">{children}</div>
-      ) : (
-        // Main Tabs - API mode shows both chat and output ranker, Browser mode only shows browser interface
-        !showAuthInfo && !isUsingBrowserModel && (
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
-            <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
-              <TabsTrigger 
-                value="output-ranker" 
-                className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
-              >
-                <BarChart2 className="h-4 w-4 mr-2" />
-                NERV SYSTEM-A
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chat" 
-                className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                NERV SYSTEM-B
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="output-ranker">
-              <OutputRanker />
-            </TabsContent>
-            
-            <TabsContent value="chat">
-              <ChatInterface />
-            </TabsContent>
-          </Tabs>
-        )
-      )}
-    </NervContainer>
+        {/* If children are provided, render them, otherwise use the tabs system */}
+        {children ? (
+          <div className="mt-8">{children}</div>
+        ) : (
+          // Main Tabs - API mode shows both chat and output ranker, Browser mode only shows browser interface
+          !showAuthInfo && !isUsingBrowserModel && (
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
+              <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
+                <TabsTrigger 
+                  value="output-ranker" 
+                  className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
+                >
+                  <BarChart2 className="h-4 w-4 mr-2" />
+                  NERV SYSTEM-A
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="chat" 
+                  className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  NERV SYSTEM-B
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="output-ranker">
+                <OutputRanker />
+              </TabsContent>
+              
+              <TabsContent value="chat">
+                <ChatInterface />
+              </TabsContent>
+            </Tabs>
+          )
+        )}
+      </NervContainer>
+    </>
   );
 };
 
