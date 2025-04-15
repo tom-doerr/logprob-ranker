@@ -432,16 +432,23 @@ ${generatedOutput}`
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Number of Variants: {numberOfVariants}
+                          Number of Variants
                         </label>
-                        <Slider
-                          value={[numberOfVariants]}
+                        <Input
+                          type="number"
                           min={1}
-                          max={20}
-                          step={1}
-                          onValueChange={(value) => setNumberOfVariants(value[0])}
-                          className="my-4"
+                          value={numberOfVariants}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              setNumberOfVariants(value);
+                            }
+                          }}
+                          className="w-full"
                         />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Enter any number of variants to generate (higher values may take longer)
+                        </p>
                       </div>
                       
                       <Button 
