@@ -471,9 +471,21 @@ ${generatedOutput}`
                             min={1}
                             value={numberOfVariants}
                             onChange={(e) => {
-                              const value = parseInt(e.target.value);
-                              if (!isNaN(value) && value > 0) {
-                                setNumberOfVariants(value);
+                              const inputValue = e.target.value;
+                              if (inputValue === '') {
+                                setNumberOfVariants(1); // Default to 1 if empty
+                              } else {
+                                const value = parseInt(inputValue);
+                                if (!isNaN(value)) {
+                                  // Ensure value is at least 1
+                                  setNumberOfVariants(Math.max(1, value));
+                                }
+                              }
+                            }}
+                            onBlur={() => {
+                              // Ensure we have a minimum value of 1 when user leaves the field
+                              if (numberOfVariants < 1) {
+                                setNumberOfVariants(1);
                               }
                             }}
                             className="w-full"
@@ -507,9 +519,24 @@ ${generatedOutput}`
                               max={100}
                               value={autoStopThreshold}
                               onChange={(e) => {
-                                const value = parseInt(e.target.value);
-                                if (!isNaN(value) && value > 0) {
-                                  setAutoStopThreshold(value);
+                                // Handle empty string case properly
+                                const inputValue = e.target.value;
+                                if (inputValue === '') {
+                                  setAutoStopThreshold(1); // Default to 1 if empty
+                                } else {
+                                  const value = parseInt(inputValue);
+                                  if (!isNaN(value)) {
+                                    // Ensure value is between 1 and 100
+                                    setAutoStopThreshold(Math.max(1, Math.min(value, 100)));
+                                  }
+                                }
+                              }}
+                              onBlur={() => {
+                                // Ensure we have a valid value when user leaves the field
+                                if (autoStopThreshold < 1) {
+                                  setAutoStopThreshold(1);
+                                } else if (autoStopThreshold > 100) {
+                                  setAutoStopThreshold(100);
                                 }
                               }}
                               className="w-full"
