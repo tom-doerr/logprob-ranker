@@ -120,6 +120,14 @@
     animation-delay: 500ms !important;
   }
   
+  .animation-delay-1000 {
+    animation-delay: 1000ms !important;
+  }
+  
+  .animation-delay-1500 {
+    animation-delay: 1500ms !important;
+  }
+  
   @keyframes spin {
     from {
       transform: rotate(0deg);
@@ -173,6 +181,23 @@
     100% { background-position: 0 100vh; }
   }
   
+  /* Globe animation keyframes */
+  @keyframes globe-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  @keyframes globe-spin-reverse {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+  
+  @keyframes globe-spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(120deg); }
+  }
+  
+  /* NERV UI Classes */
   .nerv-scanline {
     position: relative;
     overflow: hidden;
@@ -229,5 +254,18 @@
     );
     animation: nerv-scan 10s linear infinite;
     pointer-events: none;
+  }
+  
+  /* NERV Globe Animations */
+  .nerv-globe-spin {
+    animation: globe-spin 30s linear infinite;
+  }
+  
+  .nerv-globe-spin-reverse {
+    animation: globe-spin-reverse 20s linear infinite;
+  }
+  
+  .nerv-globe-spin-slow {
+    animation: globe-spin-slow 25s linear infinite;
   }
 }

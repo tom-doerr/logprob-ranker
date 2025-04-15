@@ -8,6 +8,7 @@ import { MessageSquare, BarChart2, Power, Key, AlertCircle } from 'lucide-react'
 import { getApiKey } from '../utils/pkce';
 import { Button } from './ui/button';
 import { useModelConfig } from '@/hooks/use-model-config';
+import NervGlobe from './ui/nerv-globe';
 
 const MainLayout: FC = () => {
   const [showAuthInfo, setShowAuthInfo] = useState(false);
@@ -90,14 +91,36 @@ const MainLayout: FC = () => {
         NERV
       </div>
       
+      {/* Spinning NERV Globe */}
+      <NervGlobe 
+        size="xl" 
+        variant="orange" 
+        opacity={0.07} 
+        className="absolute bottom-[-10rem] right-[-10rem] z-0" 
+      />
+      <NervGlobe 
+        size="lg" 
+        variant="blue" 
+        opacity={0.05} 
+        className="absolute top-[-5rem] left-[-5rem] z-0" 
+      />
+      
       {/* Authentication Info Overlay */}
       {showAuthInfo && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--eva-black)] max-w-2xl w-full border-2 border-[var(--eva-orange)] rounded-md p-6 relative">
+          <div className="bg-[var(--eva-black)] max-w-2xl w-full border-2 border-[var(--eva-orange)] rounded-md p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[var(--eva-orange)]"></div>
             <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-[var(--eva-orange)]"></div>
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-[var(--eva-orange)]"></div>
             <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-[var(--eva-orange)]"></div>
+            
+            {/* Authentication modal decoration globe */}
+            <NervGlobe
+              size="md"
+              variant="orange"
+              opacity={0.05}
+              className="absolute top-[-5rem] right-[-5rem] z-0"
+            />
             
             <h2 className="text-xl text-[var(--eva-orange)] font-mono uppercase tracking-wider mb-4 flex items-center">
               <Key className="h-5 w-5 mr-2" />
