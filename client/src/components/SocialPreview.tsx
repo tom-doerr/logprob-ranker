@@ -1,10 +1,17 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { X, ExternalLink, Twitter, Facebook, Copy, Check, Share2 } from 'lucide-react';
 import { Button } from './ui/button';
+import { cn } from '../lib/utils';
 
 const SocialPreview: FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // Ensure component is mounted before rendering (client-side only)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const previewUrl = "/assets/llm-ranking.png";
   const appUrl = window.location.origin;
@@ -24,13 +31,17 @@ const SocialPreview: FC = () => {
     });
   };
   
+  // Prevent hydration errors by only rendering on client
+  if (!mounted) return null;
+  
   return (
     <>
       {/* Toggle button */}
       {!showPreview && (
         <Button
           onClick={handleTogglePreview}
-          className="fixed bottom-4 right-4 h-10 w-10 rounded-full bg-[var(--eva-orange)] hover:bg-[var(--eva-orange-dark)] shadow-lg z-50 flex items-center justify-center"
+          className="fixed bottom-4 right-4 h-10 w-10 rounded-full bg-[#FF6700] hover:bg-[#C25200] shadow-lg z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'var(--eva-orange, #FF6700)' }}
         >
           <Share2 className="h-4 w-4 text-black" />
         </Button>
