@@ -8,14 +8,14 @@ const MainLayout: FC = () => {
   return (
     <div className="container mx-auto max-w-6xl p-4">
       <Tabs defaultValue="output-ranker" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="output-ranker" className="flex items-center justify-center">
+        <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
+          <TabsTrigger value="output-ranker" className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">
             <BarChart2 className="h-4 w-4 mr-2" />
-            Output Ranker
+            NERV SYSTEM-A
           </TabsTrigger>
-          <TabsTrigger value="chat" className="flex items-center justify-center">
+          <TabsTrigger value="chat" className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">
             <MessageSquare className="h-4 w-4 mr-2" />
-            Chat
+            NERV SYSTEM-B
           </TabsTrigger>
         </TabsList>
         

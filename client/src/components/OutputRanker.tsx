@@ -375,9 +375,9 @@ ${generatedOutput}`
           ) : (
             <div className="space-y-6">
               <Tabs defaultValue="generator" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="generator">Generator</TabsTrigger>
-                  <TabsTrigger value="examples">Examples</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 border border-[var(--eva-orange)] bg-opacity-20">
+                  <TabsTrigger value="generator" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-01</TabsTrigger>
+                  <TabsTrigger value="examples" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-02</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="generator" className="space-y-4 mt-4">
@@ -632,8 +632,8 @@ ${generatedOutput}`
                           }}
                           className="w-full eva-input text-[var(--eva-green)]"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Number of parallel requests to make
+                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
+                          CONCURRENT PROCESSES
                         </p>
                       </div>
                     </div>
@@ -747,11 +747,11 @@ ${generatedOutput}`
                         onClick={() => handleSelectExample(example)}
                         className="border border-[var(--eva-orange)] rounded-md p-4 cursor-pointer hover:bg-black/10 transition-colors"
                       >
-                        <h3 className="font-medium mb-2">{example.prompt}</h3>
-                        <p className="text-sm text-gray-500">
-                          Variants: {example.variants}
+                        <h3 className="font-medium mb-2 text-[var(--eva-orange)] uppercase tracking-wider">{example.prompt}</h3>
+                        <p className="text-sm text-[var(--eva-text)] font-mono">
+                          VARIANTS: {example.variants}
                         </p>
-                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-x-auto">
+                        <pre className="text-xs bg-black/5 p-2 mt-2 rounded overflow-x-auto text-[var(--eva-green)] border border-[var(--eva-orange)]/30">
                           {example.template}
                         </pre>
                       </div>
@@ -808,7 +808,7 @@ ${generatedOutput}`
                         
                         {/* Attribute Scores Display */}
                         {output.attributeScores && output.attributeScores.length > 0 && (
-                          <div className="mt-3 border-t border-gray-200 pt-3">
+                          <div className="mt-3 border-t border-[var(--eva-orange)]/30 pt-3">
                             <h4 className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">Attribute Scores</h4>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                               {output.attributeScores.map((attr, attrIdx) => (
