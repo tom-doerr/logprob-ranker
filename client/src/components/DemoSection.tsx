@@ -77,8 +77,8 @@ const DemoSection: FC = () => {
       return;
     }
 
-    // Use localhost for the callback URL to avoid domain restrictions
-    const callbackUrl = "http://localhost:3000/callback";
+    // Use the current application's domain for the callback URL
+    const callbackUrl = `${window.location.origin}/callback`;
     const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
     
     toast({
@@ -394,7 +394,7 @@ const DemoSection: FC = () => {
                 <p className="text-sm text-amber-800">
                   <i className="fas fa-info-circle mr-2"></i>
                   <strong>Getting a real code:</strong> Complete the OAuth flow by clicking "Connect to OpenRouter", 
-                  which opens a new tab with a localhost callback URL (http://localhost:3000/callback). 
+                  which opens a new tab with your application's callback URL.
                   After authentication, you can copy the code from the URL parameter and paste it here.
                 </p>
               </div>
