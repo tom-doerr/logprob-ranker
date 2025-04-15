@@ -86,21 +86,42 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
           await new Promise(resolve => setTimeout(resolve, 800));
         }
 
-        // Set up mock model
+        // Set up mock model with chat.completions.create API that matches our interface
         const mockModel = {
-          predict: async (text: string) => {
-            // This is a simulation that mimics TensorFlow.js model prediction
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Simple response patterns
-            if (text.toLowerCase().includes('hello') || text.toLowerCase().includes('hi')) {
-              return "Hello! I'm running on TensorFlow.js in your browser. How can I help you today?";
-            } else if (text.toLowerCase().includes('help')) {
-              return "I'm a TensorFlow.js-powered AI assistant running directly in your browser. This means all processing happens locally without sending your data to external servers. How can I assist you?";
-            } else if (text.toLowerCase().includes('tensorflow')) {
-              return "TensorFlow.js is a JavaScript library for training and deploying machine learning models in the browser and in Node.js. It provides a flexible and intuitive APIs for building and training models from scratch, as well as for loading and using pre-trained models.";
-            } else {
-              return `Thanks for your message: "${text}". This is a TensorFlow.js simulation running in your browser. In a real implementation, I would process your request with an actual machine learning model.`;
+          chat: {
+            completions: {
+              create: async ({ messages }: { messages: any[] }) => {
+                // Extract the user's message
+                const userMessage = messages[messages.length - 1]?.content || '';
+                
+                // Simulate processing time
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Generate response based on input
+                let response = '';
+                
+                if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
+                  response = "Hello! I'm running on TensorFlow.js in your browser. How can I help you today?";
+                } else if (userMessage.toLowerCase().includes('help')) {
+                  response = "I'm a TensorFlow.js-powered AI assistant running directly in your browser. This means all processing happens locally without sending your data to external servers. How can I assist you?";
+                } else if (userMessage.toLowerCase().includes('tensorflow')) {
+                  response = "TensorFlow.js is a JavaScript library for training and deploying machine learning models in the browser and in Node.js. It provides flexible and intuitive APIs for building and training models from scratch, as well as for loading and using pre-trained models.";
+                } else {
+                  response = `Thanks for your message: "${userMessage}". This is a TensorFlow.js simulation running in your browser. In a real implementation, I would process your request with an actual machine learning model.`;
+                }
+                
+                // Return in a format compatible with OpenRouter API
+                return {
+                  choices: [
+                    {
+                      message: {
+                        role: 'assistant',
+                        content: response
+                      }
+                    }
+                  ]
+                };
+              }
             }
           }
         };
@@ -122,11 +143,32 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
         
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Falling back to simulation
+        // Falling back to simulation with compatible chat.completions API
         const mockModel = {
-          predict: async (text: string) => {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return `[TensorFlow.js Text Generation] I would generate text based on your input: "${text}". This is currently a simulation.`;
+          chat: {
+            completions: {
+              create: async ({ messages }: { messages: any[] }) => {
+                // Extract the user's message
+                const userMessage = messages[messages.length - 1]?.content || '';
+                
+                // Simulate processing time
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Generate response
+                const response = `[TensorFlow.js Text Generation] I would generate text based on your input: "${userMessage}". This is currently a simulation.`;
+                
+                return {
+                  choices: [
+                    {
+                      message: {
+                        role: 'assistant',
+                        content: response
+                      }
+                    }
+                  ]
+                };
+              }
+            }
           }
         };
         
@@ -146,18 +188,41 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
         
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Falling back to simulation
+        // Falling back to simulation with compatible chat.completions API
         const mockModel = {
-          predict: async (text: string) => {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const isToxic = text.toLowerCase().includes('hate') || 
-                          text.toLowerCase().includes('stupid') || 
-                          text.toLowerCase().includes('idiot');
-            
-            if (isToxic) {
-              return `[Toxicity Analysis] I've detected potentially harmful content in your message. In a real implementation, I would provide detailed toxicity scores.`;
-            } else {
-              return `[Toxicity Analysis] Your message appears to be non-toxic. This is a simulation of TensorFlow.js toxicity detection.`;
+          chat: {
+            completions: {
+              create: async ({ messages }: { messages: any[] }) => {
+                // Extract the user's message
+                const userMessage = messages[messages.length - 1]?.content || '';
+                
+                // Simulate processing time
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Simple toxicity check
+                const isToxic = userMessage.toLowerCase().includes('hate') || 
+                              userMessage.toLowerCase().includes('stupid') || 
+                              userMessage.toLowerCase().includes('idiot');
+                
+                // Generate response
+                let response = '';
+                if (isToxic) {
+                  response = `[Toxicity Analysis] I've detected potentially harmful content in your message. In a real implementation, I would provide detailed toxicity scores.`;
+                } else {
+                  response = `[Toxicity Analysis] Your message appears to be non-toxic. This is a simulation of TensorFlow.js toxicity detection.`;
+                }
+                
+                return {
+                  choices: [
+                    {
+                      message: {
+                        role: 'assistant',
+                        content: response
+                      }
+                    }
+                  ]
+                };
+              }
             }
           }
         };
@@ -199,15 +264,34 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
     setIsLoading(true);
     
     try {
-      // Generate response using the model
-      const response = await model.predict(input);
-      
-      const assistantMessage: ChatMessage = { 
-        role: 'assistant', 
-        content: response
-      };
-      
-      onResponseReceived(assistantMessage);
+      // Check if model has chat.completions API (simulation mode)
+      if (model.chat && model.chat.completions) {
+        const response = await model.chat.completions.create({
+          messages: [{ role: 'user', content: input }],
+          temperature: 0.7,
+          max_tokens: 1024
+        });
+        
+        if (response.choices && response.choices.length > 0) {
+          onResponseReceived(response.choices[0].message);
+        } else {
+          throw new Error("Invalid response format");
+        }
+      } 
+      // Fallback for models with predict API
+      else if (model.predict) {
+        const responseText = await model.predict(input);
+        
+        const assistantMessage: ChatMessage = { 
+          role: 'assistant', 
+          content: responseText
+        };
+        
+        onResponseReceived(assistantMessage);
+      }
+      else {
+        throw new Error("Model doesn't have a valid prediction interface");
+      }
     } catch (error) {
       console.error('Error generating response:', error);
       onResponseReceived({ 
