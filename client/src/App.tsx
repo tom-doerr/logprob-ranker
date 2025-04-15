@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Callback from "@/pages/callback";
 import { ModelConfigProvider } from "./hooks/use-model-config";
+import { AuthProvider } from "./hooks/use-auth";
 
 function Router() {
   return (
@@ -21,10 +22,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ModelConfigProvider>
-        <Router />
-        <Toaster />
-      </ModelConfigProvider>
+      <AuthProvider>
+        <ModelConfigProvider>
+          <Router />
+          <Toaster />
+        </ModelConfigProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

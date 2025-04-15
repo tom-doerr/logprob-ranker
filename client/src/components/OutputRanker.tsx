@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useReducer } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createChatCompletion, ChatMessage } from '../lib/openrouter';
-import { getApiKey } from '../utils/pkce';
+import { ChatMessage } from '../lib/openrouter';
 import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
+import { useAuth } from '@/hooks/use-auth';
+import { apiService } from '@/services/api-service';
 import { NervScanline, NervBlink, NervType, NervPulse } from '@/components/ui/nerv-animations';
 import MagiProgress from '@/components/ui/magi-progress';
 import RankedOutput from '@/components/ui/ranked-output';
@@ -87,7 +88,6 @@ const OutputRanker: FC<OutputRankerProps> = () => {
 
   // Local UI state only
   const { toast } = useToast();
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
   const [numberOfVariants, setNumberOfVariants] = useState(5);
@@ -100,13 +100,8 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   const [newAttribute, setNewAttribute] = useState('');
   const [selectedOutputIdx, setSelectedOutputIdx] = useState<number | null>(null);
 
-  // Load API key on mount
-  useEffect(() => {
-    const storedApiKey = getApiKey();
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-    }
-  }, []);
+  // Use the auth context for authentication state
+  const { apiKey, isAuthenticated } = useAuth();
   
   // No longer need to sync state since we'll use the props directly
 
@@ -138,19 +133,21 @@ const OutputRanker: FC<OutputRankerProps> = () => {
         content: prompt
       };
 
-      // Generate a variant
-      const generationResponse = await createChatCompletion({
-        model: selectedModel || '',
-        messages: [generateSystemMessage, userMessage],
-        temperature: temperature, // Use temperature from the user setting
-        max_tokens: maxTokens, // Use max tokens from the user setting
-      });
+      // Generate a variant using the API service
+      const generationResponse = await apiService.generateChatCompletion(
+        [generateSystemMessage, userMessage],
+        { 
+          selectedModel: selectedModel || '',
+          temperature, 
+          maxTokens
+        }
+      );
       
-      if (!generationResponse.choices || generationResponse.choices.length === 0) {
+      if (!generationResponse || !generationResponse.text) {
         return null;
       }
       
-      const generatedOutput = generationResponse.choices[0].message.content;
+      const generatedOutput = generationResponse.text;
       
       // Step 2: Evaluate the generated output
       const evaluateSystemMessage: ChatMessage = {
@@ -170,19 +167,21 @@ ${generatedOutput}`
         content: 'Provide your evaluation as JSON.'
       };
       
-      // Generate the evaluation
-      const evaluationResponse = await createChatCompletion({
-        model: selectedModel || '',
-        messages: [evaluateSystemMessage, evaluateUserMessage],
-        temperature: 0.1, // Lower temperature for more consistent evaluation
-        max_tokens: 500, // Fixed size for evaluations is sufficient
-      });
+      // Generate the evaluation using API service
+      const evaluationResponse = await apiService.generateChatCompletion(
+        [evaluateSystemMessage, evaluateUserMessage],
+        {
+          selectedModel: selectedModel || '',
+          temperature: 0.1, // Lower temperature for more consistent evaluation
+          maxTokens: 500, // Fixed size for evaluations is sufficient
+        }
+      );
 
-      if (!evaluationResponse.choices || evaluationResponse.choices.length === 0) {
+      if (!evaluationResponse || !evaluationResponse.text) {
         return null;
       }
 
-      const evaluationContent = evaluationResponse.choices[0].message.content;
+      const evaluationContent = evaluationResponse.text;
       let logprob = 0;
       let attributeScores: AttributeScore[] = [];
       let rawEvaluation = evaluationContent;
