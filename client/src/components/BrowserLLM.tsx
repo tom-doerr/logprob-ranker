@@ -20,22 +20,16 @@ interface BrowserModelOption {
 
 const LOCAL_MODELS: BrowserModelOption[] = [
   {
-    id: 'Llama-2-7b-chat-hf-q4f16_1',
-    name: 'Llama-2-7b-chat',
+    id: 'Llama-2-7b-chat-hf-q4f32_1',
+    name: 'Llama-2 (7B)',
     source: 'Meta',
-    description: '7B parameter model that runs locally in your browser'
+    description: 'Lightweight model for local browser execution'
   },
   {
-    id: 'Mistral-7B-Instruct-v0.2-q4f16_1',
-    name: 'Mistral-7B-Instruct',
-    source: 'Mistral AI',
-    description: '7B parameter instruction model that runs in your browser'
-  },
-  {
-    id: 'RedPajama-INCITE-Chat-3B-v1-q4f16_1',
-    name: 'RedPajama-3B',
-    source: 'Together',
-    description: 'Lightweight 3B model for faster loading and responses'
+    id: 'TinyLlama-1.1B-Chat-v1.0-q4f32_1',
+    name: 'TinyLlama (1.1B)',
+    source: 'TinyLlama',
+    description: 'Ultra-compact model for fast loading'
   }
 ];
 
@@ -59,7 +53,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     try {
       setIsInitializing(true);
       setIsModelReady(false);
-      setLoadingMessage('Initializing WebLLM...');
+      setLoadingMessage('Preparing browser environment...');
       setLoadingProgress(0);
 
       // Create ML engine
@@ -67,7 +61,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       
       // Set progress callback
       mlengine.setInitProgressCallback((report: any) => {
-        setLoadingMessage(report.text);
+        setLoadingMessage(report.text || 'Loading model...');
         if (report.progress !== undefined) {
           setLoadingProgress(report.progress * 100);
         }
@@ -78,7 +72,22 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       console.log('WebLLM initialized successfully');
     } catch (error) {
       console.error('Failed to initialize WebLLM:', error);
-      setLoadingMessage(`Failed to load model: ${error instanceof Error ? error.message : String(error)}`);
+      let errorMessage = 'Failed to load browser model';
+      
+      // Provide more friendly error messages
+      if (error && typeof error === 'object') {
+        if ('name' in error) {
+          if (error.name === 'ModelNotFoundError') {
+            errorMessage = 'Model not found. Please check your internet connection or try a different model.';
+          } else if (error.name === 'WebGPUNotSupportedError') {
+            errorMessage = 'WebGPU not supported in your browser. Please use Chrome or Edge version 113 or newer.';
+          } else if (error.name === 'OutOfMemoryError') {
+            errorMessage = 'Out of memory error. Try a smaller model or close other browser tabs.';
+          }
+        }
+      }
+      
+      setLoadingMessage(errorMessage);
     } finally {
       setIsInitializing(false);
     }
@@ -156,115 +165,138 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   }, [engine]);
 
   return (
-    <div className="w-full p-4 border border-[var(--eva-orange)] rounded-md bg-[var(--eva-black)] text-[var(--eva-text)]">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="eva-title text-base flex items-center">
-          <Cpu className="mr-2 h-4 w-4" />
-          Browser LLM
-        </h3>
-        <Button 
-          variant="outline" 
-          onClick={handleToggleModelSource}
-          className="eva-button text-xs px-2 py-1 h-8"
-        >
-          {isUsingBrowserModel ? 'Use OpenRouter API' : 'Use Browser LLM'}
-        </Button>
+    <div className="w-full flex flex-col space-y-4">
+      {/* Header with model selector */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleToggleModelSource}
+            className="eva-button text-[var(--eva-orange)]"
+          >
+            <Cpu className="h-4 w-4 mr-2" />
+            Use API Model
+          </Button>
+          
+          {!isModelReady && !isInitializing && (
+            <select 
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              className="bg-transparent text-[var(--eva-green)] border border-[var(--eva-blue)]/40 rounded p-1 text-sm font-mono"
+            >
+              {LOCAL_MODELS.map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        
+        {!isModelReady && !isInitializing && (
+          <Button
+            size="sm"
+            className="eva-button bg-[var(--eva-orange)]/80 hover:bg-[var(--eva-orange)]"
+            onClick={handleInitializeModel}
+          >
+            Initialize Model
+          </Button>
+        )}
       </div>
 
-      {isUsingBrowserModel && (
-        <>
-          {/* Model selection */}
-          <div className="mb-4">
-            <label className="block text-xs mb-2 text-[var(--eva-orange)]">SELECT MODEL</label>
-            <div className="grid grid-cols-1 gap-2">
-              {LOCAL_MODELS.map((model) => (
-                <div 
-                  key={model.id}
-                  className={`border p-2 rounded-md cursor-pointer transition-colors ${
-                    selectedModel === model.id 
-                      ? 'border-[var(--eva-orange)] bg-[var(--eva-orange)]/10' 
-                      : 'border-[var(--eva-blue)]/30 hover:border-[var(--eva-blue)]'
-                  }`}
-                  onClick={() => handleModelChange(model.id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="font-mono text-sm">{model.name}</div>
-                    <div className="text-xs bg-[var(--eva-blue)]/20 px-1 rounded">{model.source}</div>
-                  </div>
-                  <div className="text-xs text-[var(--eva-text)]/70 mt-1">{model.description}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Initialize button */}
-          {!isModelReady && (
-            <div className="mb-4">
-              <Button
-                variant="default"
-                className="w-full eva-button bg-[var(--eva-orange)]/80 hover:bg-[var(--eva-orange)]"
-                onClick={handleInitializeModel}
-                disabled={isInitializing}
-              >
-                {isInitializing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Initializing Model...
-                  </>
-                ) : (
-                  'Initialize Selected Model'
-                )}
-              </Button>
-            </div>
-          )}
-
-          {/* Loading progress */}
+      {/* Loading progress or error message */}
+      {(isInitializing || (!isModelReady && loadingMessage && !isInitializing)) && (
+        <div className={`w-full p-4 border rounded-md ${
+          !isInitializing && loadingMessage && !isModelReady 
+            ? 'border-[var(--eva-orange)]/50 bg-[var(--eva-black)]/60'
+            : 'border-[var(--eva-blue)]/30 bg-[var(--eva-black)]/40'
+        }`}>
+          <h3 className={`text-sm font-mono mb-2 flex items-center ${
+            !isInitializing && loadingMessage && !isModelReady
+              ? 'text-[var(--eva-orange)]'
+              : 'text-[var(--eva-blue)]'
+          }`}>
+            {isInitializing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading Local Model...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="m9.75 9.75 4.5 4.5"/><path d="m14.25 9.75-4.5 4.5"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                Initialization Error
+              </>
+            )}
+          </h3>
+          
           {isInitializing && (
-            <div className="mb-4">
-              <div className="w-full h-2 bg-[var(--eva-black)] border border-[var(--eva-blue)] rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[var(--eva-blue)]" 
-                  style={{ width: `${loadingProgress}%` }}
-                ></div>
-              </div>
-              <p className="text-xs mt-1 text-[var(--eva-text)]/70">{loadingMessage}</p>
+            <div className="w-full h-2 bg-[var(--eva-black)] border border-[var(--eva-blue)] rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--eva-blue)]" 
+                style={{ width: `${loadingProgress}%` }}
+              ></div>
             </div>
           )}
-
-          {/* Input form */}
-          {isModelReady && (
-            <form onSubmit={handleSubmit} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="flex-1 bg-transparent border border-[var(--eva-blue)] rounded p-2 text-sm font-mono"
-                placeholder="Type a message to the browser model..."
-                disabled={isLoading}
-              />
-              <Button 
-                type="submit" 
-                variant="default"
-                className="eva-button bg-[var(--eva-orange)]/80 hover:bg-[var(--eva-orange)]"
-                disabled={isLoading || !input.trim()}
+          
+          <p className={`text-xs mt-2 font-mono ${
+            !isInitializing && loadingMessage && !isModelReady
+              ? 'text-[var(--eva-text)]'
+              : 'text-[var(--eva-text)]/70'
+          }`}>
+            {loadingMessage}
+          </p>
+          
+          {!isInitializing && loadingMessage && !isModelReady && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setLoadingMessage('')}
+                className="text-xs eva-button text-[var(--eva-orange)]"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="h-4 w-4" />
-                )}
+                Dismiss Error
               </Button>
-            </form>
+            </div>
           )}
+        </div>
+      )}
 
-          {/* Browser compatibility notice */}
-          <div className="mt-4 p-2 border border-[var(--eva-blue)]/30 rounded-md bg-[var(--eva-blue)]/5 text-xs">
-            <p className="text-[var(--eva-text)]/80">
-              <strong>Note:</strong> Browser LLM requires a modern browser with WebGPU support. 
-              For best performance, use Chrome or Edge with a capable GPU.
-            </p>
-          </div>
-        </>
+      {/* Input form */}
+      {isModelReady && (
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="flex-1 eva-input text-[var(--eva-green)] font-mono"
+            placeholder="Type a message to run locally in your browser..."
+            disabled={isLoading}
+          />
+          <Button 
+            type="submit" 
+            variant="default"
+            className="eva-button bg-[var(--eva-orange)]/80 hover:bg-[var(--eva-orange)]"
+            disabled={isLoading || !input.trim()}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowUp className="h-4 w-4" />
+            )}
+          </Button>
+        </form>
+      )}
+
+      {/* Info message when not ready */}
+      {!isModelReady && !isInitializing && !loadingMessage && (
+        <div className="p-4 border border-[var(--eva-blue)]/30 rounded-md bg-[var(--eva-blue)]/5">
+          <p className="text-sm text-[var(--eva-text)] font-mono">
+            <strong>BROWSER LLM READY</strong><br/>
+            Select a model and click Initialize to run AI directly in your browser.
+            No API key required - processing happens locally.
+          </p>
+        </div>
       )}
     </div>
   );
