@@ -442,23 +442,26 @@ const ChatInterface: FC = () => {
                 </div>
               </div>
               
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-[var(--eva-orange)]/30" />
+              <div className="border border-[var(--eva-orange)]/30 bg-black/20 rounded-md p-4">
+                <p className="text-xs text-[var(--eva-text)] mb-2 font-mono flex items-center">
+                  <span className="inline-block w-2 h-2 bg-[var(--eva-orange)] mr-2"></span>
+                  OPTION 3: OAUTH AUTHENTICATION:
+                </p>
+                
+                <div className="space-y-2">
+                  <p className="text-xs text-[var(--eva-text)]/60 font-mono">
+                    Authenticate with your OpenRouter account (may require account creation).
+                  </p>
+                  
+                  <Button 
+                    onClick={handleStartAuth} 
+                    variant="outline" 
+                    className="w-full eva-button text-[var(--eva-orange)] uppercase font-mono tracking-wider"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M2 19v-4h10"/><path d="m6 15-4 4 4 4"/><path d="M22 5v4H12"/><path d="m18 9 4-4-4-4"/><path d="M5 12h14"/></svg>
+                    SYNCHRONIZE WITH OPENROUTER
+                  </Button>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-[var(--eva-black)] px-2 text-[var(--eva-orange)] font-mono">ALTERNATIVE ACCESS</span>
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <Button 
-                  onClick={handleStartAuth} 
-                  variant="outline" 
-                  className="w-full eva-button text-[var(--eva-orange)] uppercase font-mono tracking-wider"
-                >
-                  SYNCHRONIZE WITH OPENROUTER
-                </Button>
               </div>
             </div>
           )}
