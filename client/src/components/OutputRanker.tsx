@@ -72,6 +72,8 @@ const OutputRanker: FC = () => {
   const [useAutoStop, setUseAutoStop] = useState(false);
   const [autoStopThreshold, setAutoStopThreshold] = useState(5);
   const [threadCount, setThreadCount] = useState(1);
+  const [temperature, setTemperature] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(1024);
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
@@ -118,7 +120,8 @@ const OutputRanker: FC = () => {
       const generationResponse = await createChatCompletion({
         model: modelId,
         messages: [generateSystemMessage, userMessage],
-        temperature: 0.9, // Higher temperature for more diversity
+        temperature: temperature, // Use temperature from the user setting
+        max_tokens: maxTokens, // Use max tokens from the user setting
       });
       
       if (!generationResponse.choices || generationResponse.choices.length === 0) {
@@ -150,6 +153,7 @@ ${generatedOutput}`
         model: modelId,
         messages: [evaluateSystemMessage, evaluateUserMessage],
         temperature: 0.1, // Lower temperature for more consistent evaluation
+        max_tokens: 500, // Fixed size for evaluations is sufficient
       });
 
       if (!evaluationResponse.choices || evaluationResponse.choices.length === 0) {
@@ -616,6 +620,78 @@ ${generatedOutput}`
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Number of parallel requests to make. Higher values generate faster but may hit rate limits.
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Temperature
+                            </label>
+                            <Input
+                              id="temperature"
+                              type="number"
+                              min={0}
+                              max={2}
+                              step={0.1}
+                              value={temperature}
+                              onChange={(e) => {
+                                const inputValue = e.target.value;
+                                if (inputValue === '') {
+                                  setTemperature(0.9); // Default to 0.9 if empty
+                                } else {
+                                  const value = parseFloat(inputValue);
+                                  if (!isNaN(value)) {
+                                    // Ensure value is between 0 and 2
+                                    setTemperature(Math.max(0, Math.min(value, 2)));
+                                  }
+                                }
+                              }}
+                              onBlur={() => {
+                                // Ensure we have a valid value when user leaves the field
+                                if (temperature < 0) {
+                                  setTemperature(0);
+                                } else if (temperature > 2) {
+                                  setTemperature(2);
+                                }
+                              }}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Controls randomness (0-2). Lower values are more focused, higher values more creative.
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Max Tokens
+                            </label>
+                            <Input
+                              id="max-tokens"
+                              type="number"
+                              min={1}
+                              value={maxTokens}
+                              onChange={(e) => {
+                                const inputValue = e.target.value;
+                                if (inputValue === '') {
+                                  setMaxTokens(1024); // Default to 1024 if empty
+                                } else {
+                                  const value = parseInt(inputValue);
+                                  if (!isNaN(value)) {
+                                    // Ensure value is at least 1
+                                    setMaxTokens(Math.max(1, value));
+                                  }
+                                }
+                              }}
+                              onBlur={() => {
+                                // Ensure we have a valid value when user leaves the field
+                                if (maxTokens < 1) {
+                                  setMaxTokens(1);
+                                }
+                              }}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Maximum completion length. Higher values allow longer responses.
                             </p>
                           </div>
                         </div>
