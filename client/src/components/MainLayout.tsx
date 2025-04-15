@@ -121,9 +121,9 @@ const MainLayout: FC = () => {
                   MAGI SYSTEM NOTICE
                 </p>
                 <ul className="list-disc ml-4 text-xs space-y-1">
-                  <li>You can either enter your OpenRouter API key directly</li>
-                  <li>OR use the OAuth flow to create/retrieve a key from OpenRouter</li>
                   <li>You will need a valid OpenRouter API key to use the application</li>
+                  <li>You can enter your OpenRouter API key directly in the form</li>
+                  <li>If you don't have a key, you can follow the link to create one on OpenRouter's website</li>
                 </ul>
               </div>
             </div>
