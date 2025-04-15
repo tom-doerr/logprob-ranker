@@ -114,21 +114,10 @@ const OutputRanker: FC = () => {
       
       // Generate the specified number of variants
       for (let i = 0; i < numberOfVariants; i++) {
-        // Create system message with instructions for logprob evaluation
-        const systemMessage: ChatMessage = {
+        // Step 1: Generate content without evaluation criteria
+        const generateSystemMessage: ChatMessage = {
           role: 'system',
-          content: `You are an AI assistant that helps evaluate language model outputs. 
-For the following prompt, generate a response and then evaluate it based on the template.
-In your evaluation, replace "true" with "True" and "false" with "False" to make the values valid Python booleans.
-The evaluation should be formatted as a JSON object containing boolean fields.
-
-PROMPT: ${prompt}
-
-After generating your response, evaluate it with this template:
-${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
-
-First provide your response, then on a new line, provide your evaluation JSON.
-Label the evaluation as "EVALUATION:" to make it clear where it begins.`
+          content: `You are a helpful AI assistant. Please respond to the user's request.`
         };
 
         const userMessage: ChatMessage = {
@@ -137,80 +126,92 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
         };
 
         // Generate a variant
-        const response = await createChatCompletion({
+        const generationResponse = await createChatCompletion({
           model: modelId,
-          messages: [systemMessage, userMessage],
+          messages: [generateSystemMessage, userMessage],
           temperature: 0.9, // Higher temperature for more diversity
         });
+        
+        if (!generationResponse.choices || generationResponse.choices.length === 0) {
+          continue;
+        }
+        
+        const generatedOutput = generationResponse.choices[0].message.content;
+        
+        // Step 2: Evaluate the generated output
+        const evaluateSystemMessage: ChatMessage = {
+          role: 'system',
+          content: `You are an evaluator. Evaluate the following text based on the criteria.
+Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false).
 
-        if (response.choices && response.choices.length > 0) {
-          const output = response.choices[0].message.content;
-          
-          // Extract the evaluation part
-          const evalMatch = output.match(/EVALUATION:\s*({[\s\S]*})/i);
+CRITERIA:
+${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
+
+TEXT TO EVALUATE:
+${generatedOutput}`
+        };
+        
+        const evaluateUserMessage: ChatMessage = {
+          role: 'user',
+          content: 'Provide your evaluation as JSON.'
+        };
+        
+        // Generate the evaluation
+        const evaluationResponse = await createChatCompletion({
+          model: modelId,
+          messages: [evaluateSystemMessage, evaluateUserMessage],
+          temperature: 0.1, // Lower temperature for more consistent evaluation
+        });
+
+        if (evaluationResponse.choices && evaluationResponse.choices.length > 0) {
+          const evaluationContent = evaluationResponse.choices[0].message.content;
           let logprob = 0;
           let attributeScores: AttributeScore[] = [];
-          let rawEvaluation = '';
+          let rawEvaluation = evaluationContent;
           
-          if (evalMatch && evalMatch[1]) {
-            try {
-              rawEvaluation = evalMatch[1].trim();
+          try {
+            // Basic cleanup of common JSON formatting issues
+            const cleanedJson = evaluationContent
+              .replace(/'/g, '"')
+              .replace(/True/g, 'true')
+              .replace(/False/g, 'false')
+              // Remove any non-JSON text
+              .replace(/^[^{]*/, '')
+              .replace(/[^}]*$/, '');
               
-              // Basic cleanup of common JSON formatting issues
-              const cleanedJson = rawEvaluation
-                .replace(/'/g, '"')
-                .replace(/True/g, 'true')
-                .replace(/False/g, 'false');
-                
-              const evaluationJson = JSON.parse(cleanedJson);
-              
-              // Extract attributes from the logProbTemplate
-              const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
-              const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
-              
-              // Create attribute scores
-              if (Object.keys(evaluationJson).length > 0) {
-                attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
-                  // Generate scores based on the value - higher for true
-                  const score = typeof value === 'boolean' ? 
-                    (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3) : 
-                    Math.random();
-                  return { name, score };
-                });
-              } else {
-                // Fallback: create scores for attributes from template
-                attributeScores = templateAttrs.map(name => ({
-                  name,
-                  score: 0.5 + Math.random() * 0.5
-                }));
-              }
-              
-              // Calculate overall logprob as average of all attribute scores
-              if (attributeScores.length > 0) {
-                logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
-              } else {
-                logprob = Math.random();
-              }
-            } catch (error) {
-              console.error('Error parsing evaluation JSON:', error);
-              
-              // Even if parsing fails, extract attributes from template and create simulated scores
-              const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
-              const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
-              
+            const evaluationJson = JSON.parse(cleanedJson);
+            
+            // Extract attributes from the logProbTemplate
+            const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
+            const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
+            
+            // Create attribute scores
+            if (Object.keys(evaluationJson).length > 0) {
+              attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
+                // Generate scores based on the value - higher for true
+                const score = typeof value === 'boolean' ? 
+                  (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3) : 
+                  Math.random();
+                return { name, score };
+              });
+            } else {
+              // Fallback: create scores for attributes from template
               attributeScores = templateAttrs.map(name => ({
                 name,
                 score: 0.5 + Math.random() * 0.5
               }));
-              
-              if (attributeScores.length > 0) {
-                logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
-              } else {
-                logprob = Math.random();
-              }
             }
-          } else {
-            // If no evaluation was found, still create some attribute scores from the template
+            
+            // Calculate overall logprob as average of all attribute scores
+            if (attributeScores.length > 0) {
+              logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
+            } else {
+              logprob = Math.random();
+            }
+          } catch (error) {
+            console.error('Error parsing evaluation JSON:', error);
+            
+            // Even if parsing fails, extract attributes from template and create simulated scores
             const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
             const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
             
@@ -228,7 +229,7 @@ Label the evaluation as "EVALUATION:" to make it clear where it begins.`
           
           // Add to results
           results.push({
-            output: output.split(/EVALUATION:/i)[0].trim(),
+            output: generatedOutput,
             logprob,
             index: i,
             attributeScores,
