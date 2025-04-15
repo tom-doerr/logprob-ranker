@@ -69,6 +69,8 @@ const OutputRanker: FC = () => {
   const [numberOfVariants, setNumberOfVariants] = useState(5);
   const [modelId, setModelId] = useState('google/gemini-2.0-flash-001');
   const [customModelId, setCustomModelId] = useState('');
+  const [useAutoStop, setUseAutoStop] = useState(false);
+  const [autoStopThreshold, setAutoStopThreshold] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
@@ -123,9 +125,26 @@ const OutputRanker: FC = () => {
 
     try {
       const results: RankedOutput[] = [];
+      let iterationsWithoutImprovement = 0;
+      let bestScore = -Infinity;
+      let actualVariantsToGenerate = useAutoStop ? 1000 : numberOfVariants; // Large number if using auto-stop
       
-      // Generate the specified number of variants
-      for (let i = 0; i < numberOfVariants; i++) {
+      // Generate variants
+      for (let i = 0; i < actualVariantsToGenerate; i++) {
+        // Check if we should stop based on auto-stop criteria
+        if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold && i >= numberOfVariants) {
+          toast({
+            title: 'Auto-Stop Triggered',
+            description: `No better outputs found after ${autoStopThreshold} iterations. Stopping at ${i} variants.`
+          });
+          break;
+        }
+        
+        // If not using auto-stop and we've reached the number of variants, break
+        if (!useAutoStop && i >= numberOfVariants) {
+          break;
+        }
+        
         // Step 1: Generate content without evaluation criteria
         const generateSystemMessage: ChatMessage = {
           role: 'system',
@@ -247,6 +266,18 @@ ${generatedOutput}`
             attributeScores,
             rawEvaluation
           });
+          
+          // Check if this is a better result for auto-stop functionality
+          if (useAutoStop) {
+            if (logprob > bestScore) {
+              bestScore = logprob;
+              iterationsWithoutImprovement = 0;
+              console.log(`New best score found: ${logprob.toFixed(4)} at iteration ${i}`);
+            } else {
+              iterationsWithoutImprovement++;
+              console.log(`No improvement for ${iterationsWithoutImprovement} iterations. Current best: ${bestScore.toFixed(4)}`);
+            }
+          }
           
           // Update the ranked outputs as they come in
           setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
@@ -430,25 +461,62 @@ ${generatedOutput}`
                         </Tabs>
                       </div>
                       
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Number of Variants
-                        </label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={numberOfVariants}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (!isNaN(value) && value > 0) {
-                              setNumberOfVariants(value);
-                            }
-                          }}
-                          className="w-full"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Enter any number of variants to generate (higher values may take longer)
-                        </p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Number of Variants
+                          </label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={numberOfVariants}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (!isNaN(value) && value > 0) {
+                                setNumberOfVariants(value);
+                              }
+                            }}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Enter any number of variants to generate (higher values may take longer)
+                          </p>
+                        </div>
+                        
+                        <div className="border rounded-md p-3">
+                          <div className="flex items-center mb-2">
+                            <input
+                              type="checkbox"
+                              id="use-auto-stop"
+                              checked={useAutoStop}
+                              onChange={(e) => setUseAutoStop(e.target.checked)}
+                              className="h-4 w-4 text-blue-600 rounded mr-2"
+                            />
+                            <label htmlFor="use-auto-stop" className="text-sm font-medium text-gray-700">
+                              Auto-stop Generation
+                            </label>
+                          </div>
+                          
+                          <div className={useAutoStop ? "block" : "hidden"}>
+                            <p className="text-xs text-gray-500 mb-2">
+                              Continue generating until no better output is found for this many consecutive iterations:
+                            </p>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={autoStopThreshold}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                if (!isNaN(value) && value > 0) {
+                                  setAutoStopThreshold(value);
+                                }
+                              }}
+                              className="w-full"
+                              disabled={!useAutoStop}
+                            />
+                          </div>
+                        </div>
                       </div>
                       
                       <Button 
@@ -459,7 +527,10 @@ ${generatedOutput}`
                         {isGenerating ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating ({rankedOutputs.length}/{numberOfVariants})
+                            {useAutoStop 
+                              ? `Generating (${rankedOutputs.length} outputs, auto-stop enabled)` 
+                              : `Generating (${rankedOutputs.length}/${numberOfVariants})`
+                            }
                           </>
                         ) : (
                           <>
