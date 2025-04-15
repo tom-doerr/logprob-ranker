@@ -172,8 +172,8 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
         userMessage
       ];
       
-      // Get streamed response
-      const chunks = await engineRef.current.chat.completions.create({
+      // Get streamed response from the WebLLM engine
+      const stream = await engineRef.current.chat.completions.create({
         messages,
         temperature: 0.7,
         stream: true,
@@ -182,9 +182,17 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       
       let fullResponse = '';
       
-      for await (const chunk of chunks) {
-        const content = chunk.choices[0]?.delta.content || '';
-        fullResponse += content;
+      // Handle streaming based on the returned type
+      if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
+        // It's an async iterable for streaming
+        for await (const chunk of stream as AsyncIterable<any>) {
+          const content = chunk.choices?.[0]?.delta?.content || '';
+          fullResponse += content;
+        }
+      } else {
+        // It's a direct response
+        const response = stream as any;
+        fullResponse = response.choices?.[0]?.message?.content || '';
       }
       
       const assistantMessage: ChatMessage = { 
