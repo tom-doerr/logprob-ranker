@@ -68,6 +68,7 @@ const OutputRanker: FC = () => {
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
   const [numberOfVariants, setNumberOfVariants] = useState(5);
   const [modelId, setModelId] = useState('google/gemini-2.0-flash-001');
+  const [customModelId, setCustomModelId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
@@ -101,6 +102,17 @@ const OutputRanker: FC = () => {
       toast({
         title: 'Missing Information',
         description: 'Please provide a prompt and a logprob template',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // If modelId is not in predefined models and not a custom model, show error
+    if (!['deepseek/deepseek-r1', 'meta-llama/llama-3.1-8b-instruct', 'google/gemini-2.0-flash-001', 'openai/gpt-3.5-turbo'].includes(modelId) && 
+        !modelId.includes('/')) {
+      toast({
+        title: 'Invalid Model',
+        description: 'Please select a valid model or enter a custom model ID with proper format (e.g., "provider/model-name")',
         variant: 'destructive',
       });
       return;
@@ -366,20 +378,56 @@ ${generatedOutput}`
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Model
                         </label>
-                        <Select 
-                          value={modelId} 
-                          onValueChange={setModelId}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a model" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
-                            <SelectItem value="meta-llama/llama-3.1-8b-instruct">Meta Llama 3.1 8B</SelectItem>
-                            <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
-                            <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Tabs defaultValue="predefined" className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 mb-2">
+                            <TabsTrigger value="predefined">Predefined</TabsTrigger>
+                            <TabsTrigger value="custom">Custom</TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="predefined">
+                            <Select 
+                              value={modelId} 
+                              onValueChange={setModelId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a model" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
+                                <SelectItem value="meta-llama/llama-3.1-8b-instruct">Meta Llama 3.1 8B</SelectItem>
+                                <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
+                                <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TabsContent>
+                          
+                          <TabsContent value="custom">
+                            <div className="space-y-2">
+                              <Input
+                                placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
+                                value={customModelId}
+                                onChange={(e) => setCustomModelId(e.target.value)}
+                                className="w-full"
+                              />
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  if (customModelId.trim()) {
+                                    setModelId(customModelId);
+                                    toast({
+                                      title: 'Custom Model Set',
+                                      description: `Using custom model: ${customModelId}`
+                                    });
+                                  }
+                                }}
+                                disabled={!customModelId.trim()} 
+                                className="w-full"
+                              >
+                                Use Custom Model
+                              </Button>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </div>
                       
                       <div>
