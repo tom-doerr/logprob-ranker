@@ -82,18 +82,27 @@ const DemoSection: FC = () => {
     const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
     
     toast({
-      title: "Redirecting to OpenRouter",
-      description: "You will be redirected to OpenRouter for authentication"
+      title: "Demo Mode Activating",
+      description: "We'll attempt real OpenRouter authentication and also continue with a simulated flow"
     });
     
-    // Open in a new tab to avoid issues with redirects in the Replit environment
-    window.open(authUrl, '_blank');
+    // Attempt to open OpenRouter auth in a new tab
+    try {
+      window.open(authUrl, '_blank');
+    } catch (e) {
+      console.error("Failed to open auth URL:", e);
+    }
     
-    // For demo purposes, we'll also set a simulated code after a delay
+    // For the demo, we'll proceed with a simulated auth code regardless of OpenRouter result
     setTimeout(() => {
       setAuthCode(`auth_${Math.random().toString(36).substring(2, 15)}`);
       setCurrentStep(DemoStep.Authenticate);
-    }, 1500);
+      
+      toast({
+        title: "Demo Code Generated",
+        description: "Continuing with simulated authentication code for demonstration",
+      });
+    }, 2000);
   };
 
   const handleExchangeCode = async () => {
@@ -419,9 +428,24 @@ const DemoSection: FC = () => {
                     </button>
                   </div>
                   <code className="text-neutral-500 font-mono text-xs break-all my-1">
-                    {apiKey ? '•••••••••••••••••••••••••••••••' : 'No API key available'}
+                    {apiKey || 'No API key available'}
                   </code>
+                  {apiKey && apiKey.includes('demo') && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      <i className="fas fa-info-circle mr-1"></i> 
+                      This is a simulated demo API key for testing purposes
+                    </p>
+                  )}
                 </div>
+              </div>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+                <p className="text-sm text-amber-800">
+                  <i className="fas fa-info-circle mr-2"></i>
+                  <strong>Demo mode:</strong> In this demonstration, you're receiving a simulated API key. 
+                  In a production application with proper OpenRouter integration, you would receive a real 
+                  API key that could be used to access OpenRouter services.
+                </p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2">
