@@ -71,9 +71,21 @@ const Callback: FC = () => {
         
         // Parse response data
         let data;
+        let responseText;
         try {
-          data = await response.json();
+          // Clone the response so we can both read the text and still parse as JSON
+          responseText = await response.clone().text();
+          console.log("Raw response from server:", responseText);
+          
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error("JSON parse error:", jsonError);
+            console.error("Raw response that failed to parse:", responseText);
+            throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 100)}...`);
+          }
         } catch (parseError) {
+          console.error("Error accessing response:", parseError);
           throw new Error('Invalid JSON response from server');
         }
         
@@ -175,9 +187,27 @@ const Callback: FC = () => {
           
           {error && (
             <div className="py-2 space-y-4">
-              <div className="font-mono text-[var(--eva-red)] border border-[var(--eva-red)]/50 bg-[var(--eva-red)]/10 p-3 rounded-md">
-                <p className="text-sm uppercase tracking-wider mb-2">ERROR DETECTED:</p>
-                <p className="text-xs">{error}</p>
+              <div className="font-mono text-[var(--eva-red)] border border-[var(--eva-red)]/50 bg-[var(--eva-red)]/10 p-3 rounded-md space-y-3">
+                <div>
+                  <p className="text-sm uppercase tracking-wider mb-2">ERROR DETECTED:</p>
+                  <p className="text-xs break-words whitespace-pre-wrap">{error}</p>
+                </div>
+                
+                <div className="pt-3 border-t border-[var(--eva-red)]/30">
+                  <details className="text-xs">
+                    <summary className="cursor-pointer hover:text-[var(--eva-orange)] transition-colors mb-2">
+                      SHOW TECHNICAL DETAILS
+                    </summary>
+                    <div className="p-2 bg-black/50 rounded border border-[var(--eva-red)]/20 overflow-auto max-h-36">
+                      <p className="text-[var(--eva-text)]">
+                        The OpenRouter OAuth flow requires a registered application. 
+                        This error typically happens when the authorization code can't be exchanged for an API key.
+                        <br /><br />
+                        <span className="text-[var(--eva-green)]">RECOMMENDED ACTION: Use direct API key input instead.</span>
+                      </p>
+                    </div>
+                  </details>
+                </div>
               </div>
               
               {authCode && (

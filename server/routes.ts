@@ -21,7 +21,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         // Log request details for debugging
-        console.log("Exchanging code for token with body:", JSON.stringify(body));
+        console.log("=== OPENROUTER OAUTH DEBUG ===");
+        console.log("URL: https://openrouter.ai/api/v1/auth/keys");
+        console.log("Method: POST");
+        console.log("Headers: Content-Type: application/json");
+        console.log("Body:", JSON.stringify(body, null, 2));
         
         // Try to exchange the code for an API key with OpenRouter
         const response = await fetch("https://openrouter.ai/api/v1/auth/keys", {
