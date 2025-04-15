@@ -375,12 +375,12 @@ ${generatedOutput}`
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
-      <Card className="w-full eva-card">
+      <Card className="w-full eva-card nerv-scanline">
         <CardHeader className="border-b border-[var(--eva-orange)]">
           <CardTitle className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <BarChart className="h-5 w-5 text-[var(--eva-orange)]" />
-              <span className="eva-title">NERV MAGI SYSTEM - LLM OUTPUT RANKER</span>
+              <BarChart className="h-5 w-5 text-[var(--eva-orange)] nerv-pulse" />
+              <span className="eva-title nerv-blink">NERV MAGI SYSTEM - LLM OUTPUT RANKER</span>
             </div>
           </CardTitle>
         </CardHeader>
@@ -737,13 +737,13 @@ ${generatedOutput}`
                       </div>
                       
                       {isGenerating && (
-                        <div className="mt-4 mb-2 border border-[var(--eva-orange)] rounded-md p-3 bg-black/30">
+                        <div className="mt-4 mb-2 border border-[var(--eva-orange)] rounded-md p-3 bg-black/30 nerv-scanline">
                           <div className="flex justify-between items-center mb-2">
                             <div className="flex items-center">
-                              <div className="w-3 h-3 bg-[var(--eva-orange)] animate-pulse mr-2"></div>
-                              <span className="text-sm font-mono text-[var(--eva-orange)] uppercase tracking-wider">ANGEL ANALYSIS</span>
+                              <div className="w-3 h-3 bg-[var(--eva-orange)] animate-pulse mr-2 nerv-pulse"></div>
+                              <span className="text-sm font-mono text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">ANGEL ANALYSIS</span>
                             </div>
-                            <span className="text-sm font-mono text-[var(--eva-green)]">
+                            <span className="text-sm font-mono text-[var(--eva-green)] nerv-type">
                               {useAutoStop 
                                 ? `AUTO-CEASE: ${autoStopThreshold}`
                                 : `PROGRESS: ${rankedOutputs.length}/${numberOfVariants}`
@@ -751,9 +751,9 @@ ${generatedOutput}`
                             </span>
                           </div>
                           
-                          <div className="w-full bg-black/40 rounded-full h-2.5 mb-2 border border-[var(--eva-orange)]/30">
+                          <div className="w-full bg-black/40 rounded-full h-2.5 mb-2 border border-[var(--eva-orange)]/30 overflow-hidden">
                             <div 
-                              className="bg-[var(--eva-orange)] h-2 rounded-full transition-all" 
+                              className="bg-[var(--eva-orange)] h-2 rounded-full transition-all magi-progress" 
                               style={{
                                 width: `${useAutoStop ? Math.min(100, (rankedOutputs.length / (rankedOutputs.length + 5)) * 100) : Math.min(100, (rankedOutputs.length / numberOfVariants) * 100)}%`
                               }}>
@@ -761,23 +761,23 @@ ${generatedOutput}`
                           </div>
                           
                           <div className="grid grid-cols-3 gap-2 mt-3 text-xs font-mono">
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
-                              <div className="w-2 h-2 bg-[var(--eva-green)] rounded-full mr-1 animate-pulse"></div>
-                              <span className="text-[var(--eva-green)]">MAGI-1: MELCHIOR</span>
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
+                              <div className="w-2 h-2 bg-[var(--eva-green)] rounded-full mr-1 nerv-pulse"></div>
+                              <span className="text-[var(--eva-green)] nerv-blink">MAGI-1: MELCHIOR</span>
                             </div>
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
-                              <div className="w-2 h-2 bg-[var(--eva-orange)] rounded-full mr-1 animate-pulse"></div>
-                              <span className="text-[var(--eva-orange)]">MAGI-2: BALTHASAR</span>
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
+                              <div className="w-2 h-2 bg-[var(--eva-orange)] rounded-full mr-1 nerv-pulse"></div>
+                              <span className="text-[var(--eva-orange)] nerv-blink animation-delay-500">MAGI-2: BALTHASAR</span>
                             </div>
-                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded">
-                              <div className="w-2 h-2 bg-[var(--eva-blue)] rounded-full mr-1 animate-pulse"></div>
-                              <span className="text-[var(--eva-blue)]">MAGI-3: CASPER</span>
+                            <div className="flex items-center border border-[var(--eva-orange)]/20 bg-black/20 p-1 rounded nerv-scan">
+                              <div className="w-2 h-2 bg-[var(--eva-blue)] rounded-full mr-1 nerv-pulse"></div>
+                              <span className="text-[var(--eva-blue)] nerv-blink">MAGI-3: CASPER</span>
                             </div>
                           </div>
                           
                           <div className="flex justify-between text-xs font-mono mt-2">
-                            <span className="text-[var(--eva-text)]">A.T. FIELD ANALYSIS ACTIVE</span>
-                            <span className="text-[var(--eva-blue)]">THREADS: {threadCount}</span>
+                            <span className="text-[var(--eva-text)] nerv-glitch">A.T. FIELD ANALYSIS ACTIVE</span>
+                            <span className="text-[var(--eva-blue)] nerv-type">THREADS: {threadCount}</span>
                           </div>
                         </div>
                       )}
@@ -843,11 +843,11 @@ ${generatedOutput}`
               {rankedOutputs.length > 0 && (
                 <div className="mt-8">
                   <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider">
-                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)]" />
+                    <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">
+                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)] nerv-pulse" />
                       Ranked Outputs
                     </h3>
-                    <span className="ml-2 text-sm text-[var(--eva-text)]">
+                    <span className="ml-2 text-sm text-[var(--eva-text)] nerv-type">
                       (sorted by logprob score)
                     </span>
                   </div>
