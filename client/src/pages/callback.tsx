@@ -20,8 +20,13 @@ const Callback: FC = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         
+        console.log("OAuth Callback Debug:");
+        console.log("- URL:", window.location.href);
+        console.log("- Search params:", window.location.search);
+        console.log("- Authorization code present:", !!code);
+        
         if (!code) {
-          setError('No authorization code found in the URL');
+          setError('No authorization code found in the URL. The OpenRouter OAuth flow may have failed or been cancelled.');
           setIsLoading(false);
           return;
         }
@@ -116,9 +121,25 @@ const Callback: FC = () => {
           description: 'OpenRouter synchronization successful',
         });
         
-        // Redirect back to main page after a delay
+        // Redirect back to main page after a delay with proper path handling
         setTimeout(() => {
-          setLocation('/');
+          // For Replit or other hosting where the app may be in a subfolder
+          const isReplit = window.location.origin.includes('.replit.dev') || window.location.origin.includes('.replit.app');
+          let basePath = '/';
+          
+          if (isReplit) {
+            // Get the base path by analyzing the current URL
+            const pathname = window.location.pathname;
+            const parts = pathname.split('/');
+            // Remove 'callback' from the end of the path
+            parts.pop();
+            basePath = parts.join('/') || '/';
+            if (!basePath.startsWith('/')) basePath = '/' + basePath;
+            if (!basePath.endsWith('/')) basePath += '/';
+          }
+          
+          console.log("Redirecting to:", basePath);
+          setLocation(basePath);
         }, 3000);
       } catch (err) {
         console.error('Authentication error:', err);
@@ -200,10 +221,16 @@ const Callback: FC = () => {
                     </summary>
                     <div className="p-2 bg-black/50 rounded border border-[var(--eva-red)]/20 overflow-auto max-h-36">
                       <p className="text-[var(--eva-text)]">
-                        The OpenRouter OAuth flow requires a registered application. 
-                        This error typically happens when the authorization code can't be exchanged for an API key.
+                        The OpenRouter OAuth flow encountered an error when attempting to exchange the authorization code. 
+                        This could happen for various reasons:
                         <br /><br />
-                        <span className="text-[var(--eva-green)]">RECOMMENDED ACTION: Use direct API key input instead.</span>
+                        <span className="text-[var(--eva-yellow)]">1. Parameter mismatch in the authorization request</span>
+                        <br />
+                        <span className="text-[var(--eva-yellow)]">2. Code expiration (codes are typically valid for a short time)</span>
+                        <br />
+                        <span className="text-[var(--eva-yellow)]">3. Network errors or service disruptions</span>
+                        <br /><br />
+                        <span className="text-[var(--eva-green)]">You can try clicking SYNCHRONIZE WITH OPENROUTER again, or use direct API key input instead.</span>
                       </p>
                     </div>
                   </details>
@@ -275,7 +302,25 @@ const Callback: FC = () => {
         <CardFooter className="flex justify-center border-t border-[var(--eva-orange)]/30 pt-4">
           {!isLoading && (
             <Button 
-              onClick={() => setLocation('/')}
+              onClick={() => {
+                // Use the same path detection logic as in the success handler
+                const isReplit = window.location.origin.includes('.replit.dev') || window.location.origin.includes('.replit.app');
+                let basePath = '/';
+                
+                if (isReplit) {
+                  // Get the base path by analyzing the current URL
+                  const pathname = window.location.pathname;
+                  const parts = pathname.split('/');
+                  // Remove 'callback' from the end of the path
+                  parts.pop();
+                  basePath = parts.join('/') || '/';
+                  if (!basePath.startsWith('/')) basePath = '/' + basePath;
+                  if (!basePath.endsWith('/')) basePath += '/';
+                }
+                
+                console.log("Returning to:", basePath);
+                setLocation(basePath);
+              }}
               className="font-mono uppercase tracking-wider eva-button text-[var(--eva-orange)]"
             >
               RETURN TO CENTRAL DOGMA

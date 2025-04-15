@@ -174,16 +174,37 @@ const ChatInterface: FC = () => {
       // Generate code challenge
       const codeChallenge = await createSHA256CodeChallenge(codeVerifier);
       
-      // Generate and open auth URL
-      const callbackUrl = `${window.location.origin}/callback`;
-      const authUrl = generateAuthUrl(codeChallenge, callbackUrl);
+      // Generate and open auth URL with better URL detection
+      let origin = window.location.origin;
       
+      // Handle case when deployed to Replit (which might have additional path segments)
+      const isReplit = origin.includes('.replit.dev') || origin.includes('.replit.app');
+      
+      // Determine the right callback URL based on deployment environment
+      let callbackUrl;
+      if (isReplit) {
+        // For Replit, we'll need to include any potential path prefix
+        // Get the path from the URL, excluding any trailing paths after '/callback'
+        const currentPath = window.location.pathname;
+        const basePath = currentPath.split('/').slice(0, -1).join('/') || '';
+        callbackUrl = `${origin}${basePath}/callback`;
+      } else {
+        // Standard local or production environment
+        callbackUrl = `${origin}/callback`;
+      }
+      
+      console.log('Using callback URL:', callbackUrl);
+      
+      const authUrl = generateAuthUrl(codeChallenge, callbackUrl);
+      console.log('Generated OAuth URL:', authUrl);
+      
+      // Open the auth URL in the current window
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error starting authentication:', error);
       toast({
         title: 'Authentication Error',
-        description: 'Failed to start the authentication process',
+        description: 'Failed to start the authentication process. Check console for details.',
         variant: 'destructive',
       });
     }
