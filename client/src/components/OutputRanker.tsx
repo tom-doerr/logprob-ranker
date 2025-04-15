@@ -415,11 +415,12 @@ ${generatedOutput}`
                             placeholder="Add attribute..."
                             value={newAttribute}
                             onChange={(e) => setNewAttribute(e.target.value)}
-                            className="flex-grow text-sm"
+                            className="flex-grow text-sm eva-input text-[var(--eva-green)]"
                           />
                           <Button
                             size="sm"
                             variant="outline"
+                            className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
                             onClick={() => {
                               if (newAttribute.trim()) {
                                 // Parse current template as JSON
@@ -459,13 +460,13 @@ ${generatedOutput}`
                     {/* Column 2: Model & Variants */}
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Model
+                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                          MAGI System Model
                         </label>
                         <Tabs defaultValue="predefined" className="w-full">
-                          <TabsList className="grid w-full grid-cols-2 mb-2">
-                            <TabsTrigger value="predefined">Predefined</TabsTrigger>
-                            <TabsTrigger value="custom">Custom</TabsTrigger>
+                          <TabsList className="grid w-full grid-cols-2 mb-2 border border-[var(--eva-orange)] bg-opacity-20">
+                            <TabsTrigger value="predefined" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Casper</TabsTrigger>
+                            <TabsTrigger value="custom" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black">Custom</TabsTrigger>
                           </TabsList>
                           
                           <TabsContent value="predefined">
@@ -491,7 +492,7 @@ ${generatedOutput}`
                                 placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
                                 value={customModelId}
                                 onChange={(e) => setCustomModelId(e.target.value)}
-                                className="w-full"
+                                className="w-full eva-input text-[var(--eva-green)]"
                               />
                               <Button 
                                 size="sm" 
@@ -505,7 +506,7 @@ ${generatedOutput}`
                                   }
                                 }}
                                 disabled={!customModelId.trim()} 
-                                className="w-full"
+                                className="w-full eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
                               >
                                 Use Custom Model
                               </Button>
@@ -714,7 +715,7 @@ ${generatedOutput}`
                       <Button 
                         onClick={generateOutputs} 
                         disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
-                        className="w-full mt-6"
+                        className="w-full mt-6 eva-button text-[var(--eva-orange)] font-bold py-3"
                       >
                         {isGenerating ? (
                           <>
