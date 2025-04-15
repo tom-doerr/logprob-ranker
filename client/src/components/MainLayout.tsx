@@ -198,7 +198,7 @@ const MainLayout: FC = () => {
         </TabsList>
         
         <TabsContent value="output-ranker">
-          <OutputRanker {...modelConfig.getModelConfig()} />
+          <OutputRanker />
         </TabsContent>
         
         <TabsContent value="chat">
