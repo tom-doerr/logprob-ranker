@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" fill="#000000" />
+  
+  <!-- NERV Logo (simplified) -->
+  <g fill="#FF6600">
+    <polygon points="16,4 28,28 16,22 4,28" />
+    <rect x="14.5" y="8" width="3" height="14" />
+  </g>
+  
+  <!-- Border -->
+  <rect x="0.5" y="0.5" width="31" height="31" fill="none" stroke="#FF6600" stroke-width="1" />
+</svg>
