@@ -6,7 +6,7 @@ const SocialPreview: FC = () => {
   const [showPreview, setShowPreview] = useState(true);
   const [copied, setCopied] = useState(false);
   
-  const previewUrl = "https://i.imgur.com/DTwzFjH.png";
+  const previewUrl = "/assets/llm-ranking.png";
   const appUrl = window.location.origin;
   
   const handleClose = () => {
@@ -60,7 +60,7 @@ const SocialPreview: FC = () => {
       {/* Info */}
       <div className="p-4 text-[var(--eva-text)]">
         <h3 className="text-[var(--eva-orange)] font-mono text-xs mb-2">LINK PREVIEW STATUS</h3>
-        <p className="text-xs mb-4 font-mono">This is how your site will appear when shared on social media platforms. The preview image is hosted at an external URL for wider compatibility.</p>
+        <p className="text-xs mb-4 font-mono">This is how your site will appear when shared on social media platforms. The preview image shows your LLM Completion Ranking interface with Evangelion-inspired styling.</p>
         
         {/* Platform status */}
         <div className="space-y-2 mb-4">
