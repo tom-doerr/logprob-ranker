@@ -96,67 +96,65 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     checkBrowserSupport();
   }, [toast]);
 
-  // Load model when selected model changes
-  useEffect(() => {
+  // Manual model loading function
+  const loadModel = async () => {
     if (!browserSupported || !isUsingBrowserModel) return;
-    
-    const loadModel = async () => {
-      try {
-        setIsLoading(true);
-        setIsModelLoaded(false);
-        setProgress(0);
-        setProgressMessage('Initializing...');
-        
-        // Clean up previous engine if exists
-        if (engineRef.current) {
-          try {
-            // No specific cleanup method in docs, but we can set it to null
-            engineRef.current = null;
-          } catch (e) {
-            console.error('Error cleaning up previous engine:', e);
+
+    try {
+      setIsLoading(true);
+      setIsModelLoaded(false);
+      setProgress(0);
+      setProgressMessage('Initializing...');
+      
+      // Clean up previous engine if exists
+      if (engineRef.current) {
+        try {
+          // No specific cleanup method in docs, but we can set it to null
+          engineRef.current = null;
+        } catch (e) {
+          console.error('Error cleaning up previous engine:', e);
+        }
+      }
+      
+      // Create a new engine
+      engineRef.current = await webllm.CreateMLCEngine(
+        selectedModel, 
+        {
+          initProgressCallback: (report) => {
+            const percentage = Math.round(report.progress * 100);
+            setProgress(percentage);
+            setProgressMessage(report.text || 'Loading model...');
           }
         }
-        
-        // Create a new engine
-        engineRef.current = await webllm.CreateMLCEngine(
-          selectedModel, 
-          {
-            initProgressCallback: (report) => {
-              const percentage = Math.round(report.progress * 100);
-              setProgress(percentage);
-              setProgressMessage(report.text || 'Loading model...');
-            }
-          }
-        );
-        
-        setIsModelLoaded(true);
-        setProgressMessage('Model loaded successfully!');
-        toast({
-          title: "MAGI SYNCHRONIZATION COMPLETE",
-          description: `${selectedModel} loaded successfully`,
-        });
-      } catch (error) {
-        console.error('Error loading model:', error);
-        toast({
-          title: "MODEL LOADING ERROR",
-          description: error instanceof Error ? error.message : 'Failed to load model',
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadModel();
-    
-    // Cleanup on unmount or when selected model changes
+      );
+      
+      setIsModelLoaded(true);
+      setProgressMessage('Model loaded successfully!');
+      toast({
+        title: "MAGI SYNCHRONIZATION COMPLETE",
+        description: `${selectedModel} loaded successfully`,
+      });
+    } catch (error) {
+      console.error('Error loading model:', error);
+      toast({
+        title: "MODEL LOADING ERROR",
+        description: error instanceof Error ? error.message : 'Failed to load model',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (engineRef.current) {
         // No specific cleanup method in docs, but we can set it to null
         engineRef.current = null;
       }
     };
-  }, [selectedModel, browserSupported, isUsingBrowserModel, toast]);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!input.trim() || !engineRef.current || !isModelLoaded) return;
@@ -249,8 +247,8 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
     );
   }
 
-  // Loading state or model selection state
-  if (!isModelLoaded || isLoading) {
+  // Model selection and loading UI
+  if (!isModelLoaded) {
     return (
       <div className="p-4 bg-black/30 border border-[var(--eva-orange)]/50 rounded-md space-y-4">
         <h3 className="text-[var(--eva-orange)] font-mono uppercase tracking-wider flex items-center">
@@ -258,7 +256,7 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
           MAGI SYSTEM INITIALIZATION
         </h3>
         
-        {!isModelLoaded && (
+        {isLoading ? (
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -268,49 +266,65 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
               <Progress value={progress} className="h-2 bg-[var(--eva-blue)]/30" />
             </div>
             
-            {isLoading && progress < 20 && (
+            {progress < 20 && (
               <p className="text-xs text-[var(--eva-text)]/60 font-mono">
                 Note: The first model load might take up to a minute depending on your connection speed and device.
               </p>
             )}
           </div>
-        )}
-        
-        <div className="pt-4 border-t border-[var(--eva-orange)]/30">
-          <div className="flex flex-col space-y-2">
-            <label className="text-xs text-[var(--eva-orange)] font-mono">SELECT PILOT NEURAL INTERFACE:</label>
-            <Select 
-              value={selectedModel} 
-              onValueChange={handleModelChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="eva-select text-[var(--eva-green)] font-mono">
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent className="eva-select-content">
-                {browserModelOptions.map((model) => (
-                  <SelectItem key={model.id} value={model.id} className="font-mono">
-                    {model.name} ({model.source})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-[var(--eva-text)]/60 font-mono pt-2">
-              {browserModelOptions.find(m => m.id === selectedModel)?.description || 'Select a model to continue'}
-            </p>
+        ) : (
+          <div className="space-y-6">
+            <div className="pt-2">
+              <div className="flex flex-col space-y-2">
+                <label className="text-xs text-[var(--eva-orange)] font-mono">SELECT PILOT NEURAL INTERFACE:</label>
+                <Select 
+                  value={selectedModel} 
+                  onValueChange={handleModelChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="eva-select text-[var(--eva-green)] font-mono">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent className="eva-select-content">
+                    {browserModelOptions.map((model) => (
+                      <SelectItem key={model.id} value={model.id} className="font-mono">
+                        {model.name} ({model.source})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-[var(--eva-text)]/60 font-mono pt-2">
+                  {browserModelOptions.find(m => m.id === selectedModel)?.description || 'Select a model to continue'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col space-y-4">
+              <p className="text-xs text-[var(--eva-text)] font-mono">
+                Click the button below to start loading the selected model. This will download the model to your browser.
+              </p>
+              <Button 
+                onClick={loadModel} 
+                disabled={isLoading}
+                className="w-full eva-button text-[var(--eva-orange)] font-mono uppercase tracking-wider"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                INITIALIZE MAGI SYSTEM
+              </Button>
+            </div>
+            
+            <div className="flex justify-between pt-2">
+              <Button
+                onClick={() => onSelectBrowserModel(false)}
+                variant="outline"
+                className="eva-button text-[var(--eva-blue)]"
+              >
+                <ArrowDown className="h-4 w-4 mr-2" />
+                SWITCH TO API MODE
+              </Button>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex justify-between pt-4">
-          <Button
-            onClick={() => onSelectBrowserModel(false)}
-            variant="outline"
-            className="eva-button text-[var(--eva-blue)]"
-          >
-            <ArrowDown className="h-4 w-4 mr-2" />
-            SWITCH TO API MODE
-          </Button>
-        </div>
+        )}
       </div>
     );
   }
