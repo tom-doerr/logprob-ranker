@@ -21,80 +21,15 @@ import { createSHA256CodeChallenge, generateCodeVerifier, saveCodeVerifier } fro
 import { Loader2, Send, Key, LogOut, Settings, Sparkles, Cpu } from 'lucide-react';
 import { useModelConfig } from '@/hooks/use-model-config';
 
+
 interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
-interface ModelOption {
-  id: string;
-  name: string;
-  description: string;
-  contextSize: string;
-  pricing: string;
-}
+// Using the shared ModelOption interface from lib/modelTypes.ts
 
-const popularModels: ModelOption[] = [
-  {
-    id: 'deepseek/deepseek-r1',
-    name: 'DeepSeek: R1',
-    description: 'Performance on par with OpenAI o1, 671B parameters',
-    contextSize: '164K',
-    pricing: 'Free'
-  },
-  {
-    id: 'deepseek/deepseek-chat-v3-0324',
-    name: 'DeepSeek: Chat v3',
-    description: 'Advanced multilingual chat model with strong reasoning',
-    contextSize: '128K',
-    pricing: 'Free'
-  },
-  {
-    id: 'google/gemini-2.0-flash-001',
-    name: 'Google: Gemini 2.0 Flash',
-    description: 'Fast, efficient response generation',
-    contextSize: '128K',
-    pricing: 'Free - Limited'
-  },
-  {
-    id: 'meta-llama/llama-3.1-8b-instruct',
-    name: 'Meta: Llama 3.1 8B',
-    description: 'Compact but capable instruction-following model',
-    contextSize: '128K',
-    pricing: 'Free'
-  },
-  {
-    id: 'meta-llama/llama-3.3-70b-instruct',
-    name: 'Meta: Llama 3.3 70B',
-    description: 'Powerful reasoning, instruction-following capabilities',
-    contextSize: '128K',
-    pricing: 'Free - Limited'
-  },
-  {
-    id: 'openai/gpt-4o-mini',
-    name: 'OpenAI: GPT-4o Mini',
-    description: 'Compact version of GPT-4o with good performance',
-    contextSize: '128K',
-    pricing: '$0.15/M input, $0.60/M output'
-  },
-  {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Anthropic: Claude 3.5 Sonnet',
-    description: 'Excellent at reasoning, safe and helpful responses',
-    contextSize: '200K',
-    pricing: '$3.00/M input, $15.00/M output'
-  },
-
-  {
-    id: 'openai/gpt-3.5-turbo',
-    name: 'OpenAI: GPT-3.5 Turbo',
-    description: 'Fast, cost-effective assistant model',
-    contextSize: '16K',
-    pricing: '$0.5/M input, $1.5/M output'
-  }
-];
-
-import { ModelConfig } from '../lib/modelTypes';
+import { ModelConfig, POPULAR_MODELS } from '../lib/modelTypes';
 
 interface ChatInterfaceProps extends Partial<ModelConfig> {}
 
@@ -267,7 +202,7 @@ const ChatInterface: FC = () => {
       };
     }
 
-    const model = popularModels.find(m => m.id === configSelectedModel);
+    const model = POPULAR_MODELS.find((m: any) => m.id === configSelectedModel);
     return {
       name: model?.name || 'Select a model',
       description: model?.description || '',
