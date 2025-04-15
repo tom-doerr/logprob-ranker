@@ -20,16 +20,22 @@ interface BrowserModelOption {
 
 const LOCAL_MODELS: BrowserModelOption[] = [
   {
-    id: 'Llama-2-7b-chat-hf-q4f32_1',
-    name: 'Llama-2 (7B)',
-    source: 'Meta',
-    description: 'Lightweight model for local browser execution'
+    id: 'simulation',
+    name: 'Simulation Mode',
+    source: 'Demo',
+    description: 'No model download required - demonstration only'
   },
   {
     id: 'TinyLlama-1.1B-Chat-v1.0-q4f32_1',
     name: 'TinyLlama (1.1B)',
     source: 'TinyLlama',
     description: 'Ultra-compact model for fast loading'
+  },
+  {
+    id: 'RedPajama-INCITE-Chat-3B-v1-q4f16_1',
+    name: 'RedPajama (3B)',
+    source: 'Together',
+    description: 'Compact model for fast browser execution'
   }
 ];
 
@@ -56,20 +62,88 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       setLoadingMessage('Preparing browser environment...');
       setLoadingProgress(0);
 
-      // Create ML engine
-      const mlengine = await webllm.CreateMLCEngine(modelId);
-      
-      // Set progress callback
-      mlengine.setInitProgressCallback((report: any) => {
-        setLoadingMessage(report.text || 'Loading model...');
-        if (report.progress !== undefined) {
-          setLoadingProgress(report.progress * 100);
+      // If in simulation mode, don't attempt to load a real model
+      if (modelId === 'simulation') {
+        // Simulate loading progress
+        const totalSteps = 5;
+        const messages = [
+          'Initializing local inference engine...',
+          'Loading model weights...',
+          'Preparing tensor computation...',
+          'Configuring model parameters...',
+          'Finalizing model setup...'
+        ];
+
+        // Simulate the loading process with staged progress updates
+        for (let i = 0; i < totalSteps; i++) {
+          setLoadingMessage(messages[i]);
+          setLoadingProgress((i / totalSteps) * 100);
+          // Wait a bit to simulate loading time
+          await new Promise(resolve => setTimeout(resolve, 800));
         }
-      });
-      
-      setEngine(mlengine);
-      setIsModelReady(true);
-      console.log('WebLLM initialized successfully');
+
+        // Create a mock engine object with the chat.completions.create method
+        const mockEngine = {
+          chat: {
+            completions: {
+              create: async ({ messages }: { messages: any[] }) => {
+                // Extract the user's message
+                const userMessage = messages[messages.length - 1]?.content || '';
+                
+                // Create a simulated response based on the input
+                let response = 'I am running in browser simulation mode. ';
+                
+                if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
+                  response += 'Hello! How can I help you today?';
+                } else if (userMessage.toLowerCase().includes('help')) {
+                  response += 'I can simulate AI responses without requiring model downloads. What would you like to know?';
+                } else if (userMessage.toLowerCase().includes('how') && userMessage.toLowerCase().includes('work')) {
+                  response += 'This is a simulation of browser-based LLM functionality. In full mode, models would run directly in your browser using WebGPU.';
+                } else {
+                  response += `I'm a demonstration of browser-based AI. Your message was: "${userMessage}". In a real implementation, this would process your request locally without sending data to a server.`;
+                }
+                
+                // Simulate a delay to make it feel more realistic
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Return a format compatible with the chat completion API
+                return {
+                  choices: [
+                    {
+                      message: {
+                        role: 'assistant',
+                        content: response
+                      }
+                    }
+                  ]
+                };
+              }
+            }
+          }
+        };
+        
+        setEngine(mockEngine);
+        setIsModelReady(true);
+        setLoadingProgress(100);
+        setLoadingMessage('Simulation mode ready');
+        console.log('Simulation mode initialized');
+      } else {
+        // Real model loading path
+        // Create ML engine
+        const mlengine = await webllm.CreateMLCEngine(modelId);
+        
+        // Set progress callback
+        mlengine.setInitProgressCallback((report: any) => {
+          setLoadingMessage(report.text || 'Loading model...');
+          if (report.progress !== undefined) {
+            setLoadingProgress(report.progress * 100);
+          }
+        });
+        
+        setEngine(mlengine);
+        setIsModelReady(true);
+        console.log('WebLLM initialized successfully');
+      }
     } catch (error) {
       console.error('Failed to initialize WebLLM:', error);
       let errorMessage = 'Failed to load browser model';
@@ -292,10 +366,24 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       {!isModelReady && !isInitializing && !loadingMessage && (
         <div className="p-4 border border-[var(--eva-blue)]/30 rounded-md bg-[var(--eva-blue)]/5">
           <p className="text-sm text-[var(--eva-text)] font-mono">
-            <strong>BROWSER LLM READY</strong><br/>
+            <strong>BROWSER LLM MODE</strong><br/>
             Select a model and click Initialize to run AI directly in your browser.
             No API key required - processing happens locally.
           </p>
+          <p className="text-xs mt-2 text-[var(--eva-text)]/70 font-mono">
+            Note: Requires Chrome/Edge with WebGPU support. Initial download may take several minutes.
+          </p>
+          
+          <div className="mt-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleToggleModelSource}
+              className="text-xs eva-button text-[var(--eva-orange)]"
+            >
+              Switch to API Mode Instead
+            </Button>
+          </div>
         </div>
       )}
     </div>
