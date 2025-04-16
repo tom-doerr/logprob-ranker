@@ -794,6 +794,18 @@ ${generatedOutput}`
                                       <span className="px-1.5 py-0.5 bg-purple-900/60 text-purple-400 text-[10px] rounded-sm">UNIQUE</span>
                                     </div>
                                   </SelectItem>
+                                  <SelectItem value="deepseek/deepseek-v3-34b">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>DeepSeek V3 34B</span>
+                                      <span className="px-1.5 py-0.5 bg-cyan-900/60 text-cyan-400 text-[10px] rounded-sm">PRECISE</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="deepseek/r1-online">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>DeepSeek R1</span>
+                                      <span className="px-1.5 py-0.5 bg-emerald-900/60 text-emerald-400 text-[10px] rounded-sm">REASONING</span>
+                                    </div>
+                                  </SelectItem>
                                   <SelectItem value="anthropic/claude-3.5-sonnet">
                                     <div className="flex items-center justify-between w-full">
                                       <span>Claude 3.5 Sonnet</span>
