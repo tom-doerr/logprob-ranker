@@ -27,12 +27,21 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ModelConfigProvider>
-          <div className="flex flex-col min-h-screen bg-black">
+          <div className="flex flex-col min-h-screen bg-black text-[var(--eva-text)]">
             <main className="flex-grow">
               <Router />
             </main>
           </div>
-          <Toaster />
+          <Toaster 
+            toastOptions={{
+              className: 'bg-black border border-[var(--eva-orange)] text-[var(--eva-text)]',
+              style: {
+                background: 'black',
+                border: '1px solid var(--eva-orange)',
+                color: 'var(--eva-text)'
+              }
+            }}
+          />
         </ModelConfigProvider>
       </AuthProvider>
     </QueryClientProvider>

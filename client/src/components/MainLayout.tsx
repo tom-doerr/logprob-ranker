@@ -17,9 +17,6 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   const [showAuthInfo, setShowAuthInfo] = useState(false);
-  const [activeTab, setActiveTab] = useState("output-ranker");
-  
-  // Use the centralized model configuration hook
   const { isUsingBrowserModel } = useModelConfig();
   
   // Check if API key exists on mount and monitor for changes
@@ -28,8 +25,6 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
       const apiKey = getApiKey();
       if (!apiKey) {
         setShowAuthInfo(true);
-        // Default to chat tab when no API key is found
-        setActiveTab("chat");
       }
     };
     
@@ -62,23 +57,18 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
     };
   }, []);
   
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-  };
-  
   const closeAuthInfo = () => {
     setShowAuthInfo(false);
   };
   
   const proceedToAuth = () => {
-    setActiveTab("chat");
     closeAuthInfo();
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-black">
       <AppHeader />
-      <NervContainer className="max-w-6xl">
+      <div className="container mx-auto py-4 px-4">
         {/* Authentication Modal */}
         {showAuthInfo && <AuthModal onClose={closeAuthInfo} onProceed={proceedToAuth} />}
         
@@ -88,42 +78,12 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         {/* Browser Models section - only visible when local mode is active */}
         {!showAuthInfo && isUsingBrowserModel && <BrowserModels />}
 
-        {/* If children are provided, render them, otherwise use the tabs system */}
-        {children ? (
-          <div className="mt-8">{children}</div>
-        ) : (
-          // Main Tabs - API mode shows both chat and output ranker, Browser mode only shows browser interface
-          !showAuthInfo && !isUsingBrowserModel && (
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full mt-8">
-              <TabsList className="grid w-full grid-cols-2 mb-8 border border-[var(--eva-orange)] bg-opacity-20">
-                <TabsTrigger 
-                  value="output-ranker" 
-                  className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
-                >
-                  <BarChart2 className="h-4 w-4 mr-2" />
-                  NERV SYSTEM-A
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="chat" 
-                  className="flex items-center justify-center data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  NERV SYSTEM-B
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="output-ranker">
-                <OutputRanker />
-              </TabsContent>
-              
-              <TabsContent value="chat">
-                <ChatInterface />
-              </TabsContent>
-            </Tabs>
-          )
-        )}
-      </NervContainer>
-    </>
+        {/* Main content */}
+        <div className="mt-8">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 };
 
