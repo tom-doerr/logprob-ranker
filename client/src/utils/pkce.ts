@@ -79,6 +79,24 @@ export function clearCodeVerifier(): void {
 }
 
 /**
+ * Saves the auth method to local storage
+ */
+export function saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
+  localStorage.setItem('auth_method', method);
+}
+
+/**
+ * Retrieves the auth method from local storage
+ */
+export function getAuthMethod(): 'oauth' | 'manual' | 'browser' | null {
+  const method = localStorage.getItem('auth_method');
+  if (method === 'oauth' || method === 'manual' || method === 'browser') {
+    return method;
+  }
+  return null;
+}
+
+/**
  * Saves the API key to local storage
  */
 export function saveApiKey(apiKey: string): void {
@@ -93,8 +111,26 @@ export function getApiKey(): string | null {
 }
 
 /**
+ * Checks if the stored API key appears valid
+ */
+export function hasValidApiKey(): boolean {
+  const key = getApiKey();
+  if (!key) return false;
+  
+  // Special case for browser model
+  if (key === 'browser-llm') return true;
+  
+  // Basic format check for OpenRouter keys
+  if (key.startsWith('sk-or-') && key.length > 15) return true;
+  
+  // Allow any other key format that has reasonable length
+  return key.length >= 20;
+}
+
+/**
  * Removes the API key from local storage
  */
 export function clearApiKey(): void {
   localStorage.removeItem('openrouter_api_key');
+  localStorage.removeItem('auth_method');
 }

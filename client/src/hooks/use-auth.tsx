@@ -12,7 +12,10 @@ import {
   clearApiKey,
   generateCodeVerifier,
   saveCodeVerifier,
-  createSHA256CodeChallenge
+  createSHA256CodeChallenge,
+  getAuthMethod,
+  saveAuthMethod,
+  hasValidApiKey
 } from '../utils/pkce';
 import { generateAuthUrl } from '../lib/openrouter';
 
@@ -21,6 +24,7 @@ interface AuthContextType {
   apiKey: string | null;
   isAuthenticated: boolean;
   authMethod: 'oauth' | 'manual' | 'browser' | null;
+  authInitialized: boolean;
   
   // Manual key input
   manualApiKey: string;
@@ -43,22 +47,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [manualApiKey, setManualApiKey] = useState('');
   const [authMethod, setAuthMethod] = useState<'oauth' | 'manual' | 'browser' | null>(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
   
   // Check for existing API key on mount
   useEffect(() => {
     const storedApiKey = getApiKey();
-    if (storedApiKey) {
+    const storedAuthMethod = getAuthMethod();
+    
+    if (storedApiKey && hasValidApiKey()) {
       setApiKey(storedApiKey);
       
-      // Try to determine auth method from stored key
-      if (storedApiKey === 'browser-llm') {
-        setAuthMethod('browser');
-      } else if (storedApiKey.startsWith('sk-or-')) {
-        setAuthMethod('manual');
+      // Use stored auth method if available, otherwise determine from key
+      if (storedAuthMethod) {
+        setAuthMethod(storedAuthMethod);
       } else {
-        setAuthMethod('oauth');
+        // Try to determine auth method from key format
+        if (storedApiKey === 'browser-llm') {
+          setAuthMethod('browser');
+          saveAuthMethod('browser');
+        } else if (storedApiKey.startsWith('sk-or-')) {
+          setAuthMethod('manual');
+          saveAuthMethod('manual');
+        } else {
+          setAuthMethod('oauth');
+          saveAuthMethod('oauth');
+        }
       }
+      
+      // Indicate successful auth init with a toast
+      toast({
+        title: 'AUTHENTICATION RESTORED',
+        description: 'Your previous NERV credentials have been retrieved',
+        duration: 3000,
+      });
     }
+    
+    // Mark auth as initialized
+    setAuthInitialized(true);
   }, []);
   
   // Manual API key submission
@@ -67,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setApiKey(manualApiKey);
     saveApiKey(manualApiKey);
+    saveAuthMethod('manual');
     setManualApiKey('');
     setAuthMethod('manual');
     
@@ -107,19 +133,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         callbackUrl = `${origin}/callback`;
       }
       
-      console.log('Using callback URL:', callbackUrl);
-      
-      const authUrl = generateAuthUrl(codeChallenge, callbackUrl);
-      console.log('Generated OAuth URL:', authUrl);
-      
-      // Redirect to auth URL
-      window.location.href = authUrl;
+      // Save OAuth as the preferred auth method
+      saveAuthMethod('oauth');
       setAuthMethod('oauth');
+      
+      // Generate and navigate to auth URL
+      const authUrl = generateAuthUrl(codeChallenge, callbackUrl);
+      window.location.href = authUrl;
+      
+      toast({
+        title: 'REDIRECTING TO AUTHENTICATION',
+        description: 'You will be redirected to OpenRouter to authenticate',
+        duration: 3000,
+      });
     } catch (error) {
       console.error('Error starting authentication:', error);
       toast({
-        title: 'Authentication Error',
-        description: 'Failed to start the authentication process. Check console for details.',
+        title: 'AUTHENTICATION ERROR',
+        description: 'Failed to start the authentication process',
         variant: 'destructive',
       });
     }
@@ -129,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const enableBrowserModel = () => {
     setApiKey('browser-llm');
     saveApiKey('browser-llm');
+    saveAuthMethod('browser');
     setAuthMethod('browser');
     
     // Notify app of auth state change
@@ -136,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     toast({
       title: 'BROWSER MODE ACTIVATED',
-      description: 'Using WebLLM for in-browser inference',
+      description: 'Using WebLLM for in-browser inference without API keys',
     });
   };
   
@@ -159,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     apiKey,
     isAuthenticated: apiKey !== null,
     authMethod,
+    authInitialized,
     manualApiKey,
     setManualApiKey,
     handleManualKeySubmit,
