@@ -555,19 +555,19 @@ ${generatedOutput}`
   };
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
+    <div className="container mx-auto max-w-4xl px-2 sm:px-4">
       <Card className="w-full eva-card nerv-scanline">
-        <CardHeader className="border-b border-[var(--eva-orange)]">
+        <CardHeader className="border-b border-[var(--eva-orange)] p-3 sm:p-6">
           <CardTitle className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <BarChart className="h-5 w-5 text-[var(--eva-orange)] nerv-pulse" />
-              <span className="eva-title nerv-blink">NERV MAGI SYSTEM - LLM OUTPUT RANKER</span>
+              <span className="eva-title nerv-blink text-sm sm:text-base">NERV MAGI SYSTEM - LLM OUTPUT RANKER</span>
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {!apiKey && !useLocalModels ? (
-            <div className="p-8 text-center space-y-4">
+            <div className="p-4 sm:p-8 text-center space-y-4">
               <p className="text-gray-600 mb-4">
                 Please log in, enter an API key, or enable browser-based models to use this feature.
               </p>
@@ -579,12 +579,12 @@ ${generatedOutput}`
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <Tabs defaultValue="generator" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 border border-[var(--eva-orange)] bg-opacity-20">
-                  <TabsTrigger value="generator" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-01</TabsTrigger>
-                  <TabsTrigger value="examples" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-02</TabsTrigger>
-                  <TabsTrigger value="saved" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-03</TabsTrigger>
+                  <TabsTrigger value="generator" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase text-xs sm:text-sm py-1 sm:py-2">MAGI-01</TabsTrigger>
+                  <TabsTrigger value="examples" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase text-xs sm:text-sm py-1 sm:py-2">MAGI-02</TabsTrigger>
+                  <TabsTrigger value="saved" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase text-xs sm:text-sm py-1 sm:py-2">MAGI-03</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="generator" className="space-y-4 mt-4">
@@ -1193,11 +1193,11 @@ ${generatedOutput}`
                     <div className="space-y-4">
                       {savedResults.map((result) => (
                         <Card key={result.id} className="overflow-hidden border border-[var(--eva-text)]/20 hover:border-[var(--eva-green)]/50 transition-colors duration-300">
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="text-[var(--eva-green)] font-medium mb-1">{result.name}</h3>
-                                <p className="text-xs text-[var(--eva-text)] truncate max-w-[300px]">
+                          <CardContent className="p-3 sm:p-4">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                              <div className="flex-grow">
+                                <h3 className="text-[var(--eva-green)] font-medium mb-1 text-sm sm:text-base">{result.name}</h3>
+                                <p className="text-xs text-[var(--eva-text)] truncate max-w-full sm:max-w-[300px]">
                                   <span className="text-[var(--eva-orange)]">Prompt:</span> {result.prompt}
                                 </p>
                                 <p className="text-xs text-[var(--eva-text)] mt-1">
@@ -1207,11 +1207,11 @@ ${generatedOutput}`
                                   {new Date(result.createdAt).toLocaleString()}
                                 </p>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 justify-end">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black"
+                                  className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black text-xs h-8 sm:h-9"
                                   onClick={() => {
                                     // Load the saved result
                                     setPrompt(result.prompt);
@@ -1235,7 +1235,7 @@ ${generatedOutput}`
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="eva-button border-red-500 text-red-500 hover:bg-red-500 hover:text-black"
+                                  className="eva-button border-red-500 text-red-500 hover:bg-red-500 hover:text-black text-xs h-8 sm:h-9"
                                   onClick={() => {
                                     if (window.confirm(`Delete "${result.name}"?`)) {
                                       deleteSavedResult(result.id);
@@ -1271,21 +1271,21 @@ ${generatedOutput}`
               )}
               
               {rankedOutputs.length > 0 && (
-                <div className="mt-8">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="mt-6 sm:mt-8">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                     <div className="flex items-center">
-                      <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">
-                        <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)] nerv-pulse" />
+                      <h3 className="text-base sm:text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">
+                        <ArrowDownWideNarrow className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-[var(--eva-orange)] nerv-pulse" />
                         Ranked Outputs
                       </h3>
-                      <span className="ml-2 text-sm text-[var(--eva-text)] nerv-type">
+                      <span className="ml-2 text-xs sm:text-sm text-[var(--eva-text)] nerv-type">
                         (sorted by logprob score)
                       </span>
                     </div>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black"
+                      className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black text-xs h-8 sm:h-9"
                       onClick={() => {
                         // Open modal for save
                         const resultName = window.prompt('Enter a name for this result set:');
