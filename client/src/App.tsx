@@ -33,16 +33,7 @@ function App() {
               <Router />
             </main>
           </div>
-          <Toaster 
-            toastOptions={{
-              className: 'bg-black border border-[var(--eva-orange)] text-[var(--eva-text)]',
-              style: {
-                background: 'black',
-                border: '1px solid var(--eva-orange)',
-                color: 'var(--eva-text)'
-              }
-            }}
-          />
+          <Toaster />
         </ModelConfigProvider>
       </AuthProvider>
     </QueryClientProvider>
