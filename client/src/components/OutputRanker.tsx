@@ -111,6 +111,8 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
   const [newAttribute, setNewAttribute] = useState('');
   const [selectedOutputIdx, setSelectedOutputIdx] = useState<number | null>(null);
+  const [savedResults, setSavedResults] = useState<SavedResult[]>([]);
+  const [selectedSavedResult, setSelectedSavedResult] = useState<SavedResult | null>(null);
 
   // Use the auth context for authentication state
   const { apiKey, isAuthenticated } = useAuth();
@@ -195,10 +197,20 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       if (setSelectedModel && storedModel && !useLocalModels) {
         setSelectedModel(storedModel);
       }
+      
+      // Load saved results
+      const results = getSavedResults();
+      setSavedResults(results);
     } catch (error) {
       console.error('Failed to load saved settings:', error);
     }
   }, []);
+  
+  // Reload saved results whenever they change
+  const loadSavedResults = () => {
+    const results = getSavedResults();
+    setSavedResults(results);
+  };
   
   // Save settings whenever key settings change
   useEffect(() => {
@@ -1154,6 +1166,97 @@ ${generatedOutput}`
                     ))}
                   </div>
                 </TabsContent>
+                
+                <TabsContent value="saved" className="space-y-4 mt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-[var(--eva-text)] font-mono nerv-blink">
+                      SAVED GENERATIONS: <span className="nerv-glitch text-[var(--eva-orange)]">MAGI DATABASE</span>
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+                      onClick={loadSavedResults}
+                    >
+                      Refresh List
+                    </Button>
+                  </div>
+                  
+                  {savedResults.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-[var(--eva-orange)]/30 rounded-md bg-black/20">
+                      <p className="text-[var(--eva-text)] mb-2">No saved results found</p>
+                      <p className="text-xs text-[var(--eva-text)]/70">
+                        Generate and save results in the MAGI-01 tab to see them here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {savedResults.map((result) => (
+                        <Card key={result.id} className="overflow-hidden border border-[var(--eva-text)]/20 hover:border-[var(--eva-green)]/50 transition-colors duration-300">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className="text-[var(--eva-green)] font-medium mb-1">{result.name}</h3>
+                                <p className="text-xs text-[var(--eva-text)] truncate max-w-[300px]">
+                                  <span className="text-[var(--eva-orange)]">Prompt:</span> {result.prompt}
+                                </p>
+                                <p className="text-xs text-[var(--eva-text)] mt-1">
+                                  <span className="text-[var(--eva-orange)]">Model:</span> {result.model}
+                                </p>
+                                <p className="text-xs text-[var(--eva-text)]/70 mt-1">
+                                  {new Date(result.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black"
+                                  onClick={() => {
+                                    // Load the saved result
+                                    setPrompt(result.prompt);
+                                    setLogProbTemplate(result.template);
+                                    setRankedOutputs(result.outputs);
+                                    
+                                    // Switch to generator tab
+                                    const generatorTab = document.querySelector('[value="generator"]') as HTMLElement;
+                                    if (generatorTab) {
+                                      generatorTab.click();
+                                    }
+                                    
+                                    toast({
+                                      title: 'Result Loaded',
+                                      description: `Loaded "${result.name}" with ${result.outputs.length} outputs`,
+                                    });
+                                  }}
+                                >
+                                  Load
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="eva-button border-red-500 text-red-500 hover:bg-red-500 hover:text-black"
+                                  onClick={() => {
+                                    if (window.confirm(`Delete "${result.name}"?`)) {
+                                      deleteSavedResult(result.id);
+                                      loadSavedResults();
+                                      toast({
+                                        title: 'Result Deleted',
+                                        description: `"${result.name}" has been deleted`,
+                                      });
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
               
               {selectedExample && (
@@ -1185,7 +1288,7 @@ ${generatedOutput}`
                       className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black"
                       onClick={() => {
                         // Open modal for save
-                        const resultName = prompt('Enter a name for this result set:');
+                        const resultName = window.prompt('Enter a name for this result set:');
                         if (resultName) {
                           try {
                             saveResults(
