@@ -72,18 +72,18 @@ export const POPULAR_MODELS: ModelOption[] = [
     pricing: '$4.00/M'
   },
   {
-    id: 'deepseek/deepseek-v3-34b',
-    name: 'DeepSeek V3 34B',
-    description: 'Advanced reasoning model with excellent performance in mathematics and coding',
-    contextSize: '32K',
-    pricing: '$2.50/M'
+    id: 'deepseek/deepseek-chat-v3-0324',
+    name: 'DeepSeek V3',
+    description: 'Advanced 685B MoE model with excellent performance in reasoning and coding',
+    contextSize: '64K',
+    pricing: '$2.70/M'
   },
   {
-    id: 'deepseek/r1-online',
+    id: 'deepseek/deepseek-r1',
     name: 'DeepSeek R1',
-    description: 'State-of-the-art reasoning model with exceptional structured output capability',
-    contextSize: '128K',
-    pricing: '$5.00/M'
+    description: 'State-of-the-art 671B MoE reasoning model with exceptional mathematical capabilities',
+    contextSize: '164K',
+    pricing: '$5.40/M'
   },
   {
     id: 'anthropic/claude-3.5-sonnet',

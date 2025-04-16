@@ -165,10 +165,10 @@ const ModelSelection: FC = () => {
                         } else if (model.id.includes("quasar-alpha")) {
                           badgeColor = "bg-purple-900/60 text-purple-400";
                           badgeText = "UNIQUE";
-                        } else if (model.id.includes("deepseek-v3")) {
+                        } else if (model.id.includes("deepseek-chat-v3")) {
                           badgeColor = "bg-cyan-900/60 text-cyan-400";
                           badgeText = "PRECISE";
-                        } else if (model.id.includes("r1-online")) {
+                        } else if (model.id.includes("deepseek-r1")) {
                           badgeColor = "bg-emerald-900/60 text-emerald-400";
                           badgeText = "REASONING";
                         } else if (model.id.includes("claude-3.5-sonnet")) {
