@@ -31,7 +31,7 @@ import {
   CirclePlay, 
   Maximize, 
   AlertTriangle,
-  CheckCircle2
+  CheckCircle
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -330,7 +330,9 @@ const ModelSelection: FC = () => {
                 </Alert>
               ) : (
                 <Alert className="border border-[var(--eva-green)]/30 bg-black/20">
-                  <CheckCircle className="h-4 w-4 text-[var(--eva-green)]" />
+                  <div className="h-4 w-4 bg-[var(--eva-green)] rounded-full flex items-center justify-center">
+                    <div className="h-2 w-2 bg-black rounded-full"></div>
+                  </div>
                   <AlertTitle className="text-[var(--eva-green)] font-mono">
                     AUTHENTICATION ACTIVE
                   </AlertTitle>
