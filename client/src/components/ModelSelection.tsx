@@ -188,7 +188,7 @@ const ModelSelection: FC = () => {
                         id="custom-model"
                         value={customModel}
                         onChange={(e) => setCustomModel(e.target.value)}
-                        placeholder="Enter custom model ID (e.g., anthropic/claude-3-opus)"
+                        placeholder="Enter custom model ID (e.g., openrouter/quasar-alpha)"
                         className="font-mono eva-input border-[var(--eva-orange)]/30 bg-black/40"
                       />
                     </div>

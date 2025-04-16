@@ -58,11 +58,32 @@ export const BROWSER_MODEL_OPTIONS: BrowserModelOption[] = [
 // Shared popular API model options
 export const POPULAR_MODELS: ModelOption[] = [
   {
-    id: 'anthropic/claude-3-haiku-20240307',
-    name: 'Claude 3 Haiku',
-    description: 'Fast, compact AI assistant with strong coding abilities',
+    id: 'google/gemini-2.0-flash-001',
+    name: 'Gemini 2.0 Flash',
+    description: 'Google\'s latest fast model with excellent speed and efficiency',
+    contextSize: '128K',
+    pricing: '$0.35/M'
+  },
+  {
+    id: 'openrouter/quasar-alpha',
+    name: 'Quasar Alpha',
+    description: 'OpenRouter\'s proprietary model with advanced reasoning capabilities',
+    contextSize: '256K',
+    pricing: '$4.00/M'
+  },
+  {
+    id: 'anthropic/claude-3.5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    description: 'Anthropic\'s latest balanced model with enhanced capabilities',
     contextSize: '200K',
-    pricing: '$0.25/M'
+    pricing: '$3.50/M'
+  },
+  {
+    id: 'openai/gpt-4o',
+    name: 'GPT-4o',
+    description: 'OpenAI\'s multimodal model with sophisticated reasoning',
+    contextSize: '128K',
+    pricing: '$5.00/M'
   },
   {
     id: 'anthropic/claude-3-opus-20240229',
@@ -70,13 +91,6 @@ export const POPULAR_MODELS: ModelOption[] = [
     description: 'Anthropic\'s most intelligent model with expert reasoning',
     contextSize: '200K',
     pricing: '$15/M'
-  },
-  {
-    id: 'anthropic/claude-3-sonnet-20240229',
-    name: 'Claude 3 Sonnet',
-    description: 'Balanced intelligence and speed for complex tasks',
-    contextSize: '200K',
-    pricing: '$3/M'
   },
   {
     id: 'google/gemini-1.5-pro-latest',
