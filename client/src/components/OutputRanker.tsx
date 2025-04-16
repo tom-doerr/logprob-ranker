@@ -576,9 +576,40 @@ ${generatedOutput}`
                         className="font-mono text-sm min-h-[120px] eva-input text-[var(--eva-green)]"
                       />
                       <div className="mt-2 space-y-2">
-                        <p className="text-xs text-[var(--eva-text)] font-mono">
-                          TEMPLATE DEFINES ATTRIBUTES TO EVALUATE. USE LOGPROB_TRUE TO INDICATE.
-                        </p>
+                        <div className="relative">
+                          <div className="absolute right-0 top-0">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-6 w-6 p-0 rounded-full text-[var(--eva-orange)] hover:bg-[var(--eva-orange)]/20"
+                              onClick={() => {
+                                toast({
+                                  title: "LogProb Template Help",
+                                  description: "The template defines which attributes to evaluate using LOGPROB_TRUE. Each value represents the likelihood of the attribute being true. Use the + button to quickly add attributes.",
+                                  duration: 8000,
+                                });
+                              }}
+                            >
+                              <span className="sr-only">Help</span>
+                              ?
+                            </Button>
+                          </div>
+                          <div className="flex items-center">
+                            <p className="text-xs text-[var(--eva-text)] font-mono flex-grow">
+                              TEMPLATE DEFINES ATTRIBUTES TO EVALUATE. USE LOGPROB_TRUE TO INDICATE.
+                            </p>
+                          </div>
+                          <div className="bg-black/30 border border-[var(--eva-orange)]/30 rounded p-2 mt-2 text-xs">
+                            <p className="font-mono text-[var(--eva-text)]">Example format:</p>
+                            <pre className="text-green-400 mt-1 text-xs overflow-x-auto">
+                              {`{
+  "creative": LOGPROB_TRUE,
+  "helpful": LOGPROB_TRUE,
+  "accurate": LOGPROB_TRUE
+}`}
+                            </pre>
+                          </div>
+                        </div>
                         
                         <div className="flex space-x-2 items-center">
                           <Input
@@ -630,24 +661,52 @@ ${generatedOutput}`
                     {/* Column 2: Model & Variants */}
                     <div className="space-y-4">
                       <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <div className="flex justify-between items-center mb-3">
-                          <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
-                            MODEL SELECTION
-                          </label>
-                          <div className="flex items-center space-x-2 bg-black/20 px-3 py-1 rounded">
-                            <label className="text-xs text-[var(--eva-text)]">Mode:</label>
-                            <div className="flex items-center space-x-1 bg-black/30 rounded-md p-1">
-                              <span className={`text-xs px-2 py-0.5 rounded ${!useLocalModels ? "bg-[var(--eva-orange)] text-black" : "text-[var(--eva-text)]"}`}>
-                                API
-                              </span>
-                              <Switch
-                                checked={useLocalModels}
-                                onCheckedChange={setUseLocalModels}
-                                className="mx-1 data-[state=checked]:bg-[var(--eva-orange)]"
-                              />
-                              <span className={`text-xs px-2 py-0.5 rounded ${useLocalModels ? "bg-[var(--eva-orange)] text-black" : "text-[var(--eva-text)]"}`}>
-                                Browser
-                              </span>
+                        <div className="mb-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider flex items-center">
+                              MODEL SELECTION
+                              {useLocalModels && (
+                                <span className="ml-2 text-xs bg-green-900/70 text-green-400 px-2 py-0.5 rounded animate-pulse nerv-blink">
+                                  LOCAL PROCESSING
+                                </span>
+                              )}
+                            </label>
+                          </div>
+                          
+                          <div className={`bg-black/40 p-3 rounded-md border-2 ${useLocalModels ? 'border-green-600/50' : 'border-blue-600/50'} transition-all duration-300`}>
+                            <div className="text-center mb-2">
+                              <span className="text-xs uppercase tracking-wider text-[var(--eva-text)]">Processing Mode</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-center gap-4 py-2">
+                              <div className={`flex flex-col items-center ${!useLocalModels ? "opacity-100" : "opacity-50"} transition-opacity duration-300`}>
+                                <span className={`text-sm px-3 py-1 rounded-md font-medium ${!useLocalModels ? "text-blue-400 bg-blue-900/30" : "text-gray-500"}`}>
+                                  API Model
+                                </span>
+                                <span className="text-xs text-gray-400 mt-1">External Processing</span>
+                              </div>
+                              
+                              <div className="h-12 flex flex-col justify-center relative group">
+                                <div className={`absolute inset-0 ${useLocalModels ? 'bg-green-500/20' : 'bg-blue-500/20'} rounded-full filter blur-md -z-10 group-hover:opacity-70 transition-all duration-300`}></div>
+                                <Switch
+                                  checked={useLocalModels}
+                                  onCheckedChange={setUseLocalModels}
+                                  className="mx-1 data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-blue-500 h-6 w-12"
+                                />
+                              </div>
+                              
+                              <div className={`flex flex-col items-center ${useLocalModels ? "opacity-100" : "opacity-50"} transition-opacity duration-300`}>
+                                <span className={`text-sm px-3 py-1 rounded-md font-medium ${useLocalModels ? "text-green-400 bg-green-900/30" : "text-gray-500"}`}>
+                                  Browser Model
+                                </span>
+                                <span className="text-xs text-gray-400 mt-1">Local Privacy</span>
+                              </div>
+                            </div>
+
+                            <div className="mt-2 text-center text-xs text-[var(--eva-text)]">
+                              {useLocalModels 
+                                ? "Using browser-based WebLLM for privacy and no API keys required" 
+                                : "Using OpenRouter API for enhanced model performance and options"}
                             </div>
                           </div>
                         </div>
