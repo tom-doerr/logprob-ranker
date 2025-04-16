@@ -30,7 +30,8 @@ import {
   Crosshair, 
   CirclePlay, 
   Maximize, 
-  AlertTriangle 
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -38,9 +39,11 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useModelConfig } from '@/hooks/use-model-config';
+import { useAuth } from '@/hooks/use-auth';
 
 const ModelSelection: FC = () => {
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   
   // Get model configuration from context
   const {
@@ -315,15 +318,27 @@ const ModelSelection: FC = () => {
             </div>
             
             <div className="pt-4">
-              <Alert className="border border-[var(--eva-orange)]/30 bg-black/20">
-                <AlertTriangle className="h-4 w-4 text-[var(--eva-orange)]" />
-                <AlertTitle className="text-[var(--eva-orange)] font-mono">
-                  API KEY REQUIRED
-                </AlertTitle>
-                <AlertDescription className="text-xs font-mono">
-                  OpenRouter API mode requires authentication. Please provide your API key in the interface below.
-                </AlertDescription>
-              </Alert>
+              {!isAuthenticated ? (
+                <Alert className="border border-[var(--eva-orange)]/30 bg-black/20">
+                  <AlertTriangle className="h-4 w-4 text-[var(--eva-orange)]" />
+                  <AlertTitle className="text-[var(--eva-orange)] font-mono">
+                    API KEY REQUIRED
+                  </AlertTitle>
+                  <AlertDescription className="text-xs font-mono">
+                    OpenRouter API mode requires authentication. Please provide your API key in the interface above.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert className="border border-[var(--eva-green)]/30 bg-black/20">
+                  <CheckCircle className="h-4 w-4 text-[var(--eva-green)]" />
+                  <AlertTitle className="text-[var(--eva-green)] font-mono">
+                    AUTHENTICATION ACTIVE
+                  </AlertTitle>
+                  <AlertDescription className="text-xs font-mono">
+                    API key authenticated. You can now use all available models.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </TabsContent>
           

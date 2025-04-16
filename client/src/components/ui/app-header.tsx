@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, BarChart, Menu, Settings, LogIn, Key, BrainCircuit, ChevronDown } from 'lucide-react';
+import { MessageSquare, BarChart, Menu, Settings, LogIn, Key, BrainCircuit, ChevronDown, CheckCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,15 +67,12 @@ export const AppHeader: React.FC = () => {
               <TooltipTrigger asChild>
                 <div className="relative">
                   {isAuthenticated ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="border-[var(--eva-green)] text-[var(--eva-green)] bg-[var(--eva-green-bg)]/30 hover:bg-[var(--eva-green)] hover:text-black hidden sm:flex items-center"
-                      onClick={() => logout()}
+                    <div 
+                      className="border border-[var(--eva-green)] text-[var(--eva-green)] bg-[var(--eva-green-bg)]/30 px-3 py-1.5 rounded-md hidden sm:flex items-center"
                     >
-                      <Key className="h-3.5 w-3.5 mr-1.5" />
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                       <span className="font-mono text-xs tracking-wider">AUTHENTICATED</span>
-                    </Button>
+                    </div>
                   ) : (
                     <Button 
                       variant="outline" 
@@ -90,7 +87,7 @@ export const AppHeader: React.FC = () => {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-black border border-[var(--eva-orange)] text-[var(--eva-text)] text-xs">
-                {isAuthenticated ? "Click to log out" : "Click to authenticate with OpenRouter"}
+                {isAuthenticated ? "Authentication status: Active" : "Click to authenticate with OpenRouter"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
