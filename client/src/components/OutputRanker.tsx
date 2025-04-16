@@ -590,7 +590,7 @@ ${generatedOutput}`
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* Column 1: LogProb Template */}
                     <div>
                       <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
@@ -1134,7 +1134,7 @@ ${generatedOutput}`
                   <p className="text-sm text-[var(--eva-text)] mb-4 font-mono nerv-blink">
                     SELECT EXAMPLE TEMPLATE: <span className="nerv-glitch text-[var(--eva-orange)]">NERV CLASSIFICATION</span>
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {examples.map((example, idx) => (
                       <ExampleCard 
                         key={idx}
