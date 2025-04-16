@@ -9,7 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
 import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getRankerSettings, saveRankerSettings, SavedTemplate } from '@/utils/settings-storage';
+import { 
+  getRankerSettings, 
+  saveRankerSettings, 
+  SavedTemplate,
+  saveResults,
+  getSavedResults,
+  getSavedResultById,
+  deleteSavedResult,
+  SavedResult
+} from '@/utils/settings-storage';
 import TemplateManager from '@/components/ui/template-manager';
 import { useModelConfig } from '@/hooks/use-model-config';
 import { useAuth } from '@/hooks/use-auth';
@@ -560,9 +569,10 @@ ${generatedOutput}`
           ) : (
             <div className="space-y-6">
               <Tabs defaultValue="generator" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 border border-[var(--eva-orange)] bg-opacity-20">
+                <TabsList className="grid w-full grid-cols-3 border border-[var(--eva-orange)] bg-opacity-20">
                   <TabsTrigger value="generator" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-01</TabsTrigger>
                   <TabsTrigger value="examples" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-02</TabsTrigger>
+                  <TabsTrigger value="saved" className="data-[state=active]:bg-[var(--eva-orange)] data-[state=active]:text-black font-mono uppercase">MAGI-03</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="generator" className="space-y-4 mt-4">
@@ -1159,14 +1169,49 @@ ${generatedOutput}`
               
               {rankedOutputs.length > 0 && (
                 <div className="mt-8">
-                  <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">
-                      <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)] nerv-pulse" />
-                      Ranked Outputs
-                    </h3>
-                    <span className="ml-2 text-sm text-[var(--eva-text)] nerv-type">
-                      (sorted by logprob score)
-                    </span>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <h3 className="text-lg font-medium flex items-center text-[var(--eva-orange)] uppercase tracking-wider nerv-blink">
+                        <ArrowDownWideNarrow className="h-5 w-5 mr-2 text-[var(--eva-orange)] nerv-pulse" />
+                        Ranked Outputs
+                      </h3>
+                      <span className="ml-2 text-sm text-[var(--eva-text)] nerv-type">
+                        (sorted by logprob score)
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="eva-button border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black"
+                      onClick={() => {
+                        // Open modal for save
+                        const resultName = prompt('Enter a name for this result set:');
+                        if (resultName) {
+                          try {
+                            saveResults(
+                              resultName,
+                              prompt,
+                              logProbTemplate,
+                              selectedModel,
+                              rankedOutputs
+                            );
+                            toast({
+                              title: 'Results Saved',
+                              description: `"${resultName}" has been saved and can be loaded later.`,
+                            });
+                          } catch (error) {
+                            console.error('Error saving results:', error);
+                            toast({
+                              title: 'Error Saving Results',
+                              description: 'Could not save results. Please try again.',
+                              variant: 'destructive',
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      Save Results
+                    </Button>
                   </div>
                   
                   <div className="space-y-4">

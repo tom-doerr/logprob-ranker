@@ -5,6 +5,87 @@
 const STORAGE_PREFIX = 'nerv_magi_';
 
 /**
+ * Saved results storage
+ */
+const SAVED_RESULTS_KEY = `${STORAGE_PREFIX}saved_results`;
+
+export interface SavedResultMetadata {
+  id: string;
+  name: string;
+  prompt: string;
+  template: string;
+  model: string;
+  createdAt: number;
+}
+
+export interface SavedResult extends SavedResultMetadata {
+  outputs: any[];
+}
+
+export function saveResults(
+  name: string, 
+  prompt: string, 
+  template: string,
+  model: string,
+  outputs: any[]
+): SavedResult {
+  const savedResults = getSavedResults();
+  
+  const newResult: SavedResult = {
+    id: `result_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    name,
+    prompt,
+    template,
+    model,
+    outputs,
+    createdAt: Date.now()
+  };
+  
+  savedResults.push(newResult);
+  localStorage.setItem(SAVED_RESULTS_KEY, JSON.stringify(savedResults));
+  
+  return newResult;
+}
+
+export function getSavedResults(): SavedResult[] {
+  const resultsJson = localStorage.getItem(SAVED_RESULTS_KEY);
+  
+  if (!resultsJson) {
+    return [];
+  }
+  
+  try {
+    return JSON.parse(resultsJson);
+  } catch (error) {
+    console.error('Failed to parse saved results from storage:', error);
+    return [];
+  }
+}
+
+export function getSavedResultsMetadata(): SavedResultMetadata[] {
+  return getSavedResults().map(({ id, name, prompt, template, model, createdAt }) => ({
+    id, name, prompt, template, model, createdAt
+  }));
+}
+
+export function getSavedResultById(id: string): SavedResult | null {
+  const results = getSavedResults();
+  return results.find(r => r.id === id) || null;
+}
+
+export function deleteSavedResult(id: string): boolean {
+  const results = getSavedResults();
+  const newResults = results.filter(r => r.id !== id);
+  
+  if (newResults.length === results.length) {
+    return false; // No result was deleted
+  }
+  
+  localStorage.setItem(SAVED_RESULTS_KEY, JSON.stringify(newResults));
+  return true;
+}
+
+/**
  * Template storage
  */
 const TEMPLATE_STORAGE_KEY = `${STORAGE_PREFIX}templates`;
