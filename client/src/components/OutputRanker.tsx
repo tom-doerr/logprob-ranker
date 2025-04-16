@@ -612,7 +612,7 @@ ${generatedOutput}`
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {/* Column 1: LogProb Template */}
                     <div>
                       <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
@@ -1023,15 +1023,15 @@ ${generatedOutput}`
                     
                     {/* Column 3: Generation Parameters */}
                     <div className="space-y-4">
-                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <h3 className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-3 flex items-center">
-                          <Flame className="h-4 w-4 mr-2 text-[var(--eva-orange)]" />
+                      <div className="border border-[var(--eva-orange)] rounded-md p-2.5 sm:p-3">
+                        <h3 className="text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2 sm:mb-3 flex items-center">
+                          <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 text-[var(--eva-orange)]" />
                           GENERATION PARAMETERS
                         </h3>
                         
                         <div className="space-y-4">
-                          <div className="bg-black/20 p-3 rounded-md">
-                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                          <div className="bg-black/20 p-2 sm:p-3 rounded-md">
+                            <label className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                               Temperature
                             </label>
                             <div className="relative">
@@ -1064,8 +1064,8 @@ ${generatedOutput}`
                             </p>
                           </div>
                           
-                          <div className="bg-black/20 p-3 rounded-md">
-                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                          <div className="bg-black/20 p-2 sm:p-3 rounded-md">
+                            <label className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                               Max Tokens
                             </label>
                             <div className="flex items-center space-x-2">
@@ -1152,8 +1152,8 @@ ${generatedOutput}`
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="examples" className="space-y-4 mt-4">
-                  <p className="text-sm text-[var(--eva-text)] mb-4 font-mono nerv-blink">
+                <TabsContent value="examples" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
+                  <p className="text-xs sm:text-sm text-[var(--eva-text)] mb-3 sm:mb-4 font-mono nerv-blink">
                     SELECT EXAMPLE TEMPLATE: <span className="nerv-glitch text-[var(--eva-orange)]">NERV CLASSIFICATION</span>
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1167,15 +1167,15 @@ ${generatedOutput}`
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="saved" className="space-y-4 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm text-[var(--eva-text)] font-mono nerv-blink">
+                <TabsContent value="saved" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <p className="text-xs sm:text-sm text-[var(--eva-text)] font-mono nerv-blink">
                       SAVED GENERATIONS: <span className="nerv-glitch text-[var(--eva-orange)]">MAGI DATABASE</span>
                     </p>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+                      className="eva-button border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black text-xs h-8 sm:h-9"
                       onClick={loadSavedResults}
                     >
                       Refresh List
@@ -1183,8 +1183,8 @@ ${generatedOutput}`
                   </div>
                   
                   {savedResults.length === 0 ? (
-                    <div className="text-center p-8 border border-dashed border-[var(--eva-orange)]/30 rounded-md bg-black/20">
-                      <p className="text-[var(--eva-text)] mb-2">No saved results found</p>
+                    <div className="text-center p-4 sm:p-8 border border-dashed border-[var(--eva-orange)]/30 rounded-md bg-black/20">
+                      <p className="text-sm text-[var(--eva-text)] mb-2">No saved results found</p>
                       <p className="text-xs text-[var(--eva-text)]/70">
                         Generate and save results in the MAGI-01 tab to see them here
                       </p>
