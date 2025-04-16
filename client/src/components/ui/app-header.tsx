@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, BarChart, Menu, Settings, LogIn, Key, BrainCircuit, ChevronDown, CheckCircle } from 'lucide-react';
+import { MessageSquare, BarChart, Menu, Settings, LogIn, Key, BrainCircuit, ChevronDown, CheckCircle, Zap } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
 import {
@@ -19,7 +20,17 @@ import {
 
 export const AppHeader: React.FC = () => {
   const [location] = useLocation();
-  const { isAuthenticated, apiKey, logout, startOAuthFlow, enableBrowserModel, manualApiKey, setManualApiKey, handleManualKeySubmit } = useAuth();
+  const { 
+    isAuthenticated, 
+    apiKey, 
+    logout, 
+    startOAuthFlow, 
+    enableBrowserModel, 
+    manualApiKey, 
+    setManualApiKey, 
+    handleManualKeySubmit,
+    autoAuthenticate 
+  } = useAuth();
   const [showManualInput, setShowManualInput] = useState(false);
 
   return (
@@ -136,6 +147,31 @@ export const AppHeader: React.FC = () => {
                 </>
               ) : (
                 <>
+                  <DropdownMenuItem 
+                    className="bg-[var(--eva-orange)]/20 text-white border-l-2 border-[var(--eva-orange)] focus:bg-[var(--eva-orange)] focus:text-black mb-2"
+                    onClick={() => {
+                      const success = autoAuthenticate();
+                      if (!success) {
+                        // If no previous auth found, show a message
+                        toast({
+                          title: 'No Saved Authentication',
+                          description: 'Choose an authentication method below.',
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center w-full">
+                      <Zap className="mr-2 h-4 w-4 text-[var(--eva-orange)]" />
+                      <span>Quick Authenticate</span>
+                      <span className="ml-auto text-xs opacity-70">(Restore Previous)</span>
+                    </div>
+                  </DropdownMenuItem>
+                
+                  <DropdownMenuLabel className="text-xs text-[var(--eva-orange)] font-mono">
+                    AUTHENTICATION METHODS
+                  </DropdownMenuLabel>
+                
                   <DropdownMenuItem 
                     className="text-[var(--eva-blue)] focus:bg-[var(--eva-blue)] focus:text-white"
                     onClick={startOAuthFlow}

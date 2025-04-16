@@ -26,6 +26,9 @@ interface AuthContextType {
   authMethod: 'oauth' | 'manual' | 'browser' | null;
   authInitialized: boolean;
   
+  // Auto-authentication (using stored credentials)
+  autoAuthenticate: () => boolean;
+  
   // Manual key input
   manualApiKey: string;
   setManualApiKey: (key: string) => void;
@@ -49,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authMethod, setAuthMethod] = useState<'oauth' | 'manual' | 'browser' | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
   
-  // Check for existing API key on mount
-  useEffect(() => {
+  // Auto-authenticate with saved credentials on app start
+  const autoAuthenticate = () => {
     const storedApiKey = getApiKey();
     const storedAuthMethod = getAuthMethod();
     
@@ -74,15 +77,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       
+      // Notify app of auth state change
+      window.dispatchEvent(new Event('api-key-changed'));
+      
       // Indicate successful auth init with a toast
       toast({
         title: 'AUTHENTICATION RESTORED',
         description: 'Your previous NERV credentials have been retrieved',
         duration: 3000,
       });
+      
+      return true;
     }
     
-    // Mark auth as initialized
+    return false;
+  };
+  
+  // Check for existing API key on mount
+  useEffect(() => {
+    autoAuthenticate();
+    
+    // Mark auth as initialized regardless of result
     setAuthInitialized(true);
   }, []);
   
@@ -192,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: apiKey !== null,
     authMethod,
     authInitialized,
+    autoAuthenticate,
     manualApiKey,
     setManualApiKey,
     handleManualKeySubmit,
