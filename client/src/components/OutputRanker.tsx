@@ -127,6 +127,33 @@ const OutputRanker: FC<OutputRankerProps> = () => {
     }
   };
   
+  // Setup keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Enter or Cmd+Enter to start generation
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!isGenerating && prompt.trim() && logProbTemplate.trim()) {
+          e.preventDefault();
+          generateOutputs();
+        }
+      }
+      
+      // Escape key to stop generation
+      if (e.key === 'Escape' && isGenerating) {
+        e.preventDefault();
+        // We'll stop by setting isGenerating to false; the async functions check this value
+        setIsGenerating(false);
+        toast({
+          title: 'Generation Stopped',
+          description: 'Output generation has been cancelled.',
+        });
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGenerating, prompt, logProbTemplate]);
+  
   // Import settings from storage on component mount
   useEffect(() => {
     try {
