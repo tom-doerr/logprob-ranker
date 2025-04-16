@@ -663,14 +663,31 @@ ${generatedOutput}`
                       <div className="border border-[var(--eva-orange)] rounded-md p-3">
                         <div className="mb-4">
                           <div className="flex justify-between items-center mb-3">
-                            <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider flex items-center">
-                              MODEL SELECTION
-                              {useLocalModels && (
-                                <span className="ml-2 text-xs bg-green-900/70 text-green-400 px-2 py-0.5 rounded animate-pulse nerv-blink">
-                                  LOCAL PROCESSING
-                                </span>
-                              )}
-                            </label>
+                            <div className="flex items-center">
+                              <label className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider flex items-center">
+                                MODEL SELECTION
+                                {useLocalModels && (
+                                  <span className="ml-2 text-xs bg-green-900/70 text-green-400 px-2 py-0.5 rounded animate-pulse nerv-blink">
+                                    LOCAL PROCESSING
+                                  </span>
+                                )}
+                              </label>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-6 w-6 p-0 ml-2 rounded-full text-[var(--eva-orange)] hover:bg-[var(--eva-orange)]/20"
+                                onClick={() => {
+                                  toast({
+                                    title: "Popular Models",
+                                    description: "These are the most used models on OpenRouter as of April 2025: Gemini 2.0 Flash, Quasar Alpha, Claude 3.5 Sonnet, and GPT-4o. Select or enter a custom model ID.",
+                                    duration: 8000,
+                                  });
+                                }}
+                              >
+                                <span className="sr-only">Model Info</span>
+                                ?
+                              </Button>
+                            </div>
                           </div>
                           
                           <div className={`bg-black/40 p-3 rounded-md border-2 ${useLocalModels ? 'border-green-600/50' : 'border-blue-600/50'} transition-all duration-300`}>
@@ -738,14 +755,14 @@ ${generatedOutput}`
                                   <SelectValue placeholder="Select a model" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-black/90 border-[var(--eva-orange)]">
-                                  <SelectItem value="anthropic/claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
+                                  <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
+                                  <SelectItem value="openrouter/quasar-alpha">Quasar Alpha</SelectItem>
+                                  <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                                  <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
                                   <SelectItem value="anthropic/claude-3-opus-20240229">Claude 3 Opus</SelectItem>
-                                  <SelectItem value="anthropic/claude-3-sonnet-20240229">Claude 3 Sonnet</SelectItem>
                                   <SelectItem value="google/gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
                                   <SelectItem value="meta-llama/llama-3-70b-instruct">Llama 3 70B</SelectItem>
                                   <SelectItem value="mistralai/mistral-large-latest">Mistral Large</SelectItem>
-                                  <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
-                                  <SelectItem value="openai/gpt-4o-mini">GPT-4o Mini</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TabsContent>
@@ -753,7 +770,7 @@ ${generatedOutput}`
                             <TabsContent value="custom">
                               <div className="space-y-2">
                                 <Input
-                                  placeholder="Enter custom model ID (e.g., anthropic/claude-3-opus-20240229)"
+                                  placeholder="Enter custom model ID (e.g., openrouter/quasar-alpha)"
                                   value={customModel}
                                   onChange={(e) => setCustomModel(e.target.value)}
                                   className="w-full eva-input text-[var(--eva-green)] bg-black/20"
