@@ -679,14 +679,14 @@ ${generatedOutput}`
                                   <SelectValue placeholder="Select a model" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-black/90 border-[var(--eva-orange)]">
-                                  <SelectItem value="deepseek/deepseek-r1">DeepSeek R1</SelectItem>
-                                  <SelectItem value="deepseek/deepseek-chat-v3-0324">DeepSeek Chat v3</SelectItem>
-                                  <SelectItem value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</SelectItem>
-                                  <SelectItem value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</SelectItem>
-                                  <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
-                                  <SelectItem value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                                  <SelectItem value="anthropic/claude-3-haiku-20240307">Claude 3 Haiku</SelectItem>
+                                  <SelectItem value="anthropic/claude-3-opus-20240229">Claude 3 Opus</SelectItem>
+                                  <SelectItem value="anthropic/claude-3-sonnet-20240229">Claude 3 Sonnet</SelectItem>
+                                  <SelectItem value="google/gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
+                                  <SelectItem value="meta-llama/llama-3-70b-instruct">Llama 3 70B</SelectItem>
+                                  <SelectItem value="mistralai/mistral-large-latest">Mistral Large</SelectItem>
+                                  <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
                                   <SelectItem value="openai/gpt-4o-mini">GPT-4o Mini</SelectItem>
-                                  <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
                                 </SelectContent>
                               </Select>
                             </TabsContent>
@@ -694,7 +694,7 @@ ${generatedOutput}`
                             <TabsContent value="custom">
                               <div className="space-y-2">
                                 <Input
-                                  placeholder="Enter custom model ID (e.g., anthropic/claude-3.5-sonnet)"
+                                  placeholder="Enter custom model ID (e.g., anthropic/claude-3-opus-20240229)"
                                   value={customModel}
                                   onChange={(e) => setCustomModel(e.target.value)}
                                   className="w-full eva-input text-[var(--eva-green)] bg-black/20"

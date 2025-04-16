@@ -30,9 +30,9 @@ export const AppHeader: React.FC = () => {
         </div>
 
         <nav className="hidden md:flex items-center space-x-1">
-          <Link href="/">
+          <Link href="/chat">
             <div className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 cursor-pointer ${
-              location === '/' 
+              location === '/chat' 
               ? 'bg-[var(--eva-orange)] text-black' 
               : 'text-[var(--eva-text)] hover:bg-black/40 hover:text-[var(--eva-orange)]'
             }`}>
@@ -71,7 +71,7 @@ export const AppHeader: React.FC = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-black/95 border-[var(--eva-orange)]">
               <DropdownMenuItem className="text-[var(--eva-text)] focus:bg-[var(--eva-orange)] focus:text-black" asChild>
-                <Link href="/">
+                <Link href="/chat">
                   <div className="flex items-center w-full">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Chat Interface</span>

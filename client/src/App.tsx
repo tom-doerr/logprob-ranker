@@ -13,7 +13,8 @@ import AppHeader from "@/components/ui/app-header";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={RankerPage} />
+      <Route path="/chat" component={Home} />
       <Route path="/ranker" component={RankerPage} />
       <Route path="/callback" component={Callback} />
       {/* Fallback to 404 */}
