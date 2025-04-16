@@ -755,14 +755,54 @@ ${generatedOutput}`
                                   <SelectValue placeholder="Select a model" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-black/90 border-[var(--eva-orange)]">
-                                  <SelectItem value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</SelectItem>
-                                  <SelectItem value="openrouter/quasar-alpha">Quasar Alpha</SelectItem>
-                                  <SelectItem value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
-                                  <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
-                                  <SelectItem value="anthropic/claude-3-opus-20240229">Claude 3 Opus</SelectItem>
-                                  <SelectItem value="google/gemini-1.5-pro-latest">Gemini 1.5 Pro</SelectItem>
-                                  <SelectItem value="meta-llama/llama-3-70b-instruct">Llama 3 70B</SelectItem>
-                                  <SelectItem value="mistralai/mistral-large-latest">Mistral Large</SelectItem>
+                                  <SelectItem value="google/gemini-2.0-flash-001">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Gemini 2.0 Flash</span>
+                                      <span className="px-1.5 py-0.5 bg-green-900/60 text-green-400 text-[10px] rounded-sm">FAST</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="openrouter/quasar-alpha">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Quasar Alpha</span>
+                                      <span className="px-1.5 py-0.5 bg-purple-900/60 text-purple-400 text-[10px] rounded-sm">UNIQUE</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="anthropic/claude-3.5-sonnet">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Claude 3.5 Sonnet</span>
+                                      <span className="px-1.5 py-0.5 bg-blue-900/60 text-blue-400 text-[10px] rounded-sm">BALANCED</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="openai/gpt-4o">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>GPT-4o</span>
+                                      <span className="px-1.5 py-0.5 bg-yellow-900/60 text-yellow-400 text-[10px] rounded-sm">VERSATILE</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="anthropic/claude-3-opus-20240229">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Claude 3 Opus</span>
+                                      <span className="px-1.5 py-0.5 bg-red-900/60 text-red-400 text-[10px] rounded-sm">PREMIUM</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="google/gemini-1.5-pro-latest">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Gemini 1.5 Pro</span>
+                                      <span className="px-1.5 py-0.5 bg-indigo-900/60 text-indigo-400 text-[10px] rounded-sm">CONTEXT</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="meta-llama/llama-3-70b-instruct">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Llama 3 70B</span>
+                                      <span className="px-1.5 py-0.5 bg-orange-900/60 text-orange-400 text-[10px] rounded-sm">POWERFUL</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="mistralai/mistral-large-latest">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span>Mistral Large</span>
+                                      <span className="px-1.5 py-0.5 bg-teal-900/60 text-teal-400 text-[10px] rounded-sm">CAPABLE</span>
+                                    </div>
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </TabsContent>

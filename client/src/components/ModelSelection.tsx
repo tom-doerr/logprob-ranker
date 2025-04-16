@@ -154,20 +154,59 @@ const ModelSelection: FC = () => {
                       <SelectValue placeholder="Select a model" />
                     </SelectTrigger>
                     <SelectContent className="font-mono bg-black border-[var(--eva-orange)]/30">
-                      {popularModels.map((model) => (
-                        <SelectItem
-                          key={model.id}
-                          value={model.id}
-                          className="font-mono"
-                        >
-                          <div className="flex flex-col">
-                            <span>{model.name}</span>
-                            <span className="text-xs opacity-60">
-                              {model.description}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {popularModels.map((model) => {
+                        // Determine badge color and text based on model
+                        let badgeColor = "";
+                        let badgeText = "";
+                        
+                        if (model.id.includes("gemini-2.0-flash")) {
+                          badgeColor = "bg-green-900/60 text-green-400";
+                          badgeText = "FAST";
+                        } else if (model.id.includes("quasar-alpha")) {
+                          badgeColor = "bg-purple-900/60 text-purple-400";
+                          badgeText = "UNIQUE";
+                        } else if (model.id.includes("claude-3.5-sonnet")) {
+                          badgeColor = "bg-blue-900/60 text-blue-400";
+                          badgeText = "BALANCED";
+                        } else if (model.id.includes("gpt-4o")) {
+                          badgeColor = "bg-yellow-900/60 text-yellow-400";
+                          badgeText = "VERSATILE";
+                        } else if (model.id.includes("claude-3-opus")) {
+                          badgeColor = "bg-red-900/60 text-red-400";
+                          badgeText = "PREMIUM";
+                        } else if (model.id.includes("gemini-1.5-pro")) {
+                          badgeColor = "bg-indigo-900/60 text-indigo-400";
+                          badgeText = "CONTEXT";
+                        } else if (model.id.includes("llama-3-70b")) {
+                          badgeColor = "bg-orange-900/60 text-orange-400";
+                          badgeText = "POWERFUL";
+                        } else if (model.id.includes("mistral-large")) {
+                          badgeColor = "bg-teal-900/60 text-teal-400";
+                          badgeText = "CAPABLE";
+                        }
+                        
+                        return (
+                          <SelectItem
+                            key={model.id}
+                            value={model.id}
+                            className="font-mono"
+                          >
+                            <div className="flex flex-col w-full">
+                              <div className="flex items-center justify-between">
+                                <span>{model.name}</span>
+                                {badgeText && (
+                                  <span className={`px-1.5 py-0.5 ${badgeColor} text-[10px] rounded-sm ml-2`}>
+                                    {badgeText}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs opacity-60 mt-1">
+                                {model.description}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                       <SelectItem value="custom" className="font-mono">
                         <div className="flex flex-col">
                           <span>Custom Model</span>

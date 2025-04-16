@@ -45,7 +45,7 @@ export function ModelConfigProvider({ children }: { children: ReactNode }) {
   
   // Model configuration state
   const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>('anthropic/claude-3-haiku-20240307');
+  const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.0-flash-001');
   const [temperature, setTemperature] = useState<number>(0.7);
   const [topP, setTopP] = useState<number>(0.9);
   const [maxTokens, setMaxTokens] = useState<number>(1000);
