@@ -3,6 +3,46 @@
  * Provides consistent URL generation and configurations
  */
 
+/**
+ * Chat message format
+ */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Chat completion request format
+ */
+export interface ChatCompletionRequest {
+  model: string;
+  messages: ChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  stream?: boolean;
+}
+
+/**
+ * Chat completion response format
+ */
+export interface ChatCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: ChatMessage;
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
 import { createOAuthState } from '../utils/pkce';
 
 // OpenRouter OAuth endpoints
@@ -75,4 +115,38 @@ export function getAuthValidationUrl(): string {
  */
 export function getTokenUrl(): string {
   return `${OPENROUTER_URLS.API}/auth/token`;
+}
+
+/**
+ * Creates a chat completion using the OpenRouter API
+ * 
+ * @param request - The chat completion request
+ * @param apiKey - The API key for authentication
+ * @returns A promise resolving to the chat completion response
+ */
+export async function createChatCompletion(
+  request: ChatCompletionRequest,
+  apiKey: string
+): Promise<ChatCompletionResponse> {
+  const response = await fetch(getChatCompletionsUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': window.location.origin,
+    },
+    body: JSON.stringify(request),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const error: any = new Error(
+      errorData.error?.message || 'Chat completion request failed'
+    );
+    error.status = response.status;
+    error.response = response;
+    throw error;
+  }
+  
+  return await response.json();
 }

@@ -5,6 +5,79 @@
  * without exposing secrets in browser environments
  */
 
+// Local storage keys
+const API_KEY_STORAGE_KEY = 'apiKey';
+const CODE_VERIFIER_STORAGE_KEY = 'codeVerifier';
+const AUTH_METHOD_STORAGE_KEY = 'authMethod';
+
+/**
+ * Gets the stored API key
+ */
+export function getApiKey(): string | null {
+  return localStorage.getItem(API_KEY_STORAGE_KEY);
+}
+
+/**
+ * Saves the API key to local storage
+ */
+export function saveApiKey(key: string): void {
+  localStorage.setItem(API_KEY_STORAGE_KEY, key);
+}
+
+/**
+ * Clears the stored API key
+ */
+export function clearApiKey(): void {
+  localStorage.removeItem(API_KEY_STORAGE_KEY);
+}
+
+/**
+ * Checks if a valid API key exists in storage
+ */
+export function hasValidApiKey(): boolean {
+  const key = getApiKey();
+  return key !== null && key.length > 0;
+}
+
+/**
+ * Gets the stored authentication method
+ */
+export function getAuthMethod(): 'oauth' | 'manual' | 'browser' | null {
+  const method = localStorage.getItem(AUTH_METHOD_STORAGE_KEY);
+  if (method === 'oauth' || method === 'manual' || method === 'browser') {
+    return method;
+  }
+  return null;
+}
+
+/**
+ * Saves the authentication method
+ */
+export function saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
+  localStorage.setItem(AUTH_METHOD_STORAGE_KEY, method);
+}
+
+/**
+ * Saves the OAuth code verifier
+ */
+export function saveCodeVerifier(verifier: string): void {
+  localStorage.setItem(CODE_VERIFIER_STORAGE_KEY, verifier);
+}
+
+/**
+ * Gets the OAuth code verifier
+ */
+export function getCodeVerifier(): string | null {
+  return localStorage.getItem(CODE_VERIFIER_STORAGE_KEY);
+}
+
+/**
+ * Clears the OAuth code verifier
+ */
+export function clearCodeVerifier(): void {
+  localStorage.removeItem(CODE_VERIFIER_STORAGE_KEY);
+}
+
 /**
  * Generates a random string for code verifier
  * @param length The length of the random string

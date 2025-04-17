@@ -187,3 +187,6 @@ class OpenRouterService {
 
 // Export service instance
 export const openRouterService = new OpenRouterService();
+
+// Export an alias for backward compatibility
+export const apiService = openRouterService;
