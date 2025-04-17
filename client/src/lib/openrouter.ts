@@ -48,7 +48,7 @@ import { createOAuthState } from '../utils/pkce';
 // OpenRouter OAuth endpoints
 const OPENROUTER_URLS = {
   BASE: 'https://openrouter.ai',
-  OAUTH: 'https://openrouter.ai/oauth',
+  OAUTH: 'https://openrouter.ai/auth', // Changed from /oauth to /auth (correct OAuth endpoint)
   API: 'https://openrouter.ai/api',
   MODELS: 'https://openrouter.ai/api/v1/models',
 };
@@ -74,15 +74,13 @@ export function generateAuthUrl(
   // Create state with return URL
   const state = createOAuthState(window.location.href);
   
-  // Construct URL parameters
+  // Construct URL parameters - using OpenRouter's expected parameters
   const params = new URLSearchParams({
-    client_id: OAUTH_CONFIG.clientId,
-    redirect_uri: redirectUri,
-    response_type: OAUTH_CONFIG.responseType,
-    scope: OAUTH_CONFIG.scope,
-    state,
+    callback_url: redirectUri, // OpenRouter expects callback_url, not redirect_uri
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
+    state
+    // client_id, response_type, and scope are not used by OpenRouter's auth endpoint
   });
   
   // Return full OAuth URL
