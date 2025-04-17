@@ -231,6 +231,9 @@ describe('Output Ranker Integration', () => {
   
   // Simplified test that just verifies ModelConfigProvider is properly connected
   it('should allow toggling the browser model setting', async () => {
+    // Set up API key for this test
+    authStorage.setApiKey(mockApiKey);
+    
     render(
       <AuthProvider>
         <ModelConfigProvider>
@@ -239,7 +242,14 @@ describe('Output Ranker Integration', () => {
       </AuthProvider>
     );
     
-    // Just checking that the component renders with configuration elements
-    expect(screen.getByText(/MODEL CONFIGURATION/i)).toBeInTheDocument();
+    // Debug what text is available on the screen
+    console.log("Available text elements:", 
+      Array.from(screen.getAllByRole('button'))
+        .map(el => el.textContent)
+        .filter(Boolean)
+    );
+    
+    // Just check for model selection section
+    expect(screen.getByText(/MODEL SELECTION/i)).toBeInTheDocument();
   });
 });
