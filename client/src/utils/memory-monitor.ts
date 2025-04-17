@@ -140,7 +140,7 @@ function checkForIntervalLeaks() {
 }
 
 /**
- * Attempts to clean up memory
+ * Attempts to clean up memory gently - without page reloads
  */
 function attemptMemoryCleanup() {
   const now = Date.now();
@@ -152,21 +152,34 @@ function attemptMemoryCleanup() {
   
   lastGC = now;
   
-  console.log('Attempting memory cleanup...');
+  console.log('[MemoryMonitor] Attempting gentle memory cleanup...');
   
   // Clear old memo caches
   memorySamples = [];
   growthWarningsCount = 0;
   
+  // Clear any WebRTC objects that might be cached
+  if (window.RTCPeerConnection) {
+    try {
+      // Create a dummy connection and close it to potentially trigger cleanup
+      const pc = new RTCPeerConnection();
+      pc.close();
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+  
   // Hint to garbage collector (if browser supports it)
   if (window.gc) {
     try {
       window.gc();
-      console.log('Garbage collection requested');
+      console.log('[MemoryMonitor] Garbage collection requested');
     } catch (e) {
-      console.log('Unable to force garbage collection');
+      console.log('[MemoryMonitor] Unable to force garbage collection');
     }
   }
+  
+  console.log('[MemoryMonitor] Memory cleanup completed without page refresh');
 }
 
 /**
