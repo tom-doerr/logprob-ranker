@@ -19,7 +19,7 @@ import {
   deleteSavedResult,
   SavedResult
 } from '../utils/settings-storage';
-import TemplateManager from '@/components/ui/template-manager';
+import TemplateManager from '../components/ui/template-manager';
 import { useModelConfig } from '../hooks/use-model-config';
 import { useAuth } from '../hooks/use-auth';
 import { apiService } from '../services/api-service';
@@ -31,11 +31,11 @@ import {
   NervProgress, 
   NervData, 
   NervEnergy 
-} from '@/components/ui/nerv-animations';
-import MagiProgress from '@/components/ui/magi-progress';
-import RankedOutput from '@/components/ui/ranked-output';
-import ExampleCard from '@/components/ui/example-card';
-import ThreadCountControl from '@/components/ui/thread-count-control';
+} from '../components/ui/nerv-animations';
+import MagiProgress from '../components/ui/magi-progress';
+import RankedOutput from '../components/ui/ranked-output';
+import ExampleCard from '../components/ui/example-card';
+import ThreadCountControl from '../components/ui/thread-count-control';
 
 interface LogProbExample {
   prompt: string;
