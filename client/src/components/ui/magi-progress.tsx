@@ -36,10 +36,15 @@ export const MagiProgress: React.FC<MagiProgressProps> = ({
       
       <div className="w-full bg-black/40 rounded-full h-2.5 mb-2 border border-[var(--eva-orange)]/30 overflow-hidden">
         <div 
-          className="bg-[var(--eva-orange)] h-2 rounded-full transition-all magi-progress" 
+          className="bg-[var(--eva-orange)] h-2 rounded-full transition-all" 
           style={{
             width: `${useAutoStop ? Math.min(100, (rankedOutputs.length / (rankedOutputs.length + 5)) * 100) : Math.min(100, (rankedOutputs.length / numberOfVariants) * 100)}%`
           }}>
+        </div>
+        <div className="mt-1 text-xs text-[var(--eva-orange)] font-mono text-right">
+          {useAutoStop 
+            ? `${Math.floor((rankedOutputs.length / (rankedOutputs.length + 5)) * 100)}%` 
+            : `${Math.floor((rankedOutputs.length / numberOfVariants) * 100)}%`}
         </div>
       </div>
       

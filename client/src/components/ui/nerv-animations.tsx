@@ -87,9 +87,12 @@ export const AttributeScore: React.FC<{name: string; score: number; className?: 
   score, 
   className = '' 
 }) => (
-  <div className={`flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-progress ${className}`}>
+  <div 
+    className={`flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-progress ${className}`}
+    style={{ "--progress-width": `${score * 100}%` } as React.CSSProperties}
+  >
     <span className="text-xs font-medium text-[var(--eva-text)]">{name}:</span>
-    <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full nerv-energy">
+    <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
       {score.toFixed(4)}
     </span>
   </div>
