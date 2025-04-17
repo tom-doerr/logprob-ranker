@@ -1,127 +1,189 @@
-import { 
-  ChatMessage, 
-  ChatCompletionRequest, 
-  createChatCompletion 
-} from '../lib/openrouter';
-import { ModelConfig } from '../lib/modelTypes';
-import { getApiKey } from '../utils/pkce';
+/**
+ * Centralized API service
+ * Advantages:
+ * - Consistent API access patterns
+ * - Centralized error handling
+ * - Easy request/response transformations
+ * - Simplified mocking for tests
+ */
 
-// Error class for API errors
-export class ApiServiceError extends Error {
-  status?: number;
+import { authStorage } from '../utils/storage';
+
+// API error types for better error handling
+export enum ApiErrorType {
+  NETWORK = 'network_error',
+  AUTH = 'authentication_error',
+  RATE_LIMIT = 'rate_limit',
+  SERVER = 'server_error',
+  VALIDATION = 'validation_error',
+  UNKNOWN = 'unknown_error'
+}
+
+// Custom API error class
+export class ApiError extends Error {
+  type: ApiErrorType;
+  statusCode?: number;
   
-  constructor(message: string, status?: number) {
+  constructor(message: string, type: ApiErrorType, statusCode?: number) {
     super(message);
-    this.name = 'ApiServiceError';
-    this.status = status;
+    this.name = 'ApiError';
+    this.type = type;
+    this.statusCode = statusCode;
   }
 }
 
-// Interface for standardized chat completion response
-export interface ChatResponse {
-  text: string;
-  message: ChatMessage;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+// Base API configuration
+const API_CONFIG = {
+  baseUrl: 'https://openrouter.ai/api',
+  defaultHeaders: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
+};
+
+/**
+ * Core API service with consistent error handling
+ */
+class ApiService {
+  /**
+   * Makes an authenticated API request
+   */
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    try {
+      // Get API key from storage
+      const { apiKey } = authStorage.getAuthData();
+      
+      if (!apiKey) {
+        throw new ApiError(
+          'API key is required for this operation',
+          ApiErrorType.AUTH
+        );
+      }
+      
+      // Prepare headers
+      const headers = new Headers({
+        ...API_CONFIG.defaultHeaders,
+        ...(options.headers || {}),
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': window.location.origin,
+      });
+      
+      // Build URL
+      const url = endpoint.startsWith('http') 
+        ? endpoint 
+        : `${API_CONFIG.baseUrl}${endpoint}`;
+      
+      // Make the request
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+      
+      // Handle HTTP errors
+      if (!response.ok) {
+        const statusCode = response.status;
+        let errorType = ApiErrorType.UNKNOWN;
+        let errorMessage = 'Unknown API error';
+        
+        // Try to parse error response
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || 'API error';
+        } catch (e) {
+          errorMessage = response.statusText || 'API error';
+        }
+        
+        // Determine error type from status code
+        if (statusCode === 401 || statusCode === 403) {
+          errorType = ApiErrorType.AUTH;
+        } else if (statusCode === 429) {
+          errorType = ApiErrorType.RATE_LIMIT;
+        } else if (statusCode >= 500) {
+          errorType = ApiErrorType.SERVER;
+        } else if (statusCode === 400 || statusCode === 422) {
+          errorType = ApiErrorType.VALIDATION;
+        }
+        
+        throw new ApiError(errorMessage, errorType, statusCode);
+      }
+      
+      // Parse and return response data
+      return await response.json();
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new ApiError(
+          'Network error: Please check your connection',
+          ApiErrorType.NETWORK
+        );
+      }
+      
+      // Re-throw API errors
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      // Handle unexpected errors
+      throw new ApiError(
+        error instanceof Error ? error.message : 'Unknown error',
+        ApiErrorType.UNKNOWN
+      );
+    }
+  }
+  
+  /**
+   * Checks if current API key is valid
+   */
+  async validateApiKey(): Promise<boolean> {
+    try {
+      await this.request('/v1/auth/validate');
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 }
 
 /**
- * Unified API Service facade to handle all model interactions
- * Abstracts the details of different model APIs and provides a consistent interface
+ * OpenRouter-specific API service
  */
-export class ApiService {
-  private apiKey: string | null = null;
+class OpenRouterService {
+  private api: ApiService;
   
   constructor() {
-    // Load API key on initialization
-    this.apiKey = getApiKey();
-    
-    // Listen for API key changes
-    window.addEventListener('api-key-changed', () => {
-      this.apiKey = getApiKey();
+    this.api = new ApiService();
+  }
+  
+  /**
+   * Generates chat completions
+   */
+  async createChatCompletion(params: {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    temperature?: number;
+    top_p?: number;
+    max_tokens?: number;
+  }) {
+    return this.api.request('/v1/chat/completions', {
+      method: 'POST',
+      body: JSON.stringify(params),
     });
   }
   
   /**
-   * Validates if the service is ready to make API calls
-   * @returns boolean indicating if API key is available
+   * Validates API key
    */
-  isReady(): boolean {
-    return this.apiKey !== null && this.apiKey !== 'browser-llm';
+  async validateKey(): Promise<boolean> {
+    return this.api.validateApiKey();
   }
   
   /**
-   * Get the current API key
+   * Gets available models
    */
-  getApiKey(): string | null {
-    return this.apiKey;
-  }
-  
-  /**
-   * Generate chat completion using OpenRouter API
-   * @param messages Array of chat messages for context
-   * @param config Model configuration options
-   * @returns Promise with the chat response
-   */
-  async generateChatCompletion(
-    messages: ChatMessage[],
-    config: Partial<ModelConfig>
-  ): Promise<ChatResponse> {
-    if (!this.isReady()) {
-      throw new ApiServiceError('API key not available. Please authenticate first.');
-    }
-    
-    try {
-      // Determine which model to use
-      const modelId = config.selectedModel === 'custom' 
-        ? config.customModel 
-        : config.selectedModel;
-      
-      if (!modelId) {
-        throw new ApiServiceError('No model selected');
-      }
-      
-      // Prepare request
-      const request: ChatCompletionRequest = {
-        model: modelId,
-        messages,
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
-      };
-      
-      // Make API call
-      const response = await createChatCompletion(request);
-      
-      // Check response validity
-      if (!response.choices || response.choices.length === 0) {
-        throw new ApiServiceError('Empty response from API');
-      }
-      
-      // Return standardized response
-      return {
-        text: response.choices[0].message.content,
-        message: response.choices[0].message,
-        usage: response.usage ? {
-          promptTokens: response.usage.prompt_tokens,
-          completionTokens: response.usage.completion_tokens,
-          totalTokens: response.usage.total_tokens,
-        } : undefined
-      };
-    } catch (error) {
-      // Rethrow as ApiServiceError with additional context
-      if (error instanceof ApiServiceError) {
-        throw error;
-      } else if (error instanceof Error) {
-        throw new ApiServiceError(`API Error: ${error.message}`);
-      } else {
-        throw new ApiServiceError('Unknown API error');
-      }
-    }
+  async getModels() {
+    return this.api.request('/v1/models');
   }
 }
 
-// Export singleton instance for app-wide use
-export const apiService = new ApiService();
+// Export service instance
+export const openRouterService = new OpenRouterService();

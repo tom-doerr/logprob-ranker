@@ -1,6 +1,20 @@
+/**
+ * Custom hook for model selection and parameters
+ * Key improvements:
+ * - Single source of truth for model state
+ * - Automatic persistence of selections
+ * - Type safety with TypeScript interfaces
+ * - Simplified interface for components
+ */
+
 import { useState, useEffect } from 'react';
-import { BROWSER_MODEL_OPTIONS, POPULAR_MODELS, BrowserModelOption, ModelOption } from '../lib/modelTypes';
-import { modelStorage } from '../utils/storage';
+import { 
+  ModelOption, 
+  BrowserModelOption,
+  BROWSER_MODEL_OPTIONS,
+  POPULAR_MODELS
+} from '../lib/modelTypes';
+import { DEFAULT_PARAMETERS } from '../config/model-parameters';
 
 /**
  * Interface for model parameters
@@ -35,6 +49,14 @@ export interface ModelSelectionState {
   resetToDefaults: () => void;
 }
 
+// Local storage keys
+const STORAGE_KEYS = {
+  SELECTED_MODEL: 'app.selectedModel',
+  IS_BROWSER_MODEL: 'app.isBrowserModel',
+  CUSTOM_MODEL: 'app.customModel',
+  PARAMETERS: 'app.modelParameters'
+};
+
 /**
  * Default parameter values
  */
@@ -52,115 +74,116 @@ const DEFAULT_PARAMS: ModelParameters = {
  */
 export function useModels(): ModelSelectionState {
   // Model selection state
-  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState('');
-  const [customModelId, setCustomModelId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEYS.SELECTED_MODEL) || POPULAR_MODELS[0].id
+  );
   
-  // Model parameters
-  const [temperature, setTemperature] = useState(DEFAULT_PARAMS.temperature);
-  const [topP, setTopP] = useState(DEFAULT_PARAMS.topP);
-  const [maxTokens, setMaxTokens] = useState(DEFAULT_PARAMS.maxTokens);
+  const [isUsingBrowserModel, setIsUsingBrowserModel] = useState<boolean>(
+    () => localStorage.getItem(STORAGE_KEYS.IS_BROWSER_MODEL) === 'true'
+  );
   
-  // Load saved preferences on init
+  const [customModelId, setCustomModelId] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEYS.CUSTOM_MODEL) || ''
+  );
+  
+  // Parameter state
+  const [parameters, setParameters] = useState<ModelParameters>(() => {
+    const storedParams = localStorage.getItem(STORAGE_KEYS.PARAMETERS);
+    return storedParams 
+      ? JSON.parse(storedParams) 
+      : DEFAULT_PARAMETERS;
+  });
+  
+  // Persist selections to localStorage
   useEffect(() => {
-    const lastModel = modelStorage.getLastUsedModel();
-    const preferences = modelStorage.getModelPreferences();
-    
-    if (lastModel) {
-      setSelectedModelId(lastModel);
-      // Check if it's a browser model
-      const isBrowserModel = BROWSER_MODEL_OPTIONS.some(model => model.id === lastModel);
-      setIsUsingBrowserModel(isBrowserModel);
-    } else {
-      // Default to first cloud model if nothing saved
-      setSelectedModelId(POPULAR_MODELS[0].id);
-    }
-    
-    if (preferences) {
-      // Load saved parameters
-      setTemperature(preferences.temperature ?? DEFAULT_PARAMS.temperature);
-      setTopP(preferences.topP ?? DEFAULT_PARAMS.topP);
-      setMaxTokens(preferences.maxTokens ?? DEFAULT_PARAMS.maxTokens);
-      
-      if (preferences.customModel) {
-        setCustomModelId(preferences.customModel);
-      }
-    }
-  }, []);
+    localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL, selectedModelId);
+  }, [selectedModelId]);
   
-  // Save preferences when they change
   useEffect(() => {
-    // Save last used model
-    modelStorage.saveLastUsedModel(selectedModelId);
-    
-    // Save parameters
-    modelStorage.saveModelPreferences({
-      temperature,
-      topP,
-      maxTokens,
-      customModel: customModelId,
-      isUsingBrowserModel
-    });
-  }, [selectedModelId, temperature, topP, maxTokens, customModelId, isUsingBrowserModel]);
-
-  // Select a model by ID
+    localStorage.setItem(STORAGE_KEYS.IS_BROWSER_MODEL, String(isUsingBrowserModel));
+  }, [isUsingBrowserModel]);
+  
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_MODEL, customModelId);
+  }, [customModelId]);
+  
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PARAMETERS, JSON.stringify(parameters));
+  }, [parameters]);
+  
+  // Model selection action
   const selectModel = (id: string) => {
+    // Check if selecting a browser model
+    const isBrowserModel = BROWSER_MODEL_OPTIONS.some(model => model.id === id);
+    
+    // Update model state
     setSelectedModelId(id);
     
-    // Check if it's a browser model
-    const isBrowserModel = BROWSER_MODEL_OPTIONS.some(model => model.id === id);
-    if (isBrowserModel !== isUsingBrowserModel) {
-      setIsUsingBrowserModel(isBrowserModel);
+    // If selecting a browser model, ensure browser mode is enabled
+    if (isBrowserModel) {
+      setIsUsingBrowserModel(true);
     }
   };
   
-  // Toggle browser model usage
+  // Browser mode toggle action
   const toggleBrowserModel = (enabled: boolean) => {
     setIsUsingBrowserModel(enabled);
     
-    // If enabling browser models, select the first one if current selection isn't a browser model
+    // When switching modes, select the first model of the appropriate type
     if (enabled) {
-      const currentIsBrowserModel = BROWSER_MODEL_OPTIONS.some(model => model.id === selectedModelId);
-      if (!currentIsBrowserModel) {
+      // Select first browser model when enabling browser mode
+      const isBrowserModelSelected = BROWSER_MODEL_OPTIONS.some(
+        model => model.id === selectedModelId
+      );
+      
+      if (!isBrowserModelSelected) {
         setSelectedModelId(BROWSER_MODEL_OPTIONS[0].id);
       }
     } else {
-      // If disabling, switch to cloud model if current selection is a browser model
-      const currentIsBrowserModel = BROWSER_MODEL_OPTIONS.some(model => model.id === selectedModelId);
-      if (currentIsBrowserModel) {
+      // Select first cloud model when disabling browser mode
+      const isCloudModelSelected = POPULAR_MODELS.some(
+        model => model.id === selectedModelId
+      );
+      
+      if (!isCloudModelSelected) {
         setSelectedModelId(POPULAR_MODELS[0].id);
       }
     }
   };
   
-  // Update parameters in one operation
+  // Custom model action
+  const setCustomModel = (id: string) => {
+    setCustomModelId(id);
+  };
+  
+  // Parameter update action
   const updateParameters = (params: Partial<ModelParameters>) => {
-    if (params.temperature !== undefined) setTemperature(params.temperature);
-    if (params.topP !== undefined) setTopP(params.topP);
-    if (params.maxTokens !== undefined) setMaxTokens(params.maxTokens);
+    setParameters(prev => ({
+      ...prev,
+      ...params
+    }));
   };
   
-  // Reset to default values
+  // Reset parameters action
   const resetToDefaults = () => {
-    setTemperature(DEFAULT_PARAMS.temperature);
-    setTopP(DEFAULT_PARAMS.topP);
-    setMaxTokens(DEFAULT_PARAMS.maxTokens);
+    setParameters(DEFAULT_PARAMETERS);
   };
   
+  // Return state and actions
   return {
-    // Available models
+    // Models data
     browserModels: BROWSER_MODEL_OPTIONS,
     cloudModels: POPULAR_MODELS,
     
-    // Selection state
+    // Model selection
     selectedModelId,
     isUsingBrowserModel,
     customModelId,
     
     // Parameters
-    temperature,
-    topP,
-    maxTokens,
+    temperature: parameters.temperature,
+    topP: parameters.topP,
+    maxTokens: parameters.maxTokens,
     
     // Actions
     selectModel,

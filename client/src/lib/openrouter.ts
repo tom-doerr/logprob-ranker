@@ -1,89 +1,78 @@
-import { apiRequest } from './queryClient';
-import { getApiKey } from '../utils/pkce';
+/**
+ * OpenRouter API utilities
+ * Provides consistent URL generation and configurations
+ */
 
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import { createOAuthState } from '../utils/pkce';
 
-export interface ChatCompletionRequest {
-  model: string;
-  messages: ChatMessage[];
-  max_tokens?: number;
-  temperature?: number;
-}
+// OpenRouter OAuth endpoints
+const OPENROUTER_URLS = {
+  BASE: 'https://openrouter.ai',
+  OAUTH: 'https://openrouter.ai/oauth',
+  API: 'https://openrouter.ai/api',
+  MODELS: 'https://openrouter.ai/api/v1/models',
+};
 
-export interface ChatCompletionResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: {
-    index: number;
-    message: ChatMessage;
-    finish_reason: string;
-  }[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
+// OAuth configuration
+const OAUTH_CONFIG = {
+  clientId: 'nerv-interface', // Application client ID
+  scope: 'openid profile email', // OAuth scopes
+  responseType: 'code', // Authorization code flow
+};
 
 /**
- * Exchanges the authorization code for an API key
+ * Generates an OAuth URL for authentication
+ * 
+ * @param codeChallenge - The PKCE code challenge
+ * @param redirectUri - Where to redirect after authentication
+ * @returns A complete OAuth URL
  */
-export async function exchangeCodeForToken(
-  code: string,
-  codeVerifier: string,
-  codeMethod: string = 'S256'
-): Promise<{ key: string }> {
-  const response = await apiRequest('POST', '/api/exchange-code', {
-    code,
-    codeVerifier,
-    codeMethod
-  });
+export function generateAuthUrl(
+  codeChallenge: string,
+  redirectUri: string = `${window.location.origin}/callback`
+): string {
+  // Create state with return URL
+  const state = createOAuthState(window.location.href);
   
-  return response.json();
-}
-
-/**
- * Makes a chat completion request to OpenRouter
- */
-export async function createChatCompletion(
-  request: ChatCompletionRequest
-): Promise<ChatCompletionResponse> {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    throw new Error('API key not found. Please authenticate first.');
-  }
-  
-  const response = await apiRequest('POST', '/api/chat', {
-    apiKey,
-    ...request
-  });
-  
-  return response.json();
-}
-
-/**
- * Generates the authorization URL with PKCE parameters
- */
-export function generateAuthUrl(codeChallenge: string, callbackUrl: string): string {
-  // Use callback_url as specified in OpenRouter's documentation
+  // Construct URL parameters
   const params = new URLSearchParams({
-    callback_url: callbackUrl,  // OpenRouter uses callback_url, not redirect_uri
+    client_id: OAUTH_CONFIG.clientId,
+    redirect_uri: redirectUri,
+    response_type: OAUTH_CONFIG.responseType,
+    scope: OAUTH_CONFIG.scope,
+    state,
     code_challenge: codeChallenge,
-    code_challenge_method: 'S256'
-    // Remove scope as it's not mentioned in documentation
+    code_challenge_method: 'S256',
   });
   
-  // Full URL with parameters
-  const authUrl = `https://openrouter.ai/auth?${params.toString()}`;
-  
-  // Log the URL for debugging
-  console.log('Generated OAuth URL:', authUrl);
-  
-  return authUrl;
+  // Return full OAuth URL
+  return `${OPENROUTER_URLS.OAUTH}?${params.toString()}`;
+}
+
+/**
+ * Gets the models API endpoint URL
+ */
+export function getModelsUrl(): string {
+  return OPENROUTER_URLS.MODELS;
+}
+
+/**
+ * Gets the chat completions endpoint URL
+ */
+export function getChatCompletionsUrl(): string {
+  return `${OPENROUTER_URLS.API}/v1/chat/completions`;
+}
+
+/**
+ * Gets the auth validation endpoint URL
+ */
+export function getAuthValidationUrl(): string {
+  return `${OPENROUTER_URLS.API}/v1/auth/validate`;
+}
+
+/**
+ * Gets the OAuth token endpoint URL
+ */
+export function getTokenUrl(): string {
+  return `${OPENROUTER_URLS.API}/auth/token`;
 }

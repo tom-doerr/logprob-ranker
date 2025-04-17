@@ -1,136 +1,107 @@
 /**
- * Generates a random string of specified length
+ * PKCE (Proof Key for Code Exchange) utilities
+ * 
+ * These utilities support the OAuth2 PKCE flow for secure authentication
+ * without exposing secrets in browser environments
  */
-export function generateRandomString(length: number): string {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  let result = '';
-  
+
+/**
+ * Generates a random string for code verifier
+ * @param length The length of the random string
+ * @returns A random string suitable for PKCE
+ */
+export function generateCodeVerifier(length: number = 64): string {
   const randomValues = new Uint8Array(length);
   crypto.getRandomValues(randomValues);
   
-  for (let i = 0; i < length; i++) {
-    result += charset[randomValues[i] % charset.length];
-  }
-  
-  return result;
+  return Array.from(randomValues)
+    .map(value => {
+      // Use alphanumeric characters (0-9, A-Z, a-z)
+      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+      return chars.charAt(value % chars.length);
+    })
+    .join('');
 }
 
 /**
- * Creates a SHA-256 hash of the input string and returns base64url encoded result
+ * Creates a SHA-256 hash of the code verifier for use as code challenge
+ * @param codeVerifier The original code verifier
+ * @returns A base64-url encoded SHA-256 hash
  */
-export async function createSHA256CodeChallenge(input: string): Promise<string> {
-  // Encode as UTF-8
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
+export async function createSHA256CodeChallenge(codeVerifier: string): Promise<string> {
+  // Convert verifier to UTF-8
+  const data = new TextEncoder().encode(codeVerifier);
   
-  // Hash using SHA-256
-  const hash = await crypto.subtle.digest('SHA-256', data);
+  // Hash the verifier with SHA-256
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   
-  // Convert to base64url encoding
-  return base64UrlEncode(hash);
-}
-
-/**
- * Encodes an ArrayBuffer to base64url format
- */
-export function base64UrlEncode(buffer: ArrayBuffer): string {
-  // Convert ArrayBuffer to Base64 using browser-native btoa
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const base64 = btoa(binary);
+  // Convert hash to byte array
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
   
-  // Make Base64 URL-safe
-  return base64
+  // Convert bytes to base64
+  const base64Hash = btoa(String.fromCharCode(...hashArray));
+  
+  // Make base64 URL-safe by replacing chars and removing padding
+  return base64Hash
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 }
 
 /**
- * Generates a code verifier for PKCE
- * Between 43-128 characters as per RFC 7636
+ * Parses OAuth response parameters from URL
+ * @param url The URL containing OAuth response parameters
+ * @returns The parsed parameters
  */
-export function generateCodeVerifier(): string {
-  return generateRandomString(96); // Using 96 characters
+export function parseOAuthResponse(url: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const searchParams = new URLSearchParams(
+    url.includes('#') ? url.split('#')[1] : url.split('?')[1]
+  );
+  
+  // Handle entries in a way compatible with all TypeScript targets
+  searchParams.forEach((value, key) => {
+    params[key] = value;
+  });
+  
+  return params;
 }
 
 /**
- * Saves the code verifier to local storage
+ * Creates a complete OAuth state with encoded return URL
+ * @param returnUrl The URL to return to after authentication
+ * @returns An encoded state string
  */
-export function saveCodeVerifier(codeVerifier: string): void {
-  localStorage.setItem('pkce_code_verifier', codeVerifier);
+export function createOAuthState(returnUrl: string = window.location.href): string {
+  const state = {
+    returnUrl,
+    timestamp: Date.now(),
+  };
+  
+  return btoa(JSON.stringify(state));
 }
 
 /**
- * Retrieves the code verifier from local storage
+ * Decodes and validates an OAuth state
+ * @param state The state string from OAuth response
+ * @returns The decoded state or null if invalid
  */
-export function getCodeVerifier(): string | null {
-  return localStorage.getItem('pkce_code_verifier');
-}
-
-/**
- * Removes the code verifier from local storage
- */
-export function clearCodeVerifier(): void {
-  localStorage.removeItem('pkce_code_verifier');
-}
-
-/**
- * Saves the auth method to local storage
- */
-export function saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
-  localStorage.setItem('auth_method', method);
-}
-
-/**
- * Retrieves the auth method from local storage
- */
-export function getAuthMethod(): 'oauth' | 'manual' | 'browser' | null {
-  const method = localStorage.getItem('auth_method');
-  if (method === 'oauth' || method === 'manual' || method === 'browser') {
-    return method;
+export function validateOAuthState(state: string): { returnUrl: string } | null {
+  try {
+    const decodedState = JSON.parse(atob(state));
+    
+    // Validate timestamp (optional: check for expiration)
+    const timestamp = decodedState.timestamp;
+    const now = Date.now();
+    const maxAge = 60 * 60 * 1000; // 1 hour
+    
+    if (now - timestamp > maxAge) {
+      return null; // Expired state
+    }
+    
+    return { returnUrl: decodedState.returnUrl };
+  } catch (error) {
+    console.error('Error validating OAuth state:', error);
+    return null;
   }
-  return null;
-}
-
-/**
- * Saves the API key to local storage
- */
-export function saveApiKey(apiKey: string): void {
-  localStorage.setItem('openrouter_api_key', apiKey);
-}
-
-/**
- * Retrieves the API key from local storage
- */
-export function getApiKey(): string | null {
-  return localStorage.getItem('openrouter_api_key');
-}
-
-/**
- * Checks if the stored API key appears valid
- */
-export function hasValidApiKey(): boolean {
-  const key = getApiKey();
-  if (!key) return false;
-  
-  // Special case for browser model
-  if (key === 'browser-llm') return true;
-  
-  // Basic format check for OpenRouter keys
-  if (key.startsWith('sk-or-') && key.length > 15) return true;
-  
-  // Allow any other key format that has reasonable length
-  return key.length >= 20;
-}
-
-/**
- * Removes the API key from local storage
- */
-export function clearApiKey(): void {
-  localStorage.removeItem('openrouter_api_key');
-  localStorage.removeItem('auth_method');
 }

@@ -1,118 +1,251 @@
 /**
- * Centralized storage utility for the application
- * This simplifies our code by providing a single interface for all storage operations
+ * Unified storage utility
+ * 
+ * Benefits:
+ * - Centralized storage access
+ * - Type safety with TypeScript
+ * - Domain separation for data
+ * - Consistent serialization/deserialization
+ * - Simplified testing with clear interface
  */
 
-export type AuthMethod = 'oauth' | 'manual' | 'browser' | null;
+import { AuthMethod } from '../hooks/simplified-auth';
 
-// Storage keys - all in one place for easy management
-const STORAGE_KEYS = {
-  API_KEY: 'openrouter_api_key',
-  AUTH_METHOD: 'auth_method',
-  CODE_VERIFIER: 'pkce_code_verifier',
-  MODEL_PREFERENCES: 'model_preferences',
-  LAST_USED_MODEL: 'last_used_model'
+// Storage structure
+interface StorageStructure {
+  auth: {
+    apiKey: string | null;
+    method: AuthMethod;
+    codeVerifier?: string;
+  };
+  
+  models: {
+    selectedId: string;
+    parameters: {
+      temperature: number;
+      topP: number;
+      maxTokens: number;
+    };
+    isBrowserMode: boolean;
+    customModelId: string;
+  };
+  
+  ui: {
+    theme: 'light' | 'dark' | 'system';
+    lastTab: string;
+  };
+}
+
+// Storage keys
+const KEYS = {
+  AUTH: 'app.auth',
+  MODELS: 'app.models',
+  UI: 'app.ui',
+  CODE_VERIFIER: 'app.codeVerifier',
 };
 
-// Auth-related storage
-export const authStorage = {
-  // Save authentication data in one operation
-  saveAuth(apiKey: string, method: AuthMethod): void {
-    if (!method) return;
-    localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
-    localStorage.setItem(STORAGE_KEYS.AUTH_METHOD, method);
-  },
-
-  // Clear authentication in one operation
-  clearAuth(): void {
-    localStorage.removeItem(STORAGE_KEYS.API_KEY);
-    localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
-    localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
-  },
-
-  // Get all auth data in one operation
+/**
+ * Authentication storage
+ */
+class AuthStorage {
+  /**
+   * Gets stored authentication data
+   */
   getAuthData(): { apiKey: string | null; method: AuthMethod } {
-    const apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
-    const rawMethod = localStorage.getItem(STORAGE_KEYS.AUTH_METHOD);
-    
-    // Type-safe auth method
-    let method: AuthMethod = null;
-    if (rawMethod === 'oauth' || rawMethod === 'manual' || rawMethod === 'browser') {
-      method = rawMethod;
+    try {
+      const authData = localStorage.getItem(KEYS.AUTH);
+      
+      if (authData) {
+        const { apiKey, method } = JSON.parse(authData);
+        return { apiKey, method };
+      }
+      
+      return { apiKey: null, method: null };
+    } catch (error) {
+      console.error('Error retrieving auth data:', error);
+      return { apiKey: null, method: null };
     }
-    
-    return { apiKey, method };
-  },
-
-  // Validate API key format
-  isValidApiKey(key: string | null): boolean {
-    if (!key) return false;
-    
-    // Special case for browser model
-    if (key === 'browser-llm') return true;
-    
-    // Basic format check for OpenRouter keys
-    if (key.startsWith('sk-or-') && key.length > 15) return true;
-    
-    // Allow any other key format that has reasonable length
-    return key.length >= 20;
-  },
-
-  // PKCE-specific operations
-  saveCodeVerifier(verifier: string): void {
-    localStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, verifier);
-  },
+  }
   
+  /**
+   * Saves authentication data
+   */
+  saveAuth(apiKey: string, method: AuthMethod): void {
+    try {
+      localStorage.setItem(KEYS.AUTH, JSON.stringify({ apiKey, method }));
+    } catch (error) {
+      console.error('Error saving auth data:', error);
+    }
+  }
+  
+  /**
+   * Clears authentication data
+   */
+  clearAuth(): void {
+    try {
+      localStorage.removeItem(KEYS.AUTH);
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
+  }
+  
+  /**
+   * Saves OAuth code verifier
+   */
+  saveCodeVerifier(codeVerifier: string): void {
+    try {
+      localStorage.setItem(KEYS.CODE_VERIFIER, codeVerifier);
+    } catch (error) {
+      console.error('Error saving code verifier:', error);
+    }
+  }
+  
+  /**
+   * Gets OAuth code verifier
+   */
   getCodeVerifier(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
-  }
-};
-
-// Model preferences storage
-export const modelStorage = {
-  saveLastUsedModel(modelId: string): void {
-    localStorage.setItem(STORAGE_KEYS.LAST_USED_MODEL, modelId);
-  },
-  
-  getLastUsedModel(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.LAST_USED_MODEL);
-  },
-  
-  saveModelPreferences(preferences: any): void {
-    localStorage.setItem(STORAGE_KEYS.MODEL_PREFERENCES, JSON.stringify(preferences));
-  },
-  
-  getModelPreferences(): any {
-    const data = localStorage.getItem(STORAGE_KEYS.MODEL_PREFERENCES);
-    if (!data) return null;
     try {
-      return JSON.parse(data);
-    } catch (e) {
+      return localStorage.getItem(KEYS.CODE_VERIFIER);
+    } catch (error) {
+      console.error('Error retrieving code verifier:', error);
       return null;
     }
   }
-};
-
-// Central storage for everything else
-export const appStorage = {
-  // Save any value with type safety
-  save<T>(key: string, value: T): void {
-    localStorage.setItem(key, JSON.stringify(value));
-  },
   
-  // Get any value with type safety
-  get<T>(key: string): T | null {
-    const data = localStorage.getItem(key);
-    if (!data) return null;
+  /**
+   * Clears OAuth code verifier
+   */
+  clearCodeVerifier(): void {
     try {
-      return JSON.parse(data) as T;
-    } catch (e) {
+      localStorage.removeItem(KEYS.CODE_VERIFIER);
+    } catch (error) {
+      console.error('Error clearing code verifier:', error);
+    }
+  }
+  
+  /**
+   * Validates API key format
+   */
+  isValidApiKey(apiKey: string): boolean {
+    if (!apiKey) return false;
+    
+    // Basic structure validation for API keys
+    const isOpenRouterKey = 
+      apiKey.startsWith('sk-') && 
+      apiKey.length >= 30;
+      
+    // Could expand with more key format validations
+    return isOpenRouterKey;
+  }
+}
+
+/**
+ * Model settings storage
+ */
+class ModelStorage {
+  private readonly KEY = KEYS.MODELS;
+  
+  /**
+   * Gets model settings
+   */
+  getModelSettings() {
+    try {
+      const data = localStorage.getItem(this.KEY);
+      
+      if (data) {
+        return JSON.parse(data);
+      }
+      
+      return {
+        selectedId: '',
+        parameters: {
+          temperature: 0.7,
+          topP: 0.9,
+          maxTokens: 1000
+        },
+        isBrowserMode: false,
+        customModelId: ''
+      };
+    } catch (error) {
+      console.error('Error retrieving model settings:', error);
       return null;
     }
-  },
-  
-  // Remove any item
-  remove(key: string): void {
-    localStorage.removeItem(key);
   }
-};
+  
+  /**
+   * Saves model settings
+   */
+  saveModelSettings(settings: any): void {
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.error('Error saving model settings:', error);
+    }
+  }
+  
+  /**
+   * Clears model settings
+   */
+  clearModelSettings(): void {
+    try {
+      localStorage.removeItem(this.KEY);
+    } catch (error) {
+      console.error('Error clearing model settings:', error);
+    }
+  }
+}
+
+/**
+ * UI preferences storage
+ */
+class UIStorage {
+  private readonly KEY = KEYS.UI;
+  
+  /**
+   * Gets UI preferences
+   */
+  getUIPreferences() {
+    try {
+      const data = localStorage.getItem(this.KEY);
+      
+      if (data) {
+        return JSON.parse(data);
+      }
+      
+      return {
+        theme: 'system',
+        lastTab: 'home'
+      };
+    } catch (error) {
+      console.error('Error retrieving UI preferences:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Saves UI preferences
+   */
+  saveUIPreferences(preferences: any): void {
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(preferences));
+    } catch (error) {
+      console.error('Error saving UI preferences:', error);
+    }
+  }
+  
+  /**
+   * Clears UI preferences
+   */
+  clearUIPreferences(): void {
+    try {
+      localStorage.removeItem(this.KEY);
+    } catch (error) {
+      console.error('Error clearing UI preferences:', error);
+    }
+  }
+}
+
+// Export storage modules
+export const authStorage = new AuthStorage();
+export const modelStorage = new ModelStorage();
+export const uiStorage = new UIStorage();
