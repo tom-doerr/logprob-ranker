@@ -6,16 +6,16 @@
 
 @layer base {
   :root {
-    --eva-orange: #265985; /* Changed to a serious blue */
-    --eva-orange-dark: #1a4062;
-    --eva-blue: #00507a;
-    --eva-purple: #334566;
-    --eva-green: #2a6f55;
-    --eva-red: #8f3030;
-    --eva-black: #0c0e11;
-    --eva-dark: #141820;
+    --eva-orange: #ff6700; /* NERV orange */
+    --eva-orange-dark: #c25200;
+    --eva-blue: #1a63a4; /* NERV blue - more serious shade */
+    --eva-purple: #641e75; /* Eva Unit-01 purple */
+    --eva-green: #2c7753; /* More serious green */
+    --eva-red: #b3161b; /* NERV red - more serious shade */
+    --eva-black: #0b0d0f;
+    --eva-dark: #161616;
     --eva-text: #e6e8eb;
-    --eva-green-bg: rgba(42, 111, 85, 0.15);
+    --eva-green-bg: rgba(44, 119, 83, 0.15);
   }
 
   * {
@@ -26,7 +26,8 @@
     @apply bg-[#141820] text-foreground antialiased font-mono;
     font-family: 'Share Tech Mono', monospace;
     background-color: var(--eva-black);
-    background-image: none; /* Removed gradient effect */
+    background-image: 
+      radial-gradient(circle at 50% 25%, rgba(255, 103, 0, 0.05) 0%, transparent 40%);
     color: var(--eva-text, #e6e8eb);
   }
 }
@@ -35,7 +36,7 @@
   .eva-card {
     @apply relative overflow-hidden;
     border: 1px solid var(--eva-orange);
-    box-shadow: 0 0 4px rgba(38, 89, 133, 0.3);
+    box-shadow: 0 0 4px rgba(255, 103, 0, 0.3);
   }
 
   .eva-card::before {
@@ -50,20 +51,20 @@
 
   .eva-title {
     @apply font-mono text-[var(--eva-orange)] uppercase tracking-wide;
-    text-shadow: none;
+    text-shadow: 0 0 2px rgba(255, 103, 0, 0.3);
   }
 
   .eva-button {
     @apply font-mono uppercase tracking-wider;
     border: 1px solid var(--eva-orange);
-    background: rgba(38, 89, 133, 0.1);
-    box-shadow: 0 0 3px rgba(38, 89, 133, 0.2);
+    background: rgba(255, 103, 0, 0.1);
+    box-shadow: 0 0 3px rgba(255, 103, 0, 0.2);
     transition: all 0.2s ease;
   }
 
   .eva-button:hover {
-    background: rgba(38, 89, 133, 0.2);
-    box-shadow: 0 0 5px rgba(38, 89, 133, 0.3);
+    background: rgba(255, 103, 0, 0.15);
+    box-shadow: 0 0 5px rgba(255, 103, 0, 0.3);
   }
 
   .eva-input {
@@ -218,7 +219,7 @@
     opacity: 0.4;
     z-index: 9;
     pointer-events: none;
-    animation: none; /* Removed animation */
+    animation: scanline 8s linear infinite; /* Slower subtle animation */
   }
   
   .nerv-blink {
@@ -226,7 +227,7 @@
   }
   
   .nerv-pulse {
-    animation: none; /* Removed animation */
+    animation: hexagonPulse 4s infinite ease-in-out; /* Slower more subtle pulse */
   }
   
   .nerv-progress {
@@ -234,7 +235,7 @@
     overflow: hidden;
   }
   
-  /* Simplified progress bar */
+  /* Simplified progress bar with minimal gradient */
   .nerv-progress::before {
     content: "";
     position: absolute;
@@ -242,7 +243,7 @@
     left: 0;
     height: 2px;
     width: var(--progress-width, 50%);
-    background: var(--eva-orange);
+    background: linear-gradient(90deg, var(--eva-orange), var(--eva-orange-dark));
     z-index: 5;
     transition: width 0.5s ease;
   }
@@ -259,13 +260,14 @@
     opacity: 0.15;
     font-size: 0.6rem;
     white-space: nowrap;
-    animation: none; /* Removed animation */
+    animation: dataScroll 30s linear infinite; /* Very slow animation */
   }
   
   .nerv-energy {
-    background: var(--eva-orange);
-    opacity: 0.15;
-    animation: none; /* Removed animation */
+    background: linear-gradient(90deg, 
+      rgba(255, 103, 0, 0.2),
+      rgba(255, 103, 0, 0.1));
+    animation: energyFlux 8s infinite; /* Slower animation */
   }
   
   .nerv-type {
@@ -353,8 +355,8 @@
   .nerv-grid {
     position: relative;
     background-image: 
-      linear-gradient(to right, rgba(38, 89, 133, 0.07) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(38, 89, 133, 0.07) 1px, transparent 1px);
+      linear-gradient(to right, rgba(255, 103, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 103, 0, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
   }
   
@@ -371,17 +373,17 @@
     right: 0;
     bottom: 0;
     background-image: 
-      radial-gradient(circle at 30% 50%, rgba(38, 89, 133, 0.05) 5%, transparent 8%),
-      radial-gradient(circle at 70% 30%, rgba(0, 80, 122, 0.05) 5%, transparent 8%);
+      radial-gradient(circle at 30% 50%, rgba(255, 103, 0, 0.05) 5%, transparent 8%),
+      radial-gradient(circle at 70% 30%, rgba(26, 99, 164, 0.05) 5%, transparent 8%);
     background-size: 40px 40px;
-    animation: none; /* Removed animation */
+    animation: patternShift 60s linear infinite; /* Very slow subtle animation */
     pointer-events: none;
   }
   
   .nerv-warning {
-    background-color: rgba(143, 48, 48, 0.1);
+    background-color: rgba(179, 22, 27, 0.08);
     border: 1px solid var(--eva-red);
-    animation: none; /* Removed animation */
+    animation: warning 3s ease-in-out infinite; /* Slow warning animation */
   }
   
   @keyframes hexagonPulse {
