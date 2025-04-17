@@ -250,18 +250,21 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       try {
         // Try direct fetch to our API proxy endpoint
         console.log(`Making direct fetch to API proxy for index ${index}`);
+        // Use the selected model from the UI or default to a working model
+        const modelToUse = selectedModel || 'openai/o4-mini';
+        console.log(`Using model: ${modelToUse}`);
         
         const response = await fetch('/api/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'anthropic/claude-3-haiku-20240307', // Use a model that worked in our tests
+            model: modelToUse,
             messages: [
               { role: 'system', content: 'You are a helpful assistant.' },
               { role: 'user', content: prompt || 'Hello, please respond with a greeting.' }
             ],
-            temperature: 0.7,
-            max_tokens: 200
+            temperature: temperature || 0.7,
+            max_tokens: maxTokens || 200
           })
         });
         

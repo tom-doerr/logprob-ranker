@@ -140,8 +140,15 @@ router.get('/status', async (req: Request, res: Response) => {
         });
       }
       
-      const data = await response.json();
-      const modelCount = data && data.data ? data.data.length : 0;
+      // Type explicitly as any to handle OpenRouter API response format
+      const data: any = await response.json();
+      
+      // Extract model information safely
+      const modelData = data && typeof data === 'object' && data.data && Array.isArray(data.data) ? data.data : [];
+      const modelCount = modelData.length;
+      
+      // Extract first 3 model IDs for quick display
+      const modelIds = modelData.slice(0, 3).map((model: any) => model?.id || 'unknown').filter(Boolean);
       
       return res.status(200).json({
         status: 'success',
@@ -149,7 +156,7 @@ router.get('/status', async (req: Request, res: Response) => {
         keyExists: true,
         keyMasked: maskedKey,
         modelCount,
-        models: data && data.data ? data.data.slice(0, 3).map((m: any) => m.id) : [] // Return first 3 models
+        models: modelIds
       });
     } catch (apiError) {
       console.error('Error testing API key:', apiError);
