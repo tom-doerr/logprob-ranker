@@ -7,14 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { SavedTemplate, saveTemplate, getTemplates, deleteTemplate } from '@/utils/settings-storage';
+} from "./dialog";
+import { Button } from './button';
+import { Input } from './input';
+import { Label } from './label';
+import { ScrollArea } from './scroll-area';
+import { SavedTemplate, saveTemplate, getTemplates, deleteTemplate } from '../../utils/settings-storage';
 import { Trash2, Save, Plus, FileText, AlertCircle, Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '../../hooks/use-toast';
 
 interface TemplateManagerProps {
   currentPrompt: string;
