@@ -52,42 +52,47 @@ describe('Output Ranker Integration', () => {
     
     // Mock createChatCompletion implementation
     vi.mocked(apiService.apiService.createChatCompletion).mockImplementation(async (params) => {
-      // Simulate different responses based on API call
-      if (params.model === 'google/gemini-2.0-flash-001') {
-        // For variant generation
+      try {
+        // Simulate different responses based on API call
+        if (params.model === 'google/gemini-2.0-flash-001') {
+          // For variant generation
+          return {
+            id: 'test-response-id',
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: 'This is a test response from the Gemini model.'
+              },
+              logprob: 0.95
+            }]
+          };
+        } else if (params.messages?.[0]?.content?.includes('evaluation')) {
+          // For evaluation response
+          return {
+            id: 'eval-response-id',
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: '```json\n{"interesting": true, "creative": true, "useful": true}\n```'
+              }
+            }]
+          };
+        }
+        
         return {
-          id: 'test-response-id',
+          id: 'default-response',
           choices: [{
             message: {
               role: 'assistant',
-              content: 'This is a test response from the Gemini model.'
+              content: 'Default test response'
             },
-            logprob: 0.95
+            logprob: 0.5
           }]
         };
-      } else if (params.messages?.[0]?.content?.includes('evaluation')) {
-        // For evaluation response
-        return {
-          id: 'eval-response-id',
-          choices: [{
-            message: {
-              role: 'assistant',
-              content: '```json\n{"interesting": true, "creative": true, "useful": true}\n```'
-            }
-          }]
-        };
+      } catch (error) {
+        console.error('Mock API error:', error);
+        throw error;
       }
-      
-      return {
-        id: 'default-response',
-        choices: [{
-          message: {
-            role: 'assistant',
-            content: 'Default test response'
-          },
-          logprob: 0.5
-        }]
-      };
     });
     
     // Mock getModels
