@@ -11,6 +11,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +21,7 @@ import {
 
 export const AppHeader: React.FC = () => {
   const [location] = useLocation();
+  const { toast } = useToast();
   const { 
     isAuthenticated, 
     apiKey, 
