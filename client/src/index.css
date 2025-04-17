@@ -319,4 +319,97 @@
   .nerv-globe-spin-slow {
     animation: globe-spin-slow 25s linear infinite;
   }
+  
+  /* New NERV UI Elements */
+  .nerv-hexagon {
+    position: relative;
+    background-color: black;
+    overflow: hidden;
+  }
+  
+  .nerv-hexagon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+    background: linear-gradient(45deg, var(--eva-orange), var(--eva-green));
+    opacity: 0.5;
+    z-index: 5;
+    animation: hexagonPulse 3s infinite ease-in-out;
+  }
+  
+  .nerv-arm {
+    position: relative;
+    overflow: visible;
+  }
+  
+  .nerv-arm::after {
+    content: "";
+    position: absolute;
+    right: -15px;
+    top: 50%;
+    width: 15px;
+    height: 2px;
+    background-color: var(--eva-orange);
+    transform-origin: left center;
+    animation: nervArmRotate 3s infinite alternate;
+  }
+  
+  .nerv-grid {
+    position: relative;
+    background-image: 
+      linear-gradient(to right, rgba(255, 103, 0, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 103, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .nerv-pattern {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .nerv-pattern::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 30% 50%, rgba(255, 103, 0, 0.15) 5%, transparent 8%),
+      radial-gradient(circle at 70% 30%, rgba(0, 163, 217, 0.15) 5%, transparent 8%);
+    background-size: 40px 40px;
+    animation: patternShift 20s linear infinite;
+    pointer-events: none;
+  }
+  
+  .nerv-warning {
+    animation: warning 1s ease-in-out infinite;
+  }
+  
+  @keyframes hexagonPulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.95); }
+    50% { opacity: 0.8; transform: scale(1); }
+  }
+  
+  @keyframes nervArmRotate {
+    0% { transform: translateY(-50%) rotate(-20deg); }
+    100% { transform: translateY(-50%) rotate(20deg); }
+  }
+  
+  @keyframes patternShift {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+  }
+  
+  @keyframes warning {
+    0%, 100% { 
+      background-color: transparent; 
+      box-shadow: none;
+    }
+    50% { 
+      background-color: rgba(255, 0, 0, 0.2); 
+      box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+    }
+  }
 }
