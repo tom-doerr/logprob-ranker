@@ -77,7 +77,7 @@ export const NavMenu: React.FC<NavMenuProps> = ({ currentPath }) => {
           <Button 
             variant="outline" 
             size="icon"
-            className="border-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black"
+            className="border-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black h-8 w-8 sm:h-9 sm:w-9"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -91,8 +91,8 @@ export const NavMenu: React.FC<NavMenuProps> = ({ currentPath }) => {
             >
               <Link href={item.path}>
                 <div className="flex items-center w-full">
-                  {item.icon}
-                  <span className="ml-2">{item.label}</span>
+                  {React.cloneElement(item.icon as React.ReactElement, { className: 'mr-2 h-4 w-4' })}
+                  <span>{item.label}</span>
                 </div>
               </Link>
             </DropdownMenuItem>

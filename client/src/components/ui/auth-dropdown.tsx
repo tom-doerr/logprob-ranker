@@ -51,7 +51,7 @@ export const AuthDropdown: React.FC<AuthDropdownProps> = ({
             id="auth-dropdown-trigger"
             variant="outline" 
             size="icon"
-            className="border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black h-9 w-9"
+            className="border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black h-8 w-8 sm:h-9 sm:w-9"
           >
             <Key className="h-4 w-4" />
           </Button>
@@ -60,7 +60,7 @@ export const AuthDropdown: React.FC<AuthDropdownProps> = ({
             id="auth-dropdown-trigger"
             variant="outline" 
             size="icon"
-            className="border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black h-9 w-9 nerv-pulse"
+            className="border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black h-8 w-8 sm:h-9 sm:w-9 nerv-pulse"
           >
             <Key className="h-4 w-4" />
           </Button>
