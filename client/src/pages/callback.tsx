@@ -1,6 +1,7 @@
 import { FC, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { getCodeVerifier, saveApiKey, clearCodeVerifier, saveAuthMethod } from '../utils/pkce';
+import { getCodeVerifier, clearCodeVerifier } from '../utils/pkce';
+import { authStorage } from '../utils/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

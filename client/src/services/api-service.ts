@@ -1,192 +1,97 @@
 /**
- * Centralized API service
- * Advantages:
- * - Consistent API access patterns
- * - Centralized error handling
- * - Easy request/response transformations
- * - Simplified mocking for tests
+ * API Service
+ * Simplified API client for making requests with consistent error handling
  */
 
-import { authStorage } from '../utils/storage';
+import { authStorage } from "../utils/storage";
+import { 
+  ChatCompletionRequest, 
+  ChatCompletionResponse,
+  getChatCompletionsUrl
+} from "../lib/openrouter";
 
-// API error types for better error handling
-export enum ApiErrorType {
-  NETWORK = 'network_error',
-  AUTH = 'authentication_error',
-  RATE_LIMIT = 'rate_limit',
-  SERVER = 'server_error',
-  VALIDATION = 'validation_error',
-  UNKNOWN = 'unknown_error'
-}
-
-// Custom API error class
-export class ApiError extends Error {
-  type: ApiErrorType;
-  statusCode?: number;
-  
-  constructor(message: string, type: ApiErrorType, statusCode?: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.type = type;
-    this.statusCode = statusCode;
-  }
-}
-
-// Base API configuration
-const API_CONFIG = {
-  baseUrl: 'https://openrouter.ai/api',
-  defaultHeaders: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  }
-};
-
-/**
- * Core API service with consistent error handling
- */
 class ApiService {
   /**
-   * Makes an authenticated API request
+   * Create a chat completion using the OpenRouter API
    */
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+    // Get the API key from storage
+    const apiKey = authStorage.getApiKey();
+    
+    if (!apiKey || apiKey === 'browser-llm') {
+      throw new Error('No API key found. Please authenticate first.');
+    }
+    
     try {
-      // Get API key from storage
-      const { apiKey } = authStorage.getAuthData();
-      
-      if (!apiKey) {
-        throw new ApiError(
-          'API key is required for this operation',
-          ApiErrorType.AUTH
-        );
-      }
-      
-      // Prepare headers
-      const headers = new Headers({
-        ...API_CONFIG.defaultHeaders,
-        ...(options.headers || {}),
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': window.location.origin,
+      const response = await fetch(getChatCompletionsUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': window.location.origin,
+        },
+        body: JSON.stringify(request)
       });
       
-      // Build URL
-      const url = endpoint.startsWith('http') 
-        ? endpoint 
-        : `${API_CONFIG.baseUrl}${endpoint}`;
-      
-      // Make the request
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-      
-      // Handle HTTP errors
       if (!response.ok) {
-        const statusCode = response.status;
-        let errorType = ApiErrorType.UNKNOWN;
-        let errorMessage = 'Unknown API error';
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API error:', errorData);
         
-        // Try to parse error response
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || 'API error';
-        } catch (e) {
-          errorMessage = response.statusText || 'API error';
-        }
-        
-        // Determine error type from status code
-        if (statusCode === 401 || statusCode === 403) {
-          errorType = ApiErrorType.AUTH;
-        } else if (statusCode === 429) {
-          errorType = ApiErrorType.RATE_LIMIT;
-        } else if (statusCode >= 500) {
-          errorType = ApiErrorType.SERVER;
-        } else if (statusCode === 400 || statusCode === 422) {
-          errorType = ApiErrorType.VALIDATION;
-        }
-        
-        throw new ApiError(errorMessage, errorType, statusCode);
-      }
-      
-      // Parse and return response data
-      return await response.json();
-    } catch (error) {
-      // Handle network errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new ApiError(
-          'Network error: Please check your connection',
-          ApiErrorType.NETWORK
+        // Create a structured error
+        const error: any = new Error(
+          errorData.error?.message || 'Request failed'
         );
-      }
-      
-      // Re-throw API errors
-      if (error instanceof ApiError) {
+        error.status = response.status;
+        error.response = errorData;
         throw error;
       }
       
-      // Handle unexpected errors
-      throw new ApiError(
-        error instanceof Error ? error.message : 'Unknown error',
-        ApiErrorType.UNKNOWN
-      );
+      return await response.json();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Return a minimal valid response structure to prevent null errors
+      return {
+        id: 'error',
+        object: 'error',
+        created: Date.now(),
+        model: request.model,
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: 'Error connecting to API. Please check your authentication.'
+          },
+          finish_reason: 'error'
+        }]
+      };
     }
   }
   
   /**
-   * Checks if current API key is valid
+   * Check if authentication is valid
    */
-  async validateApiKey(): Promise<boolean> {
+  async verifyAuthentication(): Promise<boolean> {
+    const apiKey = authStorage.getApiKey();
+    
+    if (!apiKey || apiKey === 'browser-llm') {
+      return false;
+    }
+    
     try {
-      await this.request('/v1/auth/validate');
-      return true;
+      const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        }
+      });
+      
+      return response.ok;
     } catch (error) {
+      console.error('Auth verification error:', error);
       return false;
     }
   }
 }
 
-/**
- * OpenRouter-specific API service
- */
-class OpenRouterService {
-  private api: ApiService;
-  
-  constructor() {
-    this.api = new ApiService();
-  }
-  
-  /**
-   * Generates chat completions
-   */
-  async createChatCompletion(params: {
-    model: string;
-    messages: Array<{ role: string; content: string }>;
-    temperature?: number;
-    top_p?: number;
-    max_tokens?: number;
-  }) {
-    return this.api.request('/v1/chat/completions', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-  }
-  
-  /**
-   * Validates API key
-   */
-  async validateKey(): Promise<boolean> {
-    return this.api.validateApiKey();
-  }
-  
-  /**
-   * Gets available models
-   */
-  async getModels() {
-    return this.api.request('/v1/models');
-  }
-}
-
-// Export service instance
-export const openRouterService = new OpenRouterService();
-
-// Export an alias for backward compatibility
-export const apiService = openRouterService;
+// Create a singleton instance
+export const apiService = new ApiService();
