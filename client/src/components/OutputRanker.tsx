@@ -1,12 +1,12 @@
 import { FC, useState, useEffect, useReducer } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { useToast } from '../hooks/use-toast';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
 import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown, Activity } from 'lucide-react';
 import { 
@@ -18,11 +18,11 @@ import {
   getSavedResultById,
   deleteSavedResult,
   SavedResult
-} from '@/utils/settings-storage';
+} from '../utils/settings-storage';
 import TemplateManager from '@/components/ui/template-manager';
-import { useModelConfig } from '@/hooks/use-model-config';
-import { useAuth } from '@/hooks/use-auth';
-import { apiService } from '@/services/api-service';
+import { useModelConfig } from '../hooks/use-model-config';
+import { useAuth } from '../hooks/use-auth';
+import { apiService } from '../services/api-service';
 import { 
   NervScanline, 
   NervBlink, 
