@@ -202,9 +202,11 @@ describe('Output Ranker Integration', () => {
     );
     
     render(
-      <ModelConfigProvider>
-        <OutputRanker />
-      </ModelConfigProvider>
+      <AuthProvider>
+        <ModelConfigProvider>
+          <OutputRanker />
+        </ModelConfigProvider>
+      </AuthProvider>
     );
     
     // Enter prompt and generate
@@ -222,9 +224,11 @@ describe('Output Ranker Integration', () => {
   
   it('should allow switching between API and browser models', async () => {
     render(
-      <ModelConfigProvider>
-        <OutputRanker />
-      </ModelConfigProvider>
+      <AuthProvider>
+        <ModelConfigProvider>
+          <OutputRanker />
+        </ModelConfigProvider>
+      </AuthProvider>
     );
     
     // Initially on API model

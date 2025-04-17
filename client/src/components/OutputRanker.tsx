@@ -664,7 +664,7 @@ ${generatedOutput}`;
                 <TabsContent value="generator" className="space-y-4 mt-4">
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
+                      <label htmlFor="input-prompt" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider">
                         Input Prompt
                       </label>
                       <div className="flex space-x-2">
