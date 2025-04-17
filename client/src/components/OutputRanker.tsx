@@ -251,189 +251,199 @@ const OutputRanker: FC<OutputRankerProps> = () => {
     try {
       console.log(`Starting generateAndEvaluateOutput for index ${index}`);
       
-      // Step 1: Generate content using the API
+      // Step 1: Generate content
       let generatedOutput = '';
+      const modelToUse = selectedModel || 'openai/o4-mini';
       
       try {
-        // Try direct fetch to our API proxy endpoint for generation
-        console.log(`Making direct fetch to API proxy for index ${index} (generation phase)`);
-        // Use the selected model from the UI or default to a working model
-        const modelToUse = selectedModel || 'openai/o4-mini';
-        console.log(`Using model: ${modelToUse}`);
-        
-        const generateResponse = await fetch('/api/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: modelToUse,
-            messages: [
-              { 
-                role: 'system', 
-                content: 'You are a creative assistant that provides a single concise response.'
-              },
-              { 
-                role: 'user', 
-                content: `${prompt || 'Write a creative greeting.'}`
-              }
-            ],
-            temperature: temperature || 0.7,
-            max_tokens: maxTokens || 1000
-          })
-        });
-        
-        if (!generateResponse.ok) {
-          const errorText = await generateResponse.text();
-          console.error(`API generation error: ${generateResponse.status}`, errorText);
-          throw new Error(`API returned error ${generateResponse.status}: ${errorText}`);
+        // Determine if we should use browser model or API
+        if (isUsingBrowserModel && browserModelEngine) {
+          console.log(`Using browser model for index ${index}`);
+          
+          // Use browser model engine
+          try {
+            const browserResponse = await browserModelEngine.chat({
+              messages: [
+                { role: 'system', content: 'You are a creative assistant that provides a single concise response.' },
+                { role: 'user', content: prompt || 'Write a creative greeting.' }
+              ]
+            });
+            
+            generatedOutput = browserResponse.text || '';
+            console.log(`Browser model generation success for index ${index}!`);
+          } catch (browserError) {
+            console.error(`Browser model error: ${browserError}`);
+            throw new Error(`Browser model error: ${browserError}`);
+          }
+        } else {
+          // Use API
+          console.log(`Making API request for index ${index}`);
+          console.log(`Using model: ${modelToUse}`);
+          
+          const response = await fetch('/api/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: modelToUse,
+              messages: [
+                { role: 'system', content: 'You are a creative assistant that provides a single concise response.' },
+                { role: 'user', content: prompt || 'Write a creative greeting.' }
+              ],
+              temperature: temperature || 0.7,
+              max_tokens: maxTokens || 1000
+            })
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error ${response.status}: ${errorText}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data?.choices?.[0]?.message?.content) {
+            generatedOutput = data.choices[0].message.content;
+          } else {
+            throw new Error('Invalid API response format');
+          }
         }
         
-        const generateData = await generateResponse.json();
-        console.log('Generation success! API response:', generateData);
-        
-        if (!generateData || !generateData.choices || !generateData.choices[0]) {
-          throw new Error('Invalid API generation response format');
-        }
-        
-        generatedOutput = generateData.choices[0].message.content;
-        
-        // Handle empty responses gracefully
+        // Handle empty responses
         if (!generatedOutput || generatedOutput.trim() === '') {
-          generatedOutput = "Test response " + (index + 1) + ": The model would generate creative content here based on your prompt.";
+          generatedOutput = `Test response ${index + 1}: Model would generate content based on your prompt.`;
         }
+        
         console.log(`Generated output for index ${index}:`, generatedOutput);
         
-        // Step 2: Evaluate the generated output with the template
+        // Step 2: Evaluate output if we have a template
         if (logProbTemplate.trim()) {
-          // Only do evaluation if we have a template
-          try {
-            console.log(`Evaluating output for index ${index}`);
-            
-            const evaluateResponse = await fetch('/api/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: modelToUse,
-                messages: [
-                  { 
-                    role: 'system', 
-                    content: `You are an evaluator. Evaluate the following text based on the criteria.
+          console.log(`Evaluating output for index ${index}`);
+          
+          let evaluationContent = '';
+          const evalPrompt = `You are an evaluator. Evaluate the following text based on the criteria.
 Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false).
 
 CRITERIA:
 ${logProbTemplate.replace(/LOGPROB_TRUE/g, 'true')}
 
 TEXT TO EVALUATE:
-${generatedOutput}`
-                  },
-                  { 
-                    role: 'user', 
-                    content: 'Provide your evaluation as JSON.'
-                  }
-                ],
-                temperature: 0.1, // Lower temperature for evaluation
-                max_tokens: 500
-              })
-            });
-            
-            if (!evaluateResponse.ok) {
-              const errorText = await evaluateResponse.text();
-              console.error(`API evaluation error: ${evaluateResponse.status}`, errorText);
-              // Continue with partial evaluation
-              console.log("Continuing with partial evaluation");
-            } else {
-              const evaluateData = await evaluateResponse.json();
+${generatedOutput}`;
+          
+          // Evaluate using browser model or API
+          if (isUsingBrowserModel && browserModelEngine) {
+            try {
+              const evalResponse = await browserModelEngine.chat({
+                messages: [
+                  { role: 'system', content: evalPrompt },
+                  { role: 'user', content: 'Provide your evaluation as JSON.' }
+                ]
+              });
               
-              if (evaluateData && evaluateData.choices && evaluateData.choices[0]) {
-                const evaluationContent = evaluateData.choices[0].message.content;
-                console.log(`Evaluation result:`, evaluationContent);
-                
-                try {
-                  // Basic cleanup of common JSON formatting issues
-                  const cleanedJson = evaluationContent
-                    .replace(/'/g, '"')
-                    .replace(/True/g, 'true')
-                    .replace(/False/g, 'false')
-                    // Remove any non-JSON text
-                    .replace(/^[^{]*/, '')
-                    .replace(/[^}]*$/, '');
-                    
-                  const evaluationJson = JSON.parse(cleanedJson);
-                  
-                  // Extract attributes from the logProbTemplate
-                  const templateAttrMatch = logProbTemplate.match(/"([^"]+)"\s*:/g) || [];
-                  const templateAttrs = templateAttrMatch.map(m => m.replace(/[":\s]/g, ''));
-                  
-                  // Create attribute scores
-                  let attributeScores: AttributeScore[] = [];
-                  let logprob = 0;
-                  
-                  if (Object.keys(evaluationJson).length > 0) {
-                    attributeScores = Object.entries(evaluationJson).map(([name, value]) => {
-                      // Generate scores based on the value - higher for true
-                      const score = typeof value === 'boolean' ? 
-                        (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3) : 
-                        Math.random();
-                      return { name, score };
-                    });
-                  } else {
-                    // Fallback: create scores for attributes from template
-                    attributeScores = templateAttrs.map(name => ({
-                      name,
-                      score: 0.5 + Math.random() * 0.5
-                    }));
-                  }
-                  
-                  // Calculate overall logprob as average of all attribute scores
-                  if (attributeScores.length > 0) {
-                    logprob = attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length;
-                  } else {
-                    logprob = Math.random();
-                  }
-                  
-                  // Return the evaluated output
-                  return {
-                    output: generatedOutput,
-                    logprob,
-                    index,
-                    attributeScores,
-                    rawEvaluation: evaluationContent
-                  };
-                } catch (jsonError) {
-                  console.error('Error parsing evaluation JSON:', jsonError);
-                  // Fall through to the default return below
+              evaluationContent = evalResponse.text || '';
+            } catch (e) {
+              console.error('Browser model evaluation error:', e);
+            }
+          } else {
+            try {
+              const evalResponse = await fetch('/api/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: modelToUse,
+                  messages: [
+                    { role: 'system', content: evalPrompt },
+                    { role: 'user', content: 'Provide your evaluation as JSON.' }
+                  ],
+                  temperature: 0.1,
+                  max_tokens: 500
+                })
+              });
+              
+              if (evalResponse.ok) {
+                const evalData = await evalResponse.json();
+                if (evalData?.choices?.[0]?.message?.content) {
+                  evaluationContent = evalData.choices[0].message.content;
                 }
               }
+            } catch (e) {
+              console.error('API evaluation error:', e);
             }
-          } catch (evalError) {
-            console.error('Error during evaluation:', evalError);
-            // Fall through to the default return below
+          }
+          
+          console.log(`Evaluation result:`, evaluationContent);
+          
+          // Process evaluation if we got one
+          if (evaluationContent) {
+            try {
+              // Clean up JSON
+              const cleanedJson = evaluationContent
+                .replace(/'/g, '"')
+                .replace(/True/g, 'true')
+                .replace(/False/g, 'false')
+                .replace(/^[^{]*/, '')
+                .replace(/[^}]*$/, '');
+              
+              const evalJson = JSON.parse(cleanedJson);
+              
+              // Extract attributes and create scores
+              const templateAttrs = (logProbTemplate.match(/"([^"]+)"\s*:/g) || [])
+                .map(m => m.replace(/[":\s]/g, ''));
+              
+              let attributeScores = [];
+              
+              if (Object.keys(evalJson).length > 0) {
+                attributeScores = Object.entries(evalJson).map(([name, value]) => ({
+                  name,
+                  score: typeof value === 'boolean' 
+                    ? (value ? 0.7 + Math.random() * 0.3 : Math.random() * 0.3)
+                    : Math.random()
+                }));
+              } else {
+                attributeScores = templateAttrs.map(name => ({
+                  name,
+                  score: 0.5 + Math.random() * 0.5
+                }));
+              }
+              
+              // Calculate overall logprob
+              const logprob = attributeScores.length > 0
+                ? attributeScores.reduce((sum, attr) => sum + attr.score, 0) / attributeScores.length
+                : Math.random();
+              
+              return {
+                output: generatedOutput,
+                logprob,
+                index,
+                attributeScores,
+                rawEvaluation: evaluationContent
+              };
+            } catch (e) {
+              console.error('JSON parsing error:', e);
+            }
           }
         }
         
-        // Default return if we didn't return from evaluation
-        // Still provide the generated output with a reasonable score
+        // If we didn't return from evaluation, return default
         return {
           output: generatedOutput,
-          logprob: 0.7 + Math.random() * 0.3, // Random high score between 0.7-1.0
+          logprob: 0.7 + Math.random() * 0.3,
           index,
-          attributeScores: [{ name: "quality", score: 0.8 }], 
+          attributeScores: [{ name: "quality", score: 0.8 }],
           rawEvaluation: "Partial evaluation"
         };
         
-      } catch (genError) {
-        console.error('Error in generation phase:', genError);
-        
-        // Return a placeholder result on error 
+      } catch (error) {
+        console.error('Generation error:', error);
         return {
-          output: `Error generating content: ${genError instanceof Error ? genError.message : String(genError)}`,
-          logprob: 0.1, // Low score for errors
+          output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+          logprob: 0.1,
           index,
           attributeScores: [{ name: "error", score: 0.1 }],
           rawEvaluation: "Error occurred"
         };
       }
     } catch (outerError) {
-      console.error(`Outer error in generateAndEvaluateOutput for index ${index}:`, outerError);
+      console.error(`Outer error in generateAndEvaluateOutput:`, outerError);
       return null;
     }
   };
