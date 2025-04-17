@@ -263,14 +263,22 @@ const OutputRanker: FC<OutputRankerProps> = () => {
           
           // Use browser model engine
           try {
-            const browserResponse = await browserModelEngine.chat({
+            const browserResponse = await browserModelEngine.chat.completions.create({
               messages: [
                 { role: 'system', content: 'You are a creative assistant that provides a single concise response.' },
                 { role: 'user', content: prompt || 'Write a creative greeting.' }
-              ]
+              ],
+              temperature: temperature || 0.7,
+              max_tokens: maxTokens || 1000,
+              top_p: topP || 1.0
             });
             
-            generatedOutput = browserResponse.text || '';
+            if (browserResponse?.choices?.[0]?.message?.content) {
+              generatedOutput = browserResponse.choices[0].message.content;
+            } else {
+              throw new Error('Invalid browser model response format');
+            }
+            
             console.log(`Browser model generation success for index ${index}!`);
           } catch (browserError) {
             console.error(`Browser model error: ${browserError}`);
@@ -333,14 +341,23 @@ ${generatedOutput}`;
           // Evaluate using browser model or API
           if (isUsingBrowserModel && browserModelEngine) {
             try {
-              const evalResponse = await browserModelEngine.chat({
+              console.log('Using browser model for evaluation');
+              const evalResponse = await browserModelEngine.chat.completions.create({
                 messages: [
                   { role: 'system', content: evalPrompt },
                   { role: 'user', content: 'Provide your evaluation as JSON.' }
-                ]
+                ],
+                temperature: 0.1,
+                max_tokens: 500,
+                top_p: 1.0
               });
               
-              evaluationContent = evalResponse.text || '';
+              if (evalResponse?.choices?.[0]?.message?.content) {
+                evaluationContent = evalResponse.choices[0].message.content;
+                console.log('Successfully obtained evaluation from browser model');
+              } else {
+                console.warn('Browser model returned empty or invalid evaluation');
+              }
             } catch (e) {
               console.error('Browser model evaluation error:', e);
             }
