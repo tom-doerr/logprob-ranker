@@ -136,8 +136,8 @@ const Callback: FC = () => {
         }
         
         // Store the token and update application state
-        saveApiKey(data.key);
-        saveAuthMethod('oauth');
+        authStorage.saveApiKey(data.key);
+        authStorage.saveAuthMethod('oauth');
         clearCodeVerifier();
         
         // Notify other components about the API key change
