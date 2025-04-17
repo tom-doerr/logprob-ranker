@@ -254,12 +254,13 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       };
 
       let generatedOutput = '';
+      console.log(`Generating output for index ${index}, using ${useLocalModels ? 'browser model' : 'API'}`);
 
       if (useLocalModels && browserModelEngine) {
         // Use the browser model engine instead of API service
         try {
           // Format messages for browser model
-          const promptForBrowserModel = `${generateSystemMessage.content}\n\n${userMessage.content}`;
+          console.log('Using browser model engine:', browserModelEngine);
           const response = await browserModelEngine.chat.completions.create({
             messages: [
               { role: 'system', content: generateSystemMessage.content },
@@ -270,30 +271,43 @@ const OutputRanker: FC<OutputRankerProps> = () => {
           });
           
           if (response.choices && response.choices.length > 0) {
-            generatedOutput = response.choices[0].message.content;
+            generatedOutput = response.choices[0].message.content || "Error: No content generated";
+            console.log(`Generated output for index ${index} using browser model`);
           } else {
             console.error('No response from browser model');
-            return null;
+            generatedOutput = "The model didn't generate any output. Please try again.";
           }
         } catch (error) {
           console.error('Error using browser model:', error);
-          return null;
+          generatedOutput = "Error generating content with browser model. Please try again.";
         }
       } else {
-        // Use the API service as before
-        const generationResponse = await apiService.createChatCompletion({
-          model: selectedModel || '',
-          messages: [generateSystemMessage, userMessage],
-          temperature,
-          max_tokens: maxTokens
-        });
-        
-        if (!generationResponse || !generationResponse.choices || !generationResponse.choices[0]) {
-          console.error('Invalid response from API:', generationResponse);
-          return null;
+        // Use the API service
+        try {
+          console.log(`Sending API request with model: ${selectedModel}`);
+          const generationResponse = await apiService.createChatCompletion({
+            model: selectedModel || 'google/gemini-2.0-flash-001', // Fallback to a default model
+            messages: [generateSystemMessage, userMessage],
+            temperature,
+            max_tokens: maxTokens
+          });
+          
+          console.log('API response:', generationResponse);
+          
+          if (!generationResponse) {
+            console.error('No response from API');
+            generatedOutput = "No response from API. Please check your API key and try again.";
+          } else if (!generationResponse.choices || !generationResponse.choices[0]) {
+            console.error('Invalid response from API:', generationResponse);
+            generatedOutput = "Invalid response from API. Please try again.";
+          } else {
+            generatedOutput = generationResponse.choices[0].message.content || "Error: No content generated";
+            console.log(`Generated output for index ${index} using API`);
+          }
+        } catch (error) {
+          console.error('Error using API:', error);
+          generatedOutput = "Error connecting to API. Please check your authentication and try again.";
         }
-        
-        generatedOutput = generationResponse.choices[0].message.content;
       }
       
       // Step 2: Evaluate the generated output

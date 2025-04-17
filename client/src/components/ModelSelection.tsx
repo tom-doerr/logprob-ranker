@@ -156,7 +156,7 @@ const ModelSelection: FC = () => {
                     <SelectTrigger className="font-mono eva-input border-[var(--eva-orange)]/30 bg-black/40 w-full">
                       <SelectValue placeholder="Select a model" />
                     </SelectTrigger>
-                    <SelectContent className="font-mono bg-black border-[var(--eva-orange)]/30">
+                    <SelectContent className="font-mono bg-black border-[var(--eva-orange)]/30 max-h-[300px] overflow-y-auto nerv-data">
                       {popularModels.map((model) => {
                         // Determine badge color and text based on model
                         let badgeColor = "";
