@@ -91,6 +91,7 @@ import { ModelConfig } from '../lib/modelTypes';
 interface OutputRankerProps {}
 
 const OutputRanker: FC<OutputRankerProps> = () => {
+  // Return the component JSX
   const { toast } = useToast();
   
   // Use the centralized model config directly
