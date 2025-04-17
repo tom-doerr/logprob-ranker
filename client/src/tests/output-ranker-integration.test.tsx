@@ -6,6 +6,7 @@ import OutputRanker from '../components/OutputRanker';
 import * as apiService from '../services/api-service';
 import { authStorage } from '../utils/storage';
 import { ModelConfigProvider } from '../hooks/use-model-config';
+import { AuthProvider } from '../hooks/use-auth';
 
 // Mock toast hook 
 vi.mock('../hooks/use-toast', () => ({
@@ -102,7 +103,13 @@ describe('Output Ranker Integration', () => {
   });
   
   it('should render the NERV-themed Output Ranker interface', async () => {
-    render(<OutputRanker />);
+    render(
+      <AuthProvider>
+        <ModelConfigProvider>
+          <OutputRanker />
+        </ModelConfigProvider>
+      </AuthProvider>
+    );
     
     // Check for NERV/Evangelion specific elements
     expect(screen.getByText(/NERV MAGI SYSTEM/i)).toBeInTheDocument();
@@ -122,7 +129,13 @@ describe('Output Ranker Integration', () => {
   });
   
   it('should generate and rank outputs when INITIATE EVANGELION is clicked', async () => {
-    render(<OutputRanker />);
+    render(
+      <AuthProvider>
+        <ModelConfigProvider>
+          <OutputRanker />
+        </ModelConfigProvider>
+      </AuthProvider>
+    );
     
     // Enter a prompt
     const promptInput = screen.getByLabelText(/Input Prompt/i);
@@ -152,7 +165,13 @@ describe('Output Ranker Integration', () => {
   });
   
   it('should properly handle different temperature settings', async () => {
-    render(<OutputRanker />);
+    render(
+      <AuthProvider>
+        <ModelConfigProvider>
+          <OutputRanker />
+        </ModelConfigProvider>
+      </AuthProvider>
+    );
     
     // Enter prompt
     const promptInput = screen.getByLabelText(/Input Prompt/i);
@@ -182,7 +201,11 @@ describe('Output Ranker Integration', () => {
       new Error('API key is required but not configured')
     );
     
-    render(<OutputRanker />);
+    render(
+      <ModelConfigProvider>
+        <OutputRanker />
+      </ModelConfigProvider>
+    );
     
     // Enter prompt and generate
     const promptInput = screen.getByLabelText(/Input Prompt/i);
@@ -198,7 +221,11 @@ describe('Output Ranker Integration', () => {
   });
   
   it('should allow switching between API and browser models', async () => {
-    render(<OutputRanker />);
+    render(
+      <ModelConfigProvider>
+        <OutputRanker />
+      </ModelConfigProvider>
+    );
     
     // Initially on API model
     expect(screen.getByText(/API Model/i)).toBeInTheDocument();
