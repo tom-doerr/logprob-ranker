@@ -1,5 +1,5 @@
 import React, { createContext, useState, useRef, useContext, ReactNode } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from './use-toast';
 import { ModelConfig, BROWSER_MODEL_OPTIONS, POPULAR_MODELS } from '../lib/modelTypes';
 import * as webllm from '@mlc-ai/web-llm';
 

@@ -5,6 +5,7 @@ import React from 'react';
 import OutputRanker from '../components/OutputRanker';
 import * as apiService from '../services/api-service';
 import { authStorage } from '../utils/storage';
+import { ModelConfigProvider } from '../hooks/use-model-config';
 
 // Mock toast hook 
 vi.mock('../hooks/use-toast', () => ({

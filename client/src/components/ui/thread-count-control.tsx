@@ -1,7 +1,7 @@
 import React from 'react';
 import { Activity, ChevronUp, ChevronDown } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Input } from './input';
+import { Button } from './button';
 
 interface ThreadCountControlProps {
   threadCount: number;
