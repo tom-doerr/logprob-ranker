@@ -10,6 +10,7 @@ import AuthModal from './ui/auth-modal';
 import ModelSelection from './ModelSelection';
 import BrowserModels from './BrowserModels';
 import AppHeader from './ui/app-header';
+import { MemoryUsage } from './ui/memory-usage';
 
 interface MainLayoutProps {
   children?: ReactNode;
@@ -17,7 +18,7 @@ interface MainLayoutProps {
 
 const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   const [showAuthInfo, setShowAuthInfo] = useState(false);
-  const { isUsingBrowserModel } = useModelConfig();
+  const { isUsingBrowserModel, setIsUsingBrowserModel } = useModelConfig();
   
   // Check if API key exists on mount and monitor for changes
   useEffect(() => {
@@ -49,13 +50,24 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
       }
     };
     
+    // Handle the browser model event from auth modal
+    const handleEnableBrowserModel = () => {
+      // Enable browser model mode
+      if (setIsUsingBrowserModel) {
+        setIsUsingBrowserModel(true);
+        setShowAuthInfo(false);
+      }
+    };
+    
     window.addEventListener('api-key-changed', handleApiKeyChange);
+    window.addEventListener('enable-browser-model', handleEnableBrowserModel);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('api-key-changed', handleApiKeyChange);
+      window.removeEventListener('enable-browser-model', handleEnableBrowserModel);
     };
-  }, []);
+  }, [setIsUsingBrowserModel]);
   
   const closeAuthInfo = () => {
     setShowAuthInfo(false);
@@ -82,6 +94,9 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         <div className="mt-4 sm:mt-6">
           {children}
         </div>
+        
+        {/* Memory usage indicator to help debug crashes */}
+        <MemoryUsage />
       </div>
     </div>
   );
