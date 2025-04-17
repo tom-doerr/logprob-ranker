@@ -154,12 +154,8 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       // Escape key to stop generation
       if (e.key === 'Escape' && isGenerating) {
         e.preventDefault();
-        // We'll stop by setting isGenerating to false; the async functions check this value
-        setIsGenerating(false);
-        toast({
-          title: 'Generation Stopped',
-          description: 'Output generation has been cancelled.',
-        });
+        // We'll abort by setting the flag; the generation loop will handle cleanup and notification
+        setIsAborted(true);
       }
     };
     
@@ -457,7 +453,9 @@ ${generatedOutput}`
       return;
     }
 
+    // Reset state for new generation process
     setIsGenerating(true);
+    setIsAborted(false);
     setRankedOutputs([]);
 
     try {
@@ -471,6 +469,17 @@ ${generatedOutput}`
       let currentIndex = 0;
       
       while (currentIndex < actualVariantsToGenerate) {
+        // Check if the generation has been aborted by the user
+        if (!isGenerating || isAborted) {
+          console.log('Generation aborted by user');
+          toast({
+            title: 'OPERATION ABORTED',
+            description: 'Pattern generation process terminated by user.',
+            variant: 'destructive',
+          });
+          break;
+        }
+        
         // Check if we should stop based on auto-stop criteria
         if (useAutoStop && iterationsWithoutImprovement >= autoStopThreshold) {
           toast({
@@ -551,6 +560,7 @@ ${generatedOutput}`
       });
     } finally {
       setIsGenerating(false);
+      setIsAborted(false);
     }
   };
 
@@ -1133,12 +1143,9 @@ ${generatedOutput}`
                         <div className="flex gap-2 mt-3 w-full">
                           <Button 
                             onClick={() => {
-                              setIsGenerating(false);
-                              toast({
-                                title: 'OPERATION ABORTED',
-                                description: 'Pattern generation process terminated.',
-                                variant: 'destructive',
-                              });
+                              setIsAborted(true);
+                              // We'll let the generator loop handle the toast notification
+                              // and properly clean up the resources before stopping
                             }}
                             className="w-1/3 eva-button bg-black/60 border-[var(--eva-red)] text-[var(--eva-red)] hover:bg-[var(--eva-red)] hover:text-black font-bold py-3 flex items-center justify-center"
                           >
