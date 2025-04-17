@@ -283,11 +283,12 @@ const OutputRanker: FC<OutputRankerProps> = () => {
           max_tokens: maxTokens
         });
         
-        if (!generationResponse || !generationResponse.text) {
+        if (!generationResponse || !generationResponse.choices || !generationResponse.choices[0]) {
+          console.error('Invalid response from API:', generationResponse);
           return null;
         }
         
-        generatedOutput = generationResponse.text;
+        generatedOutput = generationResponse.choices[0].message.content;
       }
       
       // Step 2: Evaluate the generated output
@@ -341,11 +342,12 @@ ${generatedOutput}`
           max_tokens: 500 // Fixed size for evaluations is sufficient
         });
         
-        if (!evaluationResponse || !evaluationResponse.text) {
+        if (!evaluationResponse || !evaluationResponse.choices || !evaluationResponse.choices[0]) {
+          console.error('Invalid evaluation response from API:', evaluationResponse);
           return null;
         }
         
-        evaluationContent = evaluationResponse.text;
+        evaluationContent = evaluationResponse.choices[0].message.content;
       }
 
       let logprob = 0;
