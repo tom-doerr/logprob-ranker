@@ -1,0 +1,205 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
+import { OutputRanker } from '../components/OutputRanker';
+import * as apiService from '../services/api-service';
+import { storeApiKey } from '../utils/api-key-utils';
+
+vi.mock('../services/api-service', () => ({
+  sendChatRequest: vi.fn(),
+  fetchAvailableModels: vi.fn()
+}));
+
+describe('Output Ranker Integration', () => {
+  const mockApiKey = 'test-output-ranker-api-key';
+  
+  // Mock localStorage
+  const localStorageMock = (() => {
+    let store: Record<string, string> = {};
+    return {
+      getItem: vi.fn((key: string) => store[key] || null),
+      setItem: vi.fn((key: string, value: string) => {
+        store[key] = value.toString();
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete store[key];
+      }),
+      clear: vi.fn(() => {
+        store = {};
+      })
+    };
+  })();
+  
+  beforeEach(() => {
+    Object.defineProperty(window, 'localStorage', {
+      value: localStorageMock,
+      writable: true
+    });
+    localStorageMock.clear();
+    
+    // Mock sendChatRequest implementation
+    vi.mocked(apiService.sendChatRequest).mockImplementation(async (params) => {
+      // Simulate different responses based on API call
+      if (params.model === 'google/gemini-2.0-flash-001') {
+        // For variant generation
+        return {
+          id: 'test-response-id',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: 'This is a test response from the Gemini model.'
+            },
+            logprob: 0.95
+          }]
+        };
+      } else if (params.messages?.[0]?.content?.includes('evaluation')) {
+        // For evaluation response
+        return {
+          id: 'eval-response-id',
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: '```json\n{"interesting": true, "creative": true, "useful": true}\n```'
+            }
+          }]
+        };
+      }
+      
+      return {
+        id: 'default-response',
+        choices: [{
+          message: {
+            role: 'assistant',
+            content: 'Default test response'
+          },
+          logprob: 0.5
+        }]
+      };
+    });
+    
+    // Mock fetchAvailableModels
+    vi.mocked(apiService.fetchAvailableModels).mockResolvedValue([
+      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google' },
+      { id: 'claude-3-opus', name: 'Claude 3 Opus', provider: 'Anthropic' }
+    ]);
+    
+    // Set a mock API key for the tests
+    storeApiKey(mockApiKey);
+  });
+  
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+  
+  it('should render the NERV-themed Output Ranker interface', async () => {
+    render(<OutputRanker />);
+    
+    // Check for NERV/Evangelion specific elements
+    expect(screen.getByText(/NERV MAGI SYSTEM/i)).toBeInTheDocument();
+    expect(screen.getByText(/INITIATE EVANGELION/i)).toBeInTheDocument();
+    
+    // Check for key component elements
+    await waitFor(() => {
+      // Input prompt area
+      expect(screen.getByLabelText(/Input Prompt/i)).toBeInTheDocument();
+      
+      // Model selection
+      expect(screen.getByText(/MODEL SELECTION/i)).toBeInTheDocument();
+      
+      // Output area
+      expect(screen.getByText(/Ranked Outputs/i)).toBeInTheDocument();
+    });
+  });
+  
+  it('should generate and rank outputs when INITIATE EVANGELION is clicked', async () => {
+    render(<OutputRanker />);
+    
+    // Enter a prompt
+    const promptInput = screen.getByLabelText(/Input Prompt/i);
+    fireEvent.change(promptInput, { target: { value: 'Test prompt for Output Ranker' } });
+    
+    // Select template
+    const templateInput = screen.getByLabelText(/LogProb Template/i);
+    fireEvent.change(templateInput, { 
+      target: { 
+        value: '{\n  "interesting": LOGPROB_TRUE,\n  "creative": LOGPROB_TRUE\n}' 
+      }
+    });
+    
+    // Click the generate button
+    const generateButton = screen.getByText(/INITIATE EVANGELION/i);
+    fireEvent.click(generateButton);
+    
+    // Wait for the generation process to complete
+    await waitFor(() => {
+      // Check multiple API calls were made (for generation and evaluation)
+      expect(apiService.sendChatRequest).toHaveBeenCalledTimes(10); // 5 generations + 5 evaluations
+      
+      // Check for ranked outputs section being populated
+      expect(screen.getByText(/VARIANT-001/i)).toBeInTheDocument();
+      expect(screen.getByText(/VARIANT-002/i)).toBeInTheDocument();
+    });
+  });
+  
+  it('should properly handle different temperature settings', async () => {
+    render(<OutputRanker />);
+    
+    // Enter prompt
+    const promptInput = screen.getByLabelText(/Input Prompt/i);
+    fireEvent.change(promptInput, { target: { value: 'Test prompt' } });
+    
+    // Set custom temperature
+    const temperatureSlider = screen.getByLabelText(/Temperature/i);
+    fireEvent.change(temperatureSlider, { target: { value: 0.9 } });
+    
+    // Click generate
+    const generateButton = screen.getByText(/INITIATE EVANGELION/i);
+    fireEvent.click(generateButton);
+    
+    // Verify temperature was passed to API
+    await waitFor(() => {
+      const apiCall = vi.mocked(apiService.sendChatRequest).mock.calls[0][0];
+      expect(apiCall.temperature).toBeCloseTo(0.9, 1);
+    });
+  });
+  
+  it('should display error message when no API key is available', async () => {
+    // Clear API key
+    localStorageMock.removeItem('api_key');
+    
+    // Force an API error
+    vi.mocked(apiService.sendChatRequest).mockRejectedValueOnce(
+      new Error('API key is required but not configured')
+    );
+    
+    render(<OutputRanker />);
+    
+    // Enter prompt and generate
+    const promptInput = screen.getByLabelText(/Input Prompt/i);
+    fireEvent.change(promptInput, { target: { value: 'Test prompt' } });
+    
+    const generateButton = screen.getByText(/INITIATE EVANGELION/i);
+    fireEvent.click(generateButton);
+    
+    // Check for error message in MAGI system format
+    await waitFor(() => {
+      expect(screen.getByText(/API error/i)).toBeInTheDocument();
+    });
+  });
+  
+  it('should allow switching between API and browser models', async () => {
+    render(<OutputRanker />);
+    
+    // Initially on API model
+    expect(screen.getByText(/API Model/i)).toBeInTheDocument();
+    
+    // Switch to browser model
+    const browserModelRadio = screen.getByLabelText(/Browser Model/i);
+    fireEvent.click(browserModelRadio);
+    
+    // Check browser model mode is active
+    await waitFor(() => {
+      expect(screen.getByText(/LOCAL PRIVACY/i)).toBeInTheDocument();
+    });
+  });
+});
