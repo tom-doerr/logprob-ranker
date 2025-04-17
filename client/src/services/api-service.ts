@@ -47,15 +47,11 @@ class ApiService {
       signal
     } = options;
     
-    const apiKey = authStorage.getApiKey();
-    
-    if (!apiKey) {
-      throw new Error('API key is required but not provided');
-    }
+    // We're using our server proxy now, so we don't need to include the API key
+    // in the request headers anymore. The server will add it from the environment.
     
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': window.location.origin,
       'X-Title': APP_CONFIG.APP.NAME
     };
@@ -82,14 +78,10 @@ class ApiService {
    * Get available models
    */
   async getModels() {
-    const apiKey = authStorage.getApiKey();
-    
-    if (!apiKey) {
-      throw new Error('API key is required but not provided');
-    }
+    // We're using our server proxy now, so we don't need to include the API key
+    // in the request headers anymore. The server will add it from the environment.
     
     const headers = {
-      'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': window.location.origin,
       'X-Title': APP_CONFIG.APP.NAME
     };

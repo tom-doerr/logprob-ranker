@@ -285,6 +285,8 @@ const OutputRanker: FC<OutputRankerProps> = () => {
         // Use the API service
         try {
           console.log(`Sending API request with model: ${selectedModel}`);
+          
+          // Using API service to generate completions
           const generationResponse = await apiService.createChatCompletion({
             model: selectedModel || 'google/gemini-2.0-flash-001', // Fallback to a default model
             messages: [generateSystemMessage, userMessage],
