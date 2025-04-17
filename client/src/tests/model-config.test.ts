@@ -106,56 +106,73 @@ describe('Model Configuration System', () => {
   
   // Simplified ModelConfig hook implementation for testing
   const createModelConfig = (initialConfig = {}) => {
-    // Get stored or default config
-    let config = {
-      ...modelConfigStorage.getModelConfig(),
-      ...initialConfig
+    // State object to track the current config
+    const state = {
+      config: {
+        ...modelConfigStorage.getModelConfig(),
+        ...initialConfig
+      }
     };
     
     // Update temperature
     const updateTemperature = (value) => {
-      config = { ...config, temperature: value };
+      state.config = {
+        ...state.config,
+        temperature: value
+      };
       modelConfigStorage.saveModelConfig({ temperature: value });
-      return config;
+      return state.config;
     };
     
     // Update topP
     const updateTopP = (value) => {
-      config = { ...config, topP: value };
+      state.config = {
+        ...state.config,
+        topP: value
+      };
       modelConfigStorage.saveModelConfig({ topP: value });
-      return config;
+      return state.config;
     };
     
     // Update maxTokens
     const updateMaxTokens = (value) => {
-      config = { ...config, maxTokens: value };
+      state.config = {
+        ...state.config,
+        maxTokens: value
+      };
       modelConfigStorage.saveModelConfig({ maxTokens: value });
-      return config;
+      return state.config;
     };
     
     // Update selectedModel
     const updateSelectedModel = (modelId) => {
-      config = { ...config, selectedModel: modelId };
+      state.config = {
+        ...state.config,
+        selectedModel: modelId
+      };
       modelConfigStorage.saveModelConfig({ selectedModel: modelId });
-      return config;
+      return state.config;
     };
     
     // Toggle browser model
     const toggleBrowserModel = (value) => {
-      config = { ...config, isUsingBrowserModel: value };
+      state.config = {
+        ...state.config,
+        isUsingBrowserModel: value
+      };
       modelConfigStorage.saveModelConfig({ isUsingBrowserModel: value });
-      return config;
+      return state.config;
     };
     
     // Reset config
     const resetModelConfig = () => {
       modelConfigStorage.resetModelConfig();
-      config = modelConfigStorage.getModelConfig();
-      return config;
+      state.config = modelConfigStorage.getModelConfig();
+      return state.config;
     };
     
     return {
-      config,
+      get config() { return state.config; },
       updateTemperature,
       updateTopP,
       updateMaxTokens,
