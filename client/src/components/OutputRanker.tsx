@@ -82,6 +82,8 @@ import { ModelConfig } from '../lib/modelTypes';
 interface OutputRankerProps {}
 
 const OutputRanker: FC<OutputRankerProps> = () => {
+  const { toast } = useToast();
+  
   // Use the centralized model config directly
   const { 
     isUsingBrowserModel,
@@ -99,7 +101,6 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   } = useModelConfig();
 
   // Local UI state
-  const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const [logProbTemplate, setLogProbTemplate] = useState(defaultTemplate);
   const [numberOfVariants, setNumberOfVariants] = useState(5);

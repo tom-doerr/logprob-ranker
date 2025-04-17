@@ -66,9 +66,9 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       <AppHeader />
-      <div className="container mx-auto py-4 px-4">
+      <div className="container mx-auto py-2 sm:py-4 px-2 sm:px-4 max-w-7xl">
         {/* Authentication Modal */}
         {showAuthInfo && <AuthModal onClose={closeAuthInfo} onProceed={proceedToAuth} />}
         
@@ -78,8 +78,8 @@ const MainLayout: FC<MainLayoutProps> = ({ children }) => {
         {/* Browser Models section - only visible when local mode is active */}
         {!showAuthInfo && isUsingBrowserModel && <BrowserModels />}
 
-        {/* Main content */}
-        <div className="mt-8">
+        {/* Main content with improved spacing */}
+        <div className="mt-4 sm:mt-6">
           {children}
         </div>
       </div>
