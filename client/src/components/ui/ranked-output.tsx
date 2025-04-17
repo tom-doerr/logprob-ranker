@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Crown } from 'lucide-react';
+import { NervProgress, NervEnergy, NervData } from '@/components/ui/nerv-animations';
 
 interface AttributeScore {
   name: string;
@@ -57,9 +58,9 @@ export const RankedOutput: React.FC<RankedOutputProps> = ({
           Score: {output.logprob.toFixed(4)}
         </span>
       </div>
-      <div className="mt-2 p-2 sm:p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30 text-xs sm:text-sm">
+      <NervData className="mt-2 p-2 sm:p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30 text-xs sm:text-sm">
         {output.output}
-      </div>
+      </NervData>
       
       {/* Attribute Scores Display */}
       {output.attributeScores && output.attributeScores.length > 0 && (
@@ -67,15 +68,15 @@ export const RankedOutput: React.FC<RankedOutputProps> = ({
           <h4 className="text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">Attribute Scores</h4>
           <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2">
             {output.attributeScores.map((attr, attrIdx) => (
-              <div 
+              <NervProgress
                 key={attrIdx} 
-                className="flex items-center justify-between p-1.5 sm:p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-pulse"
+                className="flex items-center justify-between p-1.5 sm:p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30"
               >
                 <span className="text-[10px] sm:text-xs font-medium text-[var(--eva-text)]">{attr.name}:</span>
-                <span className="text-[10px] sm:text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-1.5 sm:px-2 py-0.5 rounded-full">
+                <NervEnergy className="text-[10px] sm:text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-1.5 sm:px-2 py-0.5 rounded-full">
                   {attr.score.toFixed(4)}
-                </span>
-              </div>
+                </NervEnergy>
+              </NervProgress>
             ))}
           </div>
         </div>
