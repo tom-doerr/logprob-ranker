@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import React from 'react';
 import OutputRanker from '../components/OutputRanker';
 import * as apiService from '../services/api-service';
 import { authStorage } from '../utils/storage';
+
+// Mock toast hook 
+vi.mock('../hooks/use-toast', () => ({
+  toast: vi.fn(),
+  useToast: () => ({
+    toast: vi.fn()
+  })
+}));
 
 vi.mock('../services/api-service', () => ({
   sendChatRequest: vi.fn(),

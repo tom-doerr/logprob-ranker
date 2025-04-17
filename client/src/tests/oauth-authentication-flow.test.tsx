@@ -1,12 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { AuthProvider, useAuth } from '../hooks/use-auth';
 import React from 'react';
 
-// Mock oauth flow helper
-vi.mock('../utils/oauth-utils', () => ({
-  initiateOAuthFlow: vi.fn(() => Promise.resolve({ apiKey: 'oauth-provided-key-12345' })),
+// Mock toast hook
+vi.mock('../hooks/use-toast', () => ({
+  toast: vi.fn(),
+  useToast: () => ({
+    toast: vi.fn()
+  })
 }));
+
+// Mock window.location.href setter for OAuth flow
+Object.defineProperty(window, 'location', {
+  value: {
+    href: '',
+    origin: 'http://localhost',
+    pathname: '/'
+  },
+  writable: true
+});
 
 // Test component to interact with auth context
 function AuthTestComponent() {
@@ -124,12 +138,19 @@ describe('OAuth Authentication Flow', () => {
     });
 
     // Verify localStorage was updated
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('api_key', 'manual-test-key-12345');
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_method', 'manual');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('nervui-api-key', 'manual-test-key-12345');
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('nervui-auth-method', 'manual');
   });
 
-  it('should authenticate with OAuth flow', async () => {
-    const { initiateOAuthFlow } = require('../utils/oauth-utils');
+  it('should set up OAuth flow correctly', async () => {
+    // Mock pkce functions
+    vi.mock('../utils/pkce', () => ({
+      generateCodeVerifier: () => 'test-verifier-12345',
+      createSHA256CodeChallenge: () => Promise.resolve('test-challenge-abcde')
+    }));
+
+    // Spy on window.location.href
+    const hrefSpy = vi.spyOn(window.location, 'href', 'set');
     
     render(
       <AuthProvider>
@@ -140,19 +161,11 @@ describe('OAuth Authentication Flow', () => {
     // Start OAuth flow
     fireEvent.click(screen.getByTestId('start-oauth'));
 
-    // Check if OAuth initiation was called
-    expect(initiateOAuthFlow).toHaveBeenCalled();
-
-    // Simulate successful OAuth completion
-    await waitFor(() => {
-      expect(screen.getByTestId('auth-status').textContent).toBe('Authenticated');
-      expect(screen.getByTestId('auth-method').textContent).toBe('oauth');
-      expect(screen.getByTestId('api-key').textContent).toBe('oauth-provided-key-12345');
-    });
-
-    // Verify localStorage was updated
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('api_key', 'oauth-provided-key-12345');
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_method', 'oauth');
+    // Verify auth method was set to OAuth
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('nervui-auth-method', 'oauth');
+    
+    // Verify redirect was attempted
+    expect(hrefSpy).toHaveBeenCalled();
   });
 
   it('should log out correctly', async () => {
@@ -184,7 +197,7 @@ describe('OAuth Authentication Flow', () => {
     });
 
     // Verify localStorage was cleared
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('api_key');
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_method');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('nervui-api-key');
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith('nervui-auth-method');
   });
 });

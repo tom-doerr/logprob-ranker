@@ -5,7 +5,8 @@ import {
   useEffect, 
   ReactNode 
 } from 'react';
-import { toast } from '@/hooks/use-toast';
+// Import from the correct location
+import { toast } from '../hooks/use-toast';
 import { 
   generateCodeVerifier,
   createSHA256CodeChallenge

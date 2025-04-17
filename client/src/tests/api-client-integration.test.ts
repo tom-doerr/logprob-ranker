@@ -5,10 +5,24 @@ import { authStorage } from '../utils/storage';
 // Mock fetch
 global.fetch = vi.fn();
 
-// Mock the API service functions
+// Define interfaces for the API service mocks
+interface FetchOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+interface ChatParams {
+  messages: Array<{role: string; content: string}>;
+  temperature?: number;
+  model?: string;
+  max_tokens?: number;
+}
+
+// Mock the API service functions with correct types
 vi.mock('../services/api-service', () => ({
-  fetchFromAPI: vi.fn(),
-  sendChatRequest: vi.fn()
+  fetchFromAPI: vi.fn<[string, FetchOptions?], Promise<any>>(),
+  sendChatRequest: vi.fn<[ChatParams], Promise<any>>()
 }));
 
 describe('API Client Integration', () => {
