@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ChatMessage } from '../lib/openrouter';
-import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, Flame, X, Plus, BarChart, ArrowDownWideNarrow, Crown, ArrowUp, ArrowDown, Activity } from 'lucide-react';
 import { 
   getRankerSettings, 
   saveRankerSettings, 
@@ -35,6 +35,7 @@ import {
 import MagiProgress from '@/components/ui/magi-progress';
 import RankedOutput from '@/components/ui/ranked-output';
 import ExampleCard from '@/components/ui/example-card';
+import ThreadCountControl from '@/components/ui/thread-count-control';
 
 interface LogProbExample {
   prompt: string;
@@ -479,12 +480,12 @@ ${generatedOutput}`
     setRankedOutputs([]);
 
     try {
-      console.log(`Starting multiple output generation (${numberOfVariants} variants requested)`);
+      console.log(`Starting multiple output generation (${numberOfVariants} variants requested) with ${threadCount} threads`);
       const results: RankedOutput[] = [];
       
-      // Generate outputs in sequence to avoid overwhelming the API
-      for (let i = 0; i < numberOfVariants; i++) {
-        // This check was causing issues - we should only check if the user has explicitly clicked abort
+      // Process in batches based on thread count
+      for (let batchStart = 0; batchStart < numberOfVariants; batchStart += threadCount) {
+        // Check if generation has been aborted
         if (isAborted) {
           console.log('Generation explicitly aborted by user');
           toast({
@@ -495,20 +496,35 @@ ${generatedOutput}`
           break;
         }
         
-        console.log(`Generating variant ${i+1} of ${numberOfVariants}`);
+        // Calculate the end of this batch (not exceeding numberOfVariants)
+        const batchEnd = Math.min(batchStart + threadCount, numberOfVariants);
+        console.log(`Processing batch from ${batchStart + 1} to ${batchEnd} of ${numberOfVariants}`);
         
-        // Generate and evaluate this output
-        const result = await generateAndEvaluateOutput(i);
-        
-        if (result) {
-          results.push(result);
-          console.log(`Added output ${i+1}:`, result);
-          
-          // Update the ranked outputs as they come in
-          setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
-        } else {
-          console.error(`Failed to generate output ${i+1}`);
+        // Create an array of promises for this batch
+        const batchPromises = [];
+        for (let i = batchStart; i < batchEnd; i++) {
+          console.log(`Queuing variant ${i+1} of ${numberOfVariants}`);
+          batchPromises.push(generateAndEvaluateOutput(i));
         }
+        
+        // Execute all promises in this batch concurrently
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Process the batch results
+        for (let i = 0; i < batchResults.length; i++) {
+          const result = batchResults[i];
+          const variantIndex = batchStart + i;
+          
+          if (result) {
+            results.push(result);
+            console.log(`Added output ${variantIndex+1}:`, result);
+          } else {
+            console.error(`Failed to generate output ${variantIndex+1}`);
+          }
+        }
+        
+        // Update the UI with current results
+        setRankedOutputs([...results].sort((a, b) => b.logprob - a.logprob));
       }
       
       // Sort results by logprob (higher is better) for final display
@@ -972,39 +988,10 @@ ${generatedOutput}`
                         </div>
                       </div>
                       
-                      <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <label htmlFor="thread-count" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-2">
-                          Thread Count
-                        </label>
-                        <Input
-                          id="thread-count"
-                          type="number"
-                          min={1}
-                          value={threadCount}
-                          onChange={(e) => {
-                            const inputValue = e.target.value;
-                            if (inputValue === '') {
-                              setThreadCount(1); // Default to 1 if empty
-                            } else {
-                              const value = parseInt(inputValue);
-                              if (!isNaN(value)) {
-                                // Ensure value is at least 1
-                                setThreadCount(Math.max(1, value));
-                              }
-                            }
-                          }}
-                          onBlur={() => {
-                            // Ensure we have a valid value when user leaves the field
-                            if (threadCount < 1) {
-                              setThreadCount(1);
-                            }
-                          }}
-                          className="w-full eva-input text-[var(--eva-green)]"
-                        />
-                        <p className="text-xs text-[var(--eva-text)] mt-1 font-mono">
-                          CONCURRENT PROCESSES
-                        </p>
-                      </div>
+                      <ThreadCountControl
+                        threadCount={threadCount}
+                        setThreadCount={setThreadCount}
+                      />
                     </div>
                     
                     {/* Column 3: Generation Parameters */}
