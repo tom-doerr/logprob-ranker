@@ -3,12 +3,7 @@
  * Handles creation of PKCE code verifiers and challenges for secure OAuth
  */
 
-// StorageKeys for PKCE and authentication
-const STORAGE_KEYS = {
-  CODE_VERIFIER: 'pkce-verifier',
-  API_KEY: 'nervui-api-key', 
-  AUTH_METHOD: 'nervui-auth-method'
-};
+import { authStorage } from './storage';
 
 /**
  * Generate a random code verifier for PKCE
@@ -28,21 +23,21 @@ export function generateCodeVerifier(length: number = 64): string {
  * Save code verifier to localStorage
  */
 export function saveCodeVerifier(codeVerifier: string): void {
-  localStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, codeVerifier);
+  authStorage.saveCodeVerifier(codeVerifier);
 }
 
 /**
  * Get stored code verifier
  */
 export function getCodeVerifier(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
+  return authStorage.getCodeVerifier();
 }
 
 /**
  * Clear stored code verifier
  */
 export function clearCodeVerifier(): void {
-  localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+  authStorage.clearCodeVerifier();
 }
 
 /**
@@ -109,40 +104,37 @@ export function parseOAuthState(state: string): { returnUrl: string } {
 
 // API key management functions
 export function getApiKey(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.API_KEY);
+  return authStorage.getApiKey();
 }
 
 export function saveApiKey(apiKey: string): void {
-  localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+  authStorage.setApiKey(apiKey);
 }
 
 export function clearApiKey(): void {
-  localStorage.removeItem(STORAGE_KEYS.API_KEY);
+  authStorage.clearAuth();
 }
 
 // Auth method management
 export function getAuthMethod(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.AUTH_METHOD);
+  return authStorage.getAuthMethod();
 }
 
 export function saveAuthMethod(method: string): void {
-  localStorage.setItem(STORAGE_KEYS.AUTH_METHOD, method);
+  authStorage.setAuthMethod(method as any);
 }
 
 export function clearAuthMethod(): void {
-  localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+  authStorage.clearAuth();
 }
 
 // Combined auth utilities
 export function hasValidApiKey(): boolean {
-  return getApiKey() !== null;
+  return authStorage.isAuthenticated();
 }
 
 export function getAuthData(): { apiKey: string | null, method: string | null } {
-  return {
-    apiKey: getApiKey(),
-    method: getAuthMethod()
-  };
+  return authStorage.getAuthData();
 }
 
 // Export all functions as default object

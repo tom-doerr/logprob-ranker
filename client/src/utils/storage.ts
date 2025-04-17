@@ -115,11 +115,53 @@ export const authStorage = {
     }
   },
   
+  // Get code verifier (for PKCE OAuth)
+  getCodeVerifier(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
+  },
+  
+  // Save code verifier (for PKCE OAuth)
+  saveCodeVerifier(value: string): boolean {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, value);
+      return true;
+    } catch (error) {
+      console.error('Failed to save code verifier:', error);
+      return false;
+    }
+  },
+  
+  // Clear code verifier
+  clearCodeVerifier(): boolean {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear code verifier:', error);
+      return false;
+    }
+  },
+  
+  // Get combined auth data
+  getAuthData(): { apiKey: string | null, method: AuthMethod } {
+    return {
+      apiKey: this.getApiKey(),
+      method: this.getAuthMethod()
+    };
+  },
+  
+  // Basic API key validation
+  isValidApiKey(key: string): boolean {
+    // Simple validation of OpenRouter API key format
+    return /^sk-or-v1-[a-zA-Z0-9]{32,}$/.test(key);
+  },
+  
   // Clear auth data
   clearAuth(): boolean {
     try {
       localStorage.removeItem(STORAGE_KEYS.API_KEY);
       localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+      localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
       return true;
     } catch (error) {
       console.error('Failed to clear auth data:', error);
