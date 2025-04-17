@@ -90,6 +90,10 @@ export const AppHeader: React.FC = () => {
                     <Button 
                       variant="outline" 
                       size="sm"
+                      onClick={() => {
+                        // Open the dropdown programmatically
+                        document.getElementById('auth-dropdown-trigger')?.click();
+                      }}
                       className="border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black hidden sm:flex items-center nerv-pulse"
                     >
                       <Key className="h-3.5 w-3.5 mr-1.5" />
@@ -110,6 +114,7 @@ export const AppHeader: React.FC = () => {
             <DropdownMenuTrigger asChild>
               {isAuthenticated ? (
                 <Button 
+                  id="auth-dropdown-trigger"
                   variant="outline" 
                   size="icon"
                   className="border-[var(--eva-green)] text-[var(--eva-green)] hover:bg-[var(--eva-green)] hover:text-black h-9 w-9"
@@ -118,6 +123,7 @@ export const AppHeader: React.FC = () => {
                 </Button>
               ) : (
                 <Button 
+                  id="auth-dropdown-trigger"
                   variant="outline" 
                   size="icon"
                   className="border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black h-9 w-9 nerv-pulse"

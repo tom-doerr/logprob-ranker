@@ -276,14 +276,12 @@ const OutputRanker: FC<OutputRankerProps> = () => {
         }
       } else {
         // Use the API service as before
-        const generationResponse = await apiService.generateChatCompletion(
-          [generateSystemMessage, userMessage],
-          { 
-            selectedModel: selectedModel || '',
-            temperature, 
-            maxTokens
-          }
-        );
+        const generationResponse = await apiService.createChatCompletion({
+          model: selectedModel || '',
+          messages: [generateSystemMessage, userMessage],
+          temperature,
+          max_tokens: maxTokens
+        });
         
         if (!generationResponse || !generationResponse.text) {
           return null;
@@ -336,14 +334,12 @@ ${generatedOutput}`
         }
       } else {
         // Use API service for evaluation
-        const evaluationResponse = await apiService.generateChatCompletion(
-          [evaluateSystemMessage, evaluateUserMessage],
-          {
-            selectedModel: selectedModel || '',
-            temperature: 0.1, // Lower temperature for more consistent evaluation
-            maxTokens: 500, // Fixed size for evaluations is sufficient
-          }
-        );
+        const evaluationResponse = await apiService.createChatCompletion({
+          model: selectedModel || '',
+          messages: [evaluateSystemMessage, evaluateUserMessage],
+          temperature: 0.1, // Lower temperature for more consistent evaluation
+          max_tokens: 500 // Fixed size for evaluations is sufficient
+        });
         
         if (!evaluationResponse || !evaluationResponse.text) {
           return null;
