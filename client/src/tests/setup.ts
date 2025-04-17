@@ -2,12 +2,14 @@
  * Global test setup for Vitest
  */
 
-import { expect, afterEach } from 'vitest';
+import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import * as matchers from '@testing-library/jest-dom/matchers';
+import { toBeInTheDocument } from '@testing-library/jest-dom/matchers';
 
 // Extend Vitest's expect with Testing Library matchers
-expect.extend(matchers);
+expect.extend({
+  toBeInTheDocument,
+});
 
 // Clean up after each test
 afterEach(() => {
@@ -45,8 +47,20 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
 });
 
-// Mock global.fetch if needed
-// global.fetch = vi.fn();
+// Mock global.fetch for tests
+Object.defineProperty(global, 'fetch', {
+  value: vi.fn().mockImplementation((url, options) => 
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve(""),
+      status: 200,
+      statusText: "OK",
+      headers: new Headers()
+    })
+  ),
+  writable: true
+});
 
 // Set up environment variables for tests
 process.env.OPENROUTER_API_KEY = 'test-api-key';
