@@ -92,7 +92,7 @@ describe('OutputRanker Integration', () => {
     };
     
     // Create a mock browser model engine
-    const mockBrowserModelEngine = {
+    const browserModelEngine = {
       chat: {
         completions: {
           create: vi.fn().mockResolvedValue(mockBrowserModelResponse)
@@ -173,7 +173,7 @@ describe('OutputRanker Integration', () => {
     const browserModelResult = await generateAndEvaluateOutput(0, {
       prompt: 'Test prompt',
       isUsingBrowserModel: true,
-      browserModelEngine: mockBrowserModelEngine
+      browserModelEngine: browserModelEngine
     });
     
     expect(browserModelResult.output).toBe('This is a test response from the browser model');
