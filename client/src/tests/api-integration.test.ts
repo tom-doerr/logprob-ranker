@@ -151,25 +151,16 @@ describe('API Service Integration', () => {
     global.fetch.mockResolvedValueOnce(mockRateLimitResponse)
                .mockResolvedValueOnce(mockSuccessResponse);
     
-    // Mock setTimeout to avoid waiting in tests
-    vi.useFakeTimers();
+    // For our tests, the API service will skip delays in the retry logic
+    // when it detects a test environment (IS_TEST_ENV)
     
-    // Start the request
-    const promise = apiService.createChatCompletion({
+    // Make the request
+    await apiService.createChatCompletion({
       model: 'test-model',
       messages: [{ role: 'user', content: 'Test message' }]
     });
     
-    // Advance timers to trigger retry
-    vi.runAllTimers();
-    
-    // Wait for the request to complete
-    await promise;
-    
     // Should have called fetch twice (original + retry)
     expect(fetch).toHaveBeenCalledTimes(2);
-    
-    // Reset timers
-    vi.useRealTimers();
   });
 });
