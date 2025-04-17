@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import fetch from "node-fetch";
+import apiRoutes from "./api-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register the OpenRouter API proxy routes
+  app.use('/api/v1', apiRoutes);
   // Exchange code for OpenRouter API key
   app.post("/api/exchange-code", async (req, res) => {
     try {

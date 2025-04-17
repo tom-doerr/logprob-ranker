@@ -8,7 +8,8 @@ import { authStorage } from '../utils/storage';
 import { ChatMessage } from '../hooks/use-chat-service';
 
 // Base URL for API requests
-const API_BASE_URL = APP_CONFIG.API.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+// Using our own local API proxy to avoid exposing API keys
+const API_BASE_URL = '/api/v1';
 
 // Request timeout in milliseconds
 const REQUEST_TIMEOUT = 30000;
