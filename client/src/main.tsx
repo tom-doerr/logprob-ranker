@@ -3,6 +3,22 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { initializeApp, registerHmrReconnectHandler } from "./utils/app-initializer";
+import { startMemoryMonitoring, fixCommonReactLeaks } from "./utils/memory-monitor";
+
+// Start memory leak detection and prevention
+if (process.env.NODE_ENV === 'development') {
+  startMemoryMonitoring({
+    enableLogging: true,
+    checkInterval: 15000, // Check every 15 seconds
+    warningThreshold: 100, // MB
+    criticalThreshold: 150 // MB
+  });
+  
+  // Fix common React memory leaks
+  fixCommonReactLeaks();
+  
+  console.log('[App] Memory monitoring enabled');
+}
 
 // Initialize the app with persistence management
 initializeApp({

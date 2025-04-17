@@ -80,8 +80,21 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       // Clean up previous engine if exists
       if (engineRef.current) {
         try {
-          // No specific cleanup method in docs, but we can set it to null
+          // Attempt to dispose of the engine resources
+          if (typeof engineRef.current.dispose === 'function') {
+            await engineRef.current.dispose();
+          } else {
+            // Force garbage collection by removing all references
+            const keys = Object.keys(engineRef.current);
+            for (const key of keys) {
+              // @ts-ignore: Dynamic cleanup
+              engineRef.current[key] = null;
+            }
+          }
+          // Clear the reference
           engineRef.current = null;
+          // Hint to browser to clean up memory
+          if (window.gc) window.gc();
         } catch (e) {
           console.error('Error cleaning up previous engine:', e);
         }
@@ -132,8 +145,24 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
   useEffect(() => {
     return () => {
       if (engineRef.current) {
-        // No specific cleanup method in docs, but we can set it to null
-        engineRef.current = null;
+        try {
+          // Attempt to dispose of the engine resources
+          if (typeof engineRef.current.dispose === 'function') {
+            // Use synchronous disposal since we're in cleanup
+            (engineRef.current.dispose as Function)();
+          } else {
+            // Force garbage collection by removing all references
+            const keys = Object.keys(engineRef.current);
+            for (const key of keys) {
+              // @ts-ignore: Dynamic cleanup
+              engineRef.current[key] = null;
+            }
+          }
+          // Clear the reference
+          engineRef.current = null;
+        } catch (e) {
+          console.error('Error during component unmount cleanup:', e);
+        }
       }
     };
   }, []);
