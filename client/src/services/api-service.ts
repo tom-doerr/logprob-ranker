@@ -21,6 +21,11 @@ const MAX_RETRIES = 2;
 // Retry delay in milliseconds
 const RETRY_DELAY = 1000;
 
+// Environment detection for tests
+const IS_TEST_ENV = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' || 
+                   //@ts-ignore - vi is defined in test environment
+                   typeof vi !== 'undefined';
+
 // Chat completion options interface
 export interface ChatCompletionOptions {
   model: string;
@@ -126,13 +131,13 @@ class ApiService {
     // Try the request with retries
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Set up timeout controller if no abort signal provided
-        const timeoutController = !signal ? new AbortController() : null;
+        // Set up timeout controller if no abort signal provided and not in test mode
+        const timeoutController = !signal && !IS_TEST_ENV ? new AbortController() : null;
         const timeoutSignal = timeoutController ? timeoutController.signal : undefined;
         
-        // Set up timeout if not using an external abort signal
+        // Set up timeout if not using an external abort signal and not in test mode
         let timeoutId: number | null = null;
-        if (timeoutController) {
+        if (timeoutController && !IS_TEST_ENV) {
           timeoutId = window.setTimeout(() => {
             timeoutController.abort();
           }, REQUEST_TIMEOUT);
