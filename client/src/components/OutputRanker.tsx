@@ -679,6 +679,7 @@ ${generatedOutput}`;
                       </div>
                     </div>
                     <Textarea
+                      id="input-prompt"
                       placeholder="Enter your prompt here..."
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
@@ -689,10 +690,11 @@ ${generatedOutput}`;
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {/* Column 1: LogProb Template */}
                     <div>
-                      <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                      <label htmlFor="logprob-template" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                         LogProb Template
                       </label>
                       <Textarea
+                        id="logprob-template"
                         placeholder="Enter your logprob template..."
                         value={logProbTemplate}
                         onChange={(e) => setLogProbTemplate(e.target.value)}
@@ -787,7 +789,7 @@ ${generatedOutput}`;
                         <div className="mb-4">
                           <div className="flex justify-between items-center mb-3">
                             <div className="flex items-center">
-                              <label className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider flex items-center">
+                              <label htmlFor="model-selection" className="text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider flex items-center">
                                 MODEL SELECTION
                                 {useLocalModels && (
                                   <span className="ml-2 text-xs bg-green-900/70 text-green-400 px-2 py-0.5 rounded animate-pulse nerv-blink">
