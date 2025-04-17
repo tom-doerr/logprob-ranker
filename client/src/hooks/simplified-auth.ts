@@ -92,8 +92,8 @@ export function useSimplifiedAuth(): AuthState {
     if (!manualKey.trim()) return;
     
     // Save the API key
-    authStorage.saveApiKey(manualKey);
-    authStorage.saveAuthMethod('manual');
+    authStorage.setApiKey(manualKey);
+    authStorage.setAuthMethod('manual');
     
     // Update state
     setApiKey(manualKey);
@@ -145,7 +145,7 @@ export function useSimplifiedAuth(): AuthState {
       }
       
       // Set OAuth as the preferred auth method
-      authStorage.saveAuthMethod('oauth');
+      authStorage.setAuthMethod('oauth');
       setMethod('oauth');
       
       // Generate and navigate to auth URL
@@ -170,8 +170,8 @@ export function useSimplifiedAuth(): AuthState {
   // Enable browser model mode
   const enableBrowserMode = useCallback(() => {
     const browserKey = 'browser-llm';
-    authStorage.saveApiKey(browserKey);
-    authStorage.saveAuthMethod('browser');
+    authStorage.setApiKey(browserKey);
+    authStorage.setAuthMethod('browser');
     
     setApiKey(browserKey);
     setMethod('browser');
@@ -194,8 +194,7 @@ export function useSimplifiedAuth(): AuthState {
   
   // Logout
   const logout = useCallback(() => {
-    authStorage.clearApiKey();
-    authStorage.clearAuthMethod();
+    authStorage.clearAuth();
     
     setApiKey(null);
     setMethod(null);

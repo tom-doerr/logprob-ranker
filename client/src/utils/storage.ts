@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   // Auth storage
   API_KEY: 'nervui-api-key',
   AUTH_METHOD: 'nervui-auth-method',
+  CODE_VERIFIER: 'nervui-code-verifier',
   
   // Model config
   MODEL_CONFIG: 'nervui-model-config',
