@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
-import { OutputRanker } from '../components/OutputRanker';
+import OutputRanker from '../components/OutputRanker';
 import * as apiService from '../services/api-service';
-import { storeApiKey } from '../utils/api-key-utils';
+import { authStorage } from '../utils/storage';
 
 vi.mock('../services/api-service', () => ({
   sendChatRequest: vi.fn(),
@@ -84,7 +84,7 @@ describe('Output Ranker Integration', () => {
     ]);
     
     // Set a mock API key for the tests
-    storeApiKey(mockApiKey);
+    authStorage.setApiKey(mockApiKey);
   });
   
   afterEach(() => {

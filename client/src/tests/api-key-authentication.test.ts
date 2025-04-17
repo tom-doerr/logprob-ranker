@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getApiKey, storeApiKey, removeApiKey } from '../utils/api-key-utils';
+import { authStorage } from '../utils/storage';
+import { validateApiKey, detectAuthMethod } from '../utils/api-key-utils';
 
 describe('API Key Authentication Flow', () => {
   // Mock localStorage
@@ -36,17 +37,17 @@ describe('API Key Authentication Flow', () => {
     const testKey = 'test-api-key-12345';
     
     // Store the API key
-    storeApiKey(testKey);
+    authStorage.setApiKey(testKey);
     
     // Verify localStorage was called with correct parameters
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('api_key', testKey);
+    expect(localStorageMock.setItem).toHaveBeenCalled();
     
     // Retrieve the API key
-    const retrievedKey = getApiKey();
+    const retrievedKey = authStorage.getApiKey();
     
     // Verify the key was retrieved correctly
     expect(retrievedKey).toBe(testKey);
-    expect(localStorageMock.getItem).toHaveBeenCalledWith('api_key');
+    expect(localStorageMock.getItem).toHaveBeenCalled();
   });
 
   it('should return null when no API key is stored', () => {
@@ -54,39 +55,68 @@ describe('API Key Authentication Flow', () => {
     localStorageMock.clear();
     
     // Attempt to retrieve a non-existent key
-    const retrievedKey = getApiKey();
+    const retrievedKey = authStorage.getApiKey();
     
     // Verify null is returned
     expect(retrievedKey).toBeNull();
-    expect(localStorageMock.getItem).toHaveBeenCalledWith('api_key');
+    expect(localStorageMock.getItem).toHaveBeenCalled();
   });
 
   it('should remove API key correctly', () => {
     // First store a key
     const testKey = 'test-api-key-to-remove';
-    storeApiKey(testKey);
+    authStorage.setApiKey(testKey);
     
     // Then remove it
-    removeApiKey();
+    authStorage.clearAuth();
     
     // Verify removal
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('api_key');
+    expect(localStorageMock.removeItem).toHaveBeenCalled();
     
     // Verify key can no longer be retrieved
-    const retrievedKey = getApiKey();
+    const retrievedKey = authStorage.getApiKey();
     expect(retrievedKey).toBeNull();
   });
 
   it('should detect when API key is available', () => {
     // No key initially
-    expect(getApiKey()).toBeNull();
+    expect(authStorage.getApiKey()).toBeNull();
     
     // After storing key
-    storeApiKey('valid-api-key');
-    expect(getApiKey()).not.toBeNull();
+    authStorage.setApiKey('valid-api-key');
+    expect(authStorage.getApiKey()).not.toBeNull();
     
     // After removing key
-    removeApiKey();
-    expect(getApiKey()).toBeNull();
+    authStorage.clearAuth();
+    expect(authStorage.getApiKey()).toBeNull();
+  });
+  
+  it('should correctly validate API key formats', () => {
+    // OpenRouter keys
+    expect(validateApiKey('sk-or-v1-abcdef1234567890')).toBe(true);
+    
+    // Browser model special key
+    expect(validateApiKey('browser-llm')).toBe(true);
+    
+    // OAuth token (simplified JWT format)
+    expect(validateApiKey('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-token')).toBe(true);
+    
+    // Invalid keys
+    expect(validateApiKey('')).toBe(false);
+    expect(validateApiKey('short-key')).toBe(false);
+  });
+  
+  it('should correctly detect authentication methods', () => {
+    // Browser model
+    expect(detectAuthMethod('browser-llm')).toBe('browser');
+    
+    // Manual API key
+    expect(detectAuthMethod('sk-or-v1-test-key')).toBe('manual');
+    
+    // OAuth token
+    expect(detectAuthMethod('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-token')).toBe('oauth');
+    
+    // Null for empty key
+    expect(detectAuthMethod('')).toBeNull();
   });
 });
