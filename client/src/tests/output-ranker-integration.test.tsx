@@ -17,8 +17,10 @@ vi.mock('../hooks/use-toast', () => ({
 }));
 
 vi.mock('../services/api-service', () => ({
-  sendChatRequest: vi.fn(),
-  fetchAvailableModels: vi.fn()
+  apiService: {
+    createChatCompletion: vi.fn(),
+    getModels: vi.fn()
+  }
 }));
 
 describe('Output Ranker Integration', () => {
@@ -48,8 +50,8 @@ describe('Output Ranker Integration', () => {
     });
     localStorageMock.clear();
     
-    // Mock sendChatRequest implementation
-    vi.mocked(apiService.sendChatRequest).mockImplementation(async (params) => {
+    // Mock createChatCompletion implementation
+    vi.mocked(apiService.apiService.createChatCompletion).mockImplementation(async (params) => {
       // Simulate different responses based on API call
       if (params.model === 'google/gemini-2.0-flash-001') {
         // For variant generation
@@ -88,8 +90,8 @@ describe('Output Ranker Integration', () => {
       };
     });
     
-    // Mock fetchAvailableModels
-    vi.mocked(apiService.fetchAvailableModels).mockResolvedValue([
+    // Mock getModels
+    vi.mocked(apiService.apiService.getModels).mockResolvedValue([
       { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google' },
       { id: 'claude-3-opus', name: 'Claude 3 Opus', provider: 'Anthropic' }
     ]);
@@ -156,7 +158,7 @@ describe('Output Ranker Integration', () => {
     // Wait for the generation process to complete
     await waitFor(() => {
       // Check multiple API calls were made (for generation and evaluation)
-      expect(apiService.sendChatRequest).toHaveBeenCalledTimes(10); // 5 generations + 5 evaluations
+      expect(apiService.apiService.createChatCompletion).toHaveBeenCalledTimes(10); // 5 generations + 5 evaluations
       
       // Check for ranked outputs section being populated
       expect(screen.getByText(/VARIANT-001/i)).toBeInTheDocument();
@@ -187,7 +189,7 @@ describe('Output Ranker Integration', () => {
     
     // Verify temperature was passed to API
     await waitFor(() => {
-      const apiCall = vi.mocked(apiService.sendChatRequest).mock.calls[0][0];
+      const apiCall = vi.mocked(apiService.apiService.createChatCompletion).mock.calls[0][0];
       expect(apiCall.temperature).toBeCloseTo(0.9, 1);
     });
   });
@@ -197,7 +199,7 @@ describe('Output Ranker Integration', () => {
     localStorageMock.removeItem('api_key');
     
     // Force an API error
-    vi.mocked(apiService.sendChatRequest).mockRejectedValueOnce(
+    vi.mocked(apiService.apiService.createChatCompletion).mockRejectedValueOnce(
       new Error('API key is required but not configured')
     );
     
