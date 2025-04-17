@@ -1,251 +1,199 @@
 /**
- * Unified storage utility
- * 
- * Benefits:
- * - Centralized storage access
- * - Type safety with TypeScript
- * - Domain separation for data
- * - Consistent serialization/deserialization
- * - Simplified testing with clear interface
+ * Centralized storage utilities for the application
+ * This provides a consistent interface for accessing stored data
+ * with TypeScript typing and error handling.
  */
 
-import { AuthMethod } from '../hooks/simplified-auth';
-
-// Storage structure
-interface StorageStructure {
-  auth: {
-    apiKey: string | null;
-    method: AuthMethod;
-    codeVerifier?: string;
-  };
-  
-  models: {
-    selectedId: string;
-    parameters: {
-      temperature: number;
-      topP: number;
-      maxTokens: number;
-    };
-    isBrowserMode: boolean;
-    customModelId: string;
-  };
-  
-  ui: {
-    theme: 'light' | 'dark' | 'system';
-    lastTab: string;
-  };
-}
-
 // Storage keys
-const KEYS = {
-  AUTH: 'app.auth',
-  MODELS: 'app.models',
-  UI: 'app.ui',
-  CODE_VERIFIER: 'app.codeVerifier',
+const STORAGE_KEYS = {
+  AUTH: {
+    API_KEY: 'apiKey',
+    AUTH_METHOD: 'authMethod',
+    CODE_VERIFIER: 'codeVerifier'
+  },
+  SETTINGS: {
+    MODEL_CONFIG: 'modelConfig',
+    RANKER_SETTINGS: 'rankerSettings',
+    TEMPLATES: 'templates',
+    SAVED_RESULTS: 'savedResults',
+    UI_PREFERENCES: 'uiPreferences'
+  }
 };
 
+// Auth method types
+export type AuthMethod = 'oauth' | 'manual' | 'browser' | null;
+
+// Auth data interface
+export interface AuthData {
+  apiKey: string | null;
+  authMethod: AuthMethod;
+}
+
 /**
- * Authentication storage
+ * Auth storage utilities
  */
 class AuthStorage {
   /**
    * Gets stored authentication data
    */
-  getAuthData(): { apiKey: string | null; method: AuthMethod } {
-    try {
-      const authData = localStorage.getItem(KEYS.AUTH);
-      
-      if (authData) {
-        const { apiKey, method } = JSON.parse(authData);
-        return { apiKey, method };
-      }
-      
-      return { apiKey: null, method: null };
-    } catch (error) {
-      console.error('Error retrieving auth data:', error);
-      return { apiKey: null, method: null };
-    }
+  getAuthData(): AuthData {
+    return {
+      apiKey: localStorage.getItem(STORAGE_KEYS.AUTH.API_KEY),
+      authMethod: this.getAuthMethod()
+    };
   }
   
   /**
-   * Saves authentication data
+   * Gets the stored API key
    */
-  saveAuth(apiKey: string, method: AuthMethod): void {
-    try {
-      localStorage.setItem(KEYS.AUTH, JSON.stringify({ apiKey, method }));
-    } catch (error) {
-      console.error('Error saving auth data:', error);
-    }
+  getApiKey(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.AUTH.API_KEY);
   }
   
   /**
-   * Clears authentication data
+   * Saves the API key
    */
-  clearAuth(): void {
-    try {
-      localStorage.removeItem(KEYS.AUTH);
-    } catch (error) {
-      console.error('Error clearing auth data:', error);
-    }
+  saveApiKey(key: string): void {
+    localStorage.setItem(STORAGE_KEYS.AUTH.API_KEY, key);
   }
   
   /**
-   * Saves OAuth code verifier
+   * Clears the API key
    */
-  saveCodeVerifier(codeVerifier: string): void {
-    try {
-      localStorage.setItem(KEYS.CODE_VERIFIER, codeVerifier);
-    } catch (error) {
-      console.error('Error saving code verifier:', error);
-    }
+  clearApiKey(): void {
+    localStorage.removeItem(STORAGE_KEYS.AUTH.API_KEY);
   }
   
   /**
-   * Gets OAuth code verifier
+   * Gets the stored authentication method
+   */
+  getAuthMethod(): AuthMethod {
+    const method = localStorage.getItem(STORAGE_KEYS.AUTH.AUTH_METHOD);
+    if (method === 'oauth' || method === 'manual' || method === 'browser') {
+      return method;
+    }
+    return null;
+  }
+  
+  /**
+   * Saves the authentication method
+   */
+  saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
+    localStorage.setItem(STORAGE_KEYS.AUTH.AUTH_METHOD, method);
+  }
+  
+  /**
+   * Clears the authentication method
+   */
+  clearAuthMethod(): void {
+    localStorage.removeItem(STORAGE_KEYS.AUTH.AUTH_METHOD);
+  }
+  
+  /**
+   * Gets the stored code verifier
    */
   getCodeVerifier(): string | null {
-    try {
-      return localStorage.getItem(KEYS.CODE_VERIFIER);
-    } catch (error) {
-      console.error('Error retrieving code verifier:', error);
-      return null;
-    }
+    return localStorage.getItem(STORAGE_KEYS.AUTH.CODE_VERIFIER);
   }
   
   /**
-   * Clears OAuth code verifier
+   * Saves the code verifier
+   */
+  saveCodeVerifier(verifier: string): void {
+    localStorage.setItem(STORAGE_KEYS.AUTH.CODE_VERIFIER, verifier);
+  }
+  
+  /**
+   * Clears the code verifier
    */
   clearCodeVerifier(): void {
-    try {
-      localStorage.removeItem(KEYS.CODE_VERIFIER);
-    } catch (error) {
-      console.error('Error clearing code verifier:', error);
-    }
+    localStorage.removeItem(STORAGE_KEYS.AUTH.CODE_VERIFIER);
   }
   
   /**
-   * Validates API key format
+   * Checks if current api key is valid
    */
-  isValidApiKey(apiKey: string): boolean {
-    if (!apiKey) return false;
+  isValidApiKey(key: string): boolean {
+    // Very basic validation
+    if (!key) return false;
     
-    // Basic structure validation for API keys
-    const isOpenRouterKey = 
-      apiKey.startsWith('sk-') && 
-      apiKey.length >= 30;
-      
-    // Could expand with more key format validations
-    return isOpenRouterKey;
+    return (
+      key === 'browser-llm' || 
+      key.startsWith('sk-') || 
+      key.length > 32
+    );
+  }
+  
+  /**
+   * Clears all auth data
+   */
+  clearAllAuth(): void {
+    this.clearApiKey();
+    this.clearAuthMethod();
+    this.clearCodeVerifier();
   }
 }
 
 /**
- * Model settings storage
+ * Export storage instances
  */
-class ModelStorage {
-  private readonly KEY = KEYS.MODELS;
-  
-  /**
-   * Gets model settings
-   */
-  getModelSettings() {
-    try {
-      const data = localStorage.getItem(this.KEY);
-      
-      if (data) {
-        return JSON.parse(data);
-      }
-      
-      return {
-        selectedId: '',
-        parameters: {
-          temperature: 0.7,
-          topP: 0.9,
-          maxTokens: 1000
-        },
-        isBrowserMode: false,
-        customModelId: ''
-      };
-    } catch (error) {
-      console.error('Error retrieving model settings:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Saves model settings
-   */
-  saveModelSettings(settings: any): void {
-    try {
-      localStorage.setItem(this.KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Error saving model settings:', error);
-    }
-  }
-  
-  /**
-   * Clears model settings
-   */
-  clearModelSettings(): void {
-    try {
-      localStorage.removeItem(this.KEY);
-    } catch (error) {
-      console.error('Error clearing model settings:', error);
-    }
-  }
-}
-
-/**
- * UI preferences storage
- */
-class UIStorage {
-  private readonly KEY = KEYS.UI;
-  
-  /**
-   * Gets UI preferences
-   */
-  getUIPreferences() {
-    try {
-      const data = localStorage.getItem(this.KEY);
-      
-      if (data) {
-        return JSON.parse(data);
-      }
-      
-      return {
-        theme: 'system',
-        lastTab: 'home'
-      };
-    } catch (error) {
-      console.error('Error retrieving UI preferences:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Saves UI preferences
-   */
-  saveUIPreferences(preferences: any): void {
-    try {
-      localStorage.setItem(this.KEY, JSON.stringify(preferences));
-    } catch (error) {
-      console.error('Error saving UI preferences:', error);
-    }
-  }
-  
-  /**
-   * Clears UI preferences
-   */
-  clearUIPreferences(): void {
-    try {
-      localStorage.removeItem(this.KEY);
-    } catch (error) {
-      console.error('Error clearing UI preferences:', error);
-    }
-  }
-}
-
-// Export storage modules
 export const authStorage = new AuthStorage();
-export const modelStorage = new ModelStorage();
-export const uiStorage = new UIStorage();
+
+/**
+ * Generic storage utility for any type of data
+ */
+export class TypedStorage<T> {
+  private key: string;
+  private defaultValue: T;
+  
+  constructor(key: string, defaultValue: T) {
+    this.key = key;
+    this.defaultValue = defaultValue;
+  }
+  
+  /**
+   * Get the stored value
+   */
+  get(): T {
+    try {
+      const item = localStorage.getItem(this.key);
+      return item ? JSON.parse(item) : this.defaultValue;
+    } catch (e) {
+      console.error(`Error getting ${this.key} from storage:`, e);
+      return this.defaultValue;
+    }
+  }
+  
+  /**
+   * Set the stored value
+   */
+  set(value: T): void {
+    try {
+      localStorage.setItem(this.key, JSON.stringify(value));
+    } catch (e) {
+      console.error(`Error setting ${this.key} in storage:`, e);
+    }
+  }
+  
+  /**
+   * Clear the stored value
+   */
+  clear(): void {
+    localStorage.removeItem(this.key);
+  }
+}
+
+/**
+ * Usage example:
+ * 
+ * // Define a typed storage for UI preferences
+ * export const uiPreferencesStorage = new TypedStorage<{
+ *   theme: 'light' | 'dark';
+ *   fontSize: number;
+ * }>(STORAGE_KEYS.SETTINGS.UI_PREFERENCES, { theme: 'dark', fontSize: 16 });
+ * 
+ * // Get the stored value
+ * const preferences = uiPreferencesStorage.get();
+ * // Set the stored value
+ * uiPreferencesStorage.set({ ...preferences, theme: 'light' });
+ */

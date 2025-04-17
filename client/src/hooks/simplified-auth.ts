@@ -1,22 +1,28 @@
-import { useState, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { authStorage } from '../utils/storage';
-import { 
-  generateCodeVerifier, 
-  createSHA256CodeChallenge 
-} from '../utils/pkce';
-import { generateAuthUrl } from '../lib/openrouter';
+/**
+ * A simplified authentication hook for consistent auth state across the application.
+ * This provides a cleaner interface for working with authentication and ensures
+ * credentials are properly shared between components.
+ */
 
-export type AuthMethod = 'oauth' | 'manual' | 'browser' | null;
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { authStorage, AuthMethod } from '../utils/storage';
+import { 
+  createSHA256CodeChallenge,
+  generateCodeVerifier
+} from '../utils/pkce';
 
 /**
- * Simple interface for authentication state and methods
+ * Simplified interface for authentication state and methods
  */
 export interface AuthState {
   // Auth status
   isAuthenticated: boolean;
   isInitialized: boolean;
   method: AuthMethod;
+  
+  // Authentication data
+  apiKey: string | null;
   
   // Manual auth
   manualKey: string;
@@ -37,92 +43,99 @@ export interface AuthState {
  * - Simplified interface
  */
 export function useSimplifiedAuth(): AuthState {
-  // Auth state
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [method, setMethod] = useState<AuthMethod>(null);
+  const { toast } = useToast();
+  
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [manualKey, setManualKey] = useState('');
+  const [method, setMethod] = useState<AuthMethod>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   
-  // Load saved auth on mount
-  useEffect(() => {
-    restorePreviousAuth();
-    setIsInitialized(true);
-  }, []);
-  
-  // Restores previous authentication if available
-  const restorePreviousAuth = (): boolean => {
-    const { apiKey, method } = authStorage.getAuthData();
+  // Get the authentication state from storage
+  const restorePreviousAuth = useCallback(() => {
+    const { apiKey, authMethod } = authStorage.getAuthData();
     
-    if (apiKey && authStorage.isValidApiKey(apiKey)) {
-      // Set auth state
-      setIsAuthenticated(true);
-      setMethod(method);
-      
-      // Notify app of auth change
-      window.dispatchEvent(new Event('auth-changed'));
-      
-      toast({
-        title: 'AUTHENTICATION RESTORED',
-        description: 'Your previous credentials have been retrieved',
-        duration: 3000,
-      });
-      
+    if (apiKey && authMethod) {
+      setApiKey(apiKey);
+      setMethod(authMethod);
       return true;
     }
     
     return false;
-  };
+  }, []);
   
-  // Manual key submission
-  const submitManualKey = () => {
+  // Initialize authentication on mount
+  useEffect(() => {
+    restorePreviousAuth();
+    setIsInitialized(true);
+    
+    // Listen for auth events
+    const handleAuthEvent = (event: CustomEvent) => {
+      if (event.detail && event.detail.apiKey) {
+        setApiKey(event.detail.apiKey);
+        if (event.detail.method) {
+          setMethod(event.detail.method);
+        }
+      }
+    };
+    
+    // Add event listener for auth changes
+    window.addEventListener('auth-state-change', handleAuthEvent as EventListener);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('auth-state-change', handleAuthEvent as EventListener);
+    };
+  }, [restorePreviousAuth]);
+  
+  // Manual authentication
+  const submitManualKey = useCallback(() => {
     if (!manualKey.trim()) return;
     
-    if (authStorage.isValidApiKey(manualKey)) {
-      // Save auth data
-      authStorage.saveAuth(manualKey, 'manual');
-      
-      // Update state
-      setIsAuthenticated(true);
-      setMethod('manual');
-      setManualKey('');
-      
-      // Notify app
-      window.dispatchEvent(new Event('auth-changed'));
-      
-      toast({
-        title: 'AUTHENTICATION COMPLETE',
-        description: 'Your credentials have been saved',
-      });
-    } else {
-      toast({
-        title: 'INVALID API KEY',
-        description: 'Please check your API key format',
-        variant: 'destructive',
-      });
-    }
-  };
+    // Save the API key
+    authStorage.saveApiKey(manualKey);
+    authStorage.saveAuthMethod('manual');
+    
+    // Update state
+    setApiKey(manualKey);
+    setMethod('manual');
+    setManualKey('');
+    
+    // Notify components
+    const authEvent = new CustomEvent('auth-state-change', {
+      detail: {
+        apiKey: manualKey,
+        method: 'manual',
+        source: 'manual'
+      }
+    });
+    window.dispatchEvent(authEvent);
+    
+    toast({
+      title: 'AUTHENTICATION COMPLETE',
+      description: 'Your API key has been saved successfully',
+    });
+  }, [manualKey, toast]);
   
-  // OAuth flow
-  const startOAuth = async () => {
+  // OAuth authentication
+  const startOAuth = useCallback(async () => {
     try {
-      // Generate and save code verifier
+      // Generate PKCE code verifier
       const codeVerifier = generateCodeVerifier();
       authStorage.saveCodeVerifier(codeVerifier);
       
       // Generate code challenge
       const codeChallenge = await createSHA256CodeChallenge(codeVerifier);
       
-      // Save preferred auth method
-      authStorage.saveAuth('pending-oauth', 'oauth');
-      setMethod('oauth');
+      // Generate auth URL with environment detection
+      let origin = window.location.origin;
       
-      // Generate callback URL based on environment
-      const origin = window.location.origin;
+      // Handle case when deployed to Replit
       const isReplit = origin.includes('.replit.dev') || origin.includes('.replit.app');
-      let callbackUrl;
       
+      // Determine callback URL based on environment
+      let callbackUrl;
       if (isReplit) {
-        // Handle potential path prefix in Replit deployment
+        // Include potential path prefix for Replit
         const currentPath = window.location.pathname;
         const basePath = currentPath.split('/').slice(0, -1).join('/') || '';
         callbackUrl = `${origin}${basePath}/callback`;
@@ -131,8 +144,12 @@ export function useSimplifiedAuth(): AuthState {
         callbackUrl = `${origin}/callback`;
       }
       
+      // Set OAuth as the preferred auth method
+      authStorage.saveAuthMethod('oauth');
+      setMethod('oauth');
+      
       // Generate and navigate to auth URL
-      const authUrl = generateAuthUrl(codeChallenge, callbackUrl);
+      const authUrl = `https://openrouter.ai/auth?callback_url=${encodeURIComponent(callbackUrl)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
       window.location.href = authUrl;
       
       toast({
@@ -141,55 +158,69 @@ export function useSimplifiedAuth(): AuthState {
         duration: 3000,
       });
     } catch (error) {
-      console.error('OAuth error:', error);
+      console.error('Error starting OAuth flow:', error);
       toast({
         title: 'AUTHENTICATION ERROR',
         description: 'Failed to start the authentication process',
         variant: 'destructive',
       });
     }
-  };
+  }, [toast]);
   
-  // Browser model mode
-  const enableBrowserMode = () => {
-    // Save browser mode
-    authStorage.saveAuth('browser-llm', 'browser');
+  // Enable browser model mode
+  const enableBrowserMode = useCallback(() => {
+    const browserKey = 'browser-llm';
+    authStorage.saveApiKey(browserKey);
+    authStorage.saveAuthMethod('browser');
     
-    // Update state
-    setIsAuthenticated(true);
+    setApiKey(browserKey);
     setMethod('browser');
     
-    // Notify app
-    window.dispatchEvent(new Event('auth-changed'));
+    // Notify components
+    const authEvent = new CustomEvent('auth-state-change', {
+      detail: {
+        apiKey: browserKey,
+        method: 'browser',
+        source: 'manual'
+      }
+    });
+    window.dispatchEvent(authEvent);
     
     toast({
       title: 'BROWSER MODE ACTIVATED',
-      description: 'Using WebLLM for in-browser inference',
+      description: 'Using WebLLM for in-browser inference without API keys',
     });
-  };
+  }, [toast]);
   
   // Logout
-  const logout = () => {
-    // Clear auth data
-    authStorage.clearAuth();
+  const logout = useCallback(() => {
+    authStorage.clearApiKey();
+    authStorage.clearAuthMethod();
     
-    // Update state
-    setIsAuthenticated(false);
+    setApiKey(null);
     setMethod(null);
     
-    // Notify app
-    window.dispatchEvent(new Event('auth-changed'));
+    // Notify components
+    const authEvent = new CustomEvent('auth-state-change', {
+      detail: {
+        apiKey: null,
+        method: null,
+        source: 'logout'
+      }
+    });
+    window.dispatchEvent(authEvent);
     
     toast({
       title: 'LOGGED OUT',
       description: 'Authentication credentials removed',
     });
-  };
+  }, [toast]);
   
   return {
-    isAuthenticated,
+    isAuthenticated: !!apiKey,
     isInitialized,
     method,
+    apiKey,
     manualKey,
     setManualKey,
     submitManualKey,

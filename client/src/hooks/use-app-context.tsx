@@ -1,31 +1,33 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+/**
+ * Centralized application context
+ * This provides a single source of truth for all application state
+ */
+
+import React, { createContext, ReactNode, useContext } from 'react';
 import { useSimplifiedAuth, AuthState } from './simplified-auth';
-import { useModels, ModelSelectionState } from './use-models';
 
 /**
  * Combined application context that provides access to all global state
  */
 interface AppContextType {
   auth: AuthState;
-  models: ModelSelectionState;
   // Add other contexts as needed (UI state, settings, etc.)
 }
 
-const AppContext = createContext<AppContextType | null>(null);
+// Create the context with a default value
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
 /**
  * Provider component that wraps the entire application
  * and provides access to all global state through a single context
  */
 export function AppContextProvider({ children }: { children: ReactNode }) {
-  // Initialize all hooks
+  // Get authentication state from our hook
   const auth = useSimplifiedAuth();
-  const models = useModels();
   
-  // Combined context value
+  // Combine all application state
   const value: AppContextType = {
     auth,
-    models,
   };
   
   return (
@@ -40,7 +42,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
  */
 export function useAppContext() {
   const context = useContext(AppContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAppContext must be used within an AppContextProvider');
   }
   return context;
@@ -51,9 +53,12 @@ export function useAppContext() {
  * This reduces the need for destructuring in components
  */
 export function useAppAuth() {
-  return useAppContext().auth;
+  const { auth } = useAppContext();
+  return auth;
 }
 
-export function useAppModels() {
-  return useAppContext().models;
-}
+// Add more specialized hooks as needed
+// export function useAppModels() {
+//   const { models } = useAppContext();
+//   return models;
+// }

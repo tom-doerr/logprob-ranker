@@ -3,7 +3,6 @@ import {
   ChatCompletionRequest, 
   createChatCompletion 
 } from '../lib/openrouter';
-import { ModelConfig } from '../lib/modelTypes';
 import { authStorage } from '../utils/storage';
 
 /**
@@ -11,11 +10,13 @@ import { authStorage } from '../utils/storage';
  */
 export class ApiError extends Error {
   status?: number;
+  type: string;
   
   constructor(message: string, status?: number) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.type = status === 401 ? 'authentication_error' : 'api_error';
   }
 }
 
@@ -23,8 +24,10 @@ export class ApiError extends Error {
  * Standardized chat response format
  */
 export interface ChatResponse {
-  text: string;
-  message: ChatMessage;
+  message: {
+    role: string;
+    content: string;
+  };
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -42,9 +45,14 @@ class ApiClient {
   /**
    * Generates a chat completion from OpenRouter API
    */
-  async generateCompletion(
-    messages: ChatMessage[], 
-    config: Partial<ModelConfig>
+  async createChatCompletion(
+    params: {
+      model: string;
+      messages: Array<{ role: string; content: string }>;
+      temperature?: number;
+      max_tokens?: number;
+      top_p?: number;
+    }
   ): Promise<ChatResponse> {
     try {
       // Get auth data from storage
@@ -61,11 +69,18 @@ class ApiClient {
       }
       
       // Create the request with available parameters
+      // Cast messages to the required type (safe because we validate roles)
+      const messages = params.messages.map(msg => ({
+        role: msg.role as "system" | "user" | "assistant",
+        content: msg.content
+      }));
+
       const request: ChatCompletionRequest = {
-        model: config.customModel || config.selectedModel,
+        model: params.model,
         messages,
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
+        temperature: params.temperature,
+        max_tokens: params.max_tokens,
+        top_p: params.top_p
       };
       
       // Make the API call
@@ -75,7 +90,6 @@ class ApiClient {
       const assistantMessage = response.choices[0].message;
       
       return {
-        text: assistantMessage.content,
         message: assistantMessage,
         usage: response.usage ? {
           promptTokens: response.usage.prompt_tokens,
@@ -84,29 +98,34 @@ class ApiClient {
         } : undefined
       };
     } catch (error: any) {
-      // Handle API-specific errors and provide meaningful messages
-      if (error.response) {
-        const status = error.response.status;
-        let message = 'API request failed';
-        
-        if (status === 401) {
-          message = 'Invalid API key or authentication error';
-        } else if (status === 403) {
-          message = 'Access forbidden. Check your API key permissions';
-        } else if (status === 429) {
-          message = 'Rate limit exceeded. Please try again later';
-        } else if (status >= 500) {
-          message = 'OpenRouter API server error. Please try again later';
-        }
-        
-        throw new ApiError(message, status);
+      // Convert to standard API error
+      if (error instanceof ApiError) {
+        throw error;
       }
       
-      // Handle network or other errors
-      throw new ApiError(error.message || 'Unknown API error');
+      // Handle network errors
+      if (error.message && error.message.includes('network')) {
+        throw new ApiError('Network error: Please check your connection', 500);
+      }
+      
+      // Handle auth errors
+      if (error.status === 401 || error.status === 403) {
+        throw new ApiError('Authentication failed: Invalid API key', 401);
+      }
+      
+      // Handle rate limits
+      if (error.status === 429) {
+        throw new ApiError('Rate limit exceeded: Please try again later', 429);
+      }
+      
+      // Generic error fallback
+      throw new ApiError(
+        error.message || 'Unknown API error occurred',
+        error.status || 500
+      );
     }
   }
 }
 
-// Export a single instance for the whole app
+// Export singleton instance
 export const apiClient = new ApiClient();
