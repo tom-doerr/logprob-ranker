@@ -38,7 +38,7 @@ export const RankedOutput: React.FC<RankedOutputProps> = ({
   const [showRawEvaluation, setShowRawEvaluation] = useState(false);
   
   return (
-    <NervPattern 
+    <div 
       className={`border ${isLatest 
         ? 'border-[var(--eva-blue)] bg-[var(--eva-blue)]/5' 
         : 'border-[var(--eva-orange)]'} rounded-md p-3 sm:p-4 relative nerv-scanline`}
@@ -72,30 +72,30 @@ export const RankedOutput: React.FC<RankedOutputProps> = ({
         </NervEnergy>
       </div>
       
-      <NervGrid className="mt-2 p-2 sm:p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30 text-xs sm:text-sm">
-        <NervData>
-          {output.output}
-        </NervData>
-      </NervGrid>
+      <div className="mt-2 p-2 sm:p-3 bg-black/5 rounded-md whitespace-pre-wrap text-[var(--eva-text)] border border-[var(--eva-orange)]/30 text-xs sm:text-sm nerv-scanline">
+        {output.output}
+      </div>
       
       {/* Attribute Scores Display */}
       {output.attributeScores && output.attributeScores.length > 0 && (
-        <MagiSystem className="mt-3 pt-3">
+        <div className="mt-3 pt-3 border-2 border-[var(--eva-purple)] rounded-md p-4 bg-black/40 relative nerv-scanline">
+          <div className="absolute top-2 right-2 font-mono text-[10px] text-[var(--eva-purple)] nerv-blink">MAGI.SYS</div>
           <h4 className="text-xs sm:text-sm font-medium text-[var(--eva-purple)] uppercase tracking-wider mb-2">Attribute Scores</h4>
           <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2">
             {output.attributeScores.map((attr, attrIdx) => (
-              <NervProgress
+              <div
                 key={attrIdx} 
-                className="flex items-center justify-between p-1.5 sm:p-2 bg-black/10 rounded-md border border-[var(--eva-purple)]/30"
+                className="flex items-center justify-between p-1.5 sm:p-2 bg-black/10 rounded-md border border-[var(--eva-purple)]/30 nerv-progress"
+                style={{ "--progress-width": `${attr.score * 100}%` } as React.CSSProperties}
               >
                 <span className="text-[10px] sm:text-xs font-medium text-[var(--eva-text)]">{attr.name}:</span>
-                <NervEnergy className="text-[10px] sm:text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-1.5 sm:px-2 py-0.5 rounded-full">
+                <span className="text-[10px] sm:text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-1.5 sm:px-2 py-0.5 rounded-full">
                   {attr.score.toFixed(4)}
-                </NervEnergy>
-              </NervProgress>
+                </span>
+              </div>
             ))}
           </div>
-        </MagiSystem>
+        </div>
       )}
       
       {/* View Raw Evaluation Button */}
@@ -118,7 +118,7 @@ export const RankedOutput: React.FC<RankedOutputProps> = ({
           {output.rawEvaluation}
         </NervTerminal>
       )}
-    </NervPattern>
+    </div>
   );
 };
 
