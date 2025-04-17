@@ -35,8 +35,10 @@
 @layer components {
   .eva-card {
     @apply relative overflow-hidden;
-    border: 1px solid var(--eva-orange);
-    box-shadow: 0 0 4px rgba(255, 103, 0, 0.3);
+    border: 2px solid var(--eva-orange);
+    box-shadow: 0 0 6px rgba(255, 103, 0, 0.4);
+    background: rgba(10, 12, 15, 0.9);
+    position: relative;
   }
 
   .eva-card::before {
@@ -45,26 +47,100 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 3px;
+    height: 4px;
     background: var(--eva-orange);
+  }
+  
+  .eva-card::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 10px;
+    font-size: 0.65rem;
+    color: var(--eva-orange);
+    font-family: 'Share Tech Mono', monospace;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  
+  /* MAGI System-styled card */
+  .eva-magi-card {
+    @apply relative overflow-hidden;
+    border: 2px solid var(--eva-orange);
+    box-shadow: 0 0 10px rgba(255, 103, 0, 0.3);
+    background: rgba(10, 12, 15, 0.95);
+    position: relative;
+    padding-top: 24px;
+  }
+  
+  .eva-magi-card::before {
+    content: 'MAGI SYSTEM';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    background: var(--eva-orange);
+    color: var(--eva-black);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
   }
 
   .eva-title {
-    @apply font-mono text-[var(--eva-orange)] uppercase tracking-wide;
-    text-shadow: 0 0 2px rgba(255, 103, 0, 0.3);
+    @apply font-mono text-[var(--eva-orange)] uppercase tracking-widest;
+    text-shadow: 0 0 5px rgba(255, 103, 0, 0.4);
+    letter-spacing: 0.2em;
+    font-weight: bold;
+    position: relative;
+    display: inline-block;
+  }
+  
+  .eva-title::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    width: 3px;
+    height: 70%;
+    background-color: var(--eva-orange);
+    transform: translateY(-50%);
   }
 
   .eva-button {
-    @apply font-mono uppercase tracking-wider;
-    border: 1px solid var(--eva-orange);
-    background: rgba(255, 103, 0, 0.1);
-    box-shadow: 0 0 3px rgba(255, 103, 0, 0.2);
+    @apply font-mono uppercase tracking-wider font-bold;
+    border: 2px solid var(--eva-orange);
+    background: rgba(20, 20, 25, 0.9);
+    color: var(--eva-orange);
+    text-shadow: 0 0 3px rgba(255, 103, 0, 0.5);
+    box-shadow: 0 0 5px rgba(255, 103, 0, 0.3), inset 0 0 2px rgba(255, 103, 0, 0.3);
     transition: all 0.2s ease;
+    position: relative;
+    padding: 0.5rem 1rem;
+    letter-spacing: 1px;
+    z-index: 1;
+  }
+
+  .eva-button:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(to bottom, rgba(255, 103, 0, 0.15), transparent);
+    z-index: -1;
   }
 
   .eva-button:hover {
-    background: rgba(255, 103, 0, 0.15);
-    box-shadow: 0 0 5px rgba(255, 103, 0, 0.3);
+    background: rgba(20, 20, 25, 0.95);
+    color: #FFFFFF;
+    border-color: var(--eva-orange);
+    box-shadow: 0 0 10px rgba(255, 103, 0, 0.6), inset 0 0 4px rgba(255, 103, 0, 0.4);
+    text-shadow: 0 0 5px rgba(255, 103, 0, 0.8);
   }
 
   .eva-input {
@@ -202,6 +278,12 @@
     to { transform: rotate(120deg); }
   }
   
+  /* Evangelion UI Animation */
+  @keyframes eva-alert {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(255, 103, 0, 0.15); }
+  }
+  
   /* NERV UI Classes */
   .nerv-scanline {
     position: relative;
@@ -220,6 +302,35 @@
     z-index: 9;
     pointer-events: none;
     animation: scanline 8s linear infinite; /* Slower subtle animation */
+  }
+  
+  /* EVA-themed alert box */
+  .eva-alert {
+    position: relative;
+    border: 2px solid var(--eva-orange);
+    background-color: rgba(12, 14, 17, 0.95);
+    color: var(--eva-orange);
+    padding: 1rem;
+    margin: 1rem 0;
+    animation: eva-alert 2s infinite;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  
+  .eva-alert::before {
+    content: "!";
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--eva-orange);
+    color: var(--eva-black);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
   }
   
   .nerv-blink {
@@ -316,12 +427,14 @@
     animation: none; /* Removed animation */
   }
   
-  /* New NERV UI Elements - more subtle and serious */
+  /* NERV UI Elements - Classic Evangelion design */
   .nerv-hexagon {
     position: relative;
     background-color: var(--eva-black);
     overflow: hidden;
-    border: 1px solid var(--eva-orange);
+    border: 2px solid var(--eva-orange);
+    clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+    transition: all 0.3s ease;
   }
   
   .nerv-hexagon::before {
@@ -329,10 +442,36 @@
     position: absolute;
     inset: 0;
     clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
-    background: var(--eva-orange);
+    background: linear-gradient(45deg, var(--eva-orange), var(--eva-red));
     opacity: 0.1;
     z-index: 5;
-    animation: none; /* Removed animation */
+    animation: hexagonPulse 4s infinite ease-in-out; /* Restored animation */
+  }
+  
+  .nerv-hexagon:hover::before {
+    opacity: 0.2;
+  }
+  
+  /* NERV Logo Style */
+  .nerv-logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: bold;
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+    color: var(--eva-orange);
+    text-shadow: 0 0 5px rgba(255, 103, 0, 0.4);
+    position: relative;
+    padding-left: 8px;
+  }
+  
+  .nerv-logo::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 4px;
+    background-color: var(--eva-orange);
   }
   
   .nerv-arm {
