@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { getCodeVerifier, saveApiKey, clearCodeVerifier } from '../utils/pkce';
+import { getCodeVerifier, saveApiKey, clearCodeVerifier, saveAuthMethod } from '../utils/pkce';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -136,9 +136,21 @@ const Callback: FC = () => {
         
         // Store the token and update application state
         saveApiKey(data.key);
+        saveAuthMethod('oauth');
         clearCodeVerifier();
         
         // Notify other components about the API key change
+        // Use a more comprehensive custom event with the auth data
+        const authEvent = new CustomEvent('auth-state-change', { 
+          detail: { 
+            apiKey: data.key,
+            method: 'oauth',
+            source: 'callback' 
+          } 
+        });
+        window.dispatchEvent(authEvent);
+        
+        // Also dispatch the standard event for backward compatibility
         window.dispatchEvent(new Event('api-key-changed'));
         
         setSuccess(true);

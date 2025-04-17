@@ -202,7 +202,13 @@ export const AppHeader: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={handleManualKeySubmit}
+                        onClick={(e) => {
+                          // Prevent dropdown from closing on save
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleManualKeySubmit();
+                          setShowManualInput(false);
+                        }}
                         className="h-8 border-[var(--eva-orange)] text-[var(--eva-orange)] hover:bg-[var(--eva-orange)] hover:text-black text-xs p-0 px-2"
                       >
                         Save
@@ -211,7 +217,12 @@ export const AppHeader: React.FC = () => {
                   ) : (
                     <DropdownMenuItem 
                       className="text-[var(--eva-orange)] focus:bg-[var(--eva-orange)] focus:text-black"
-                      onClick={() => setShowManualInput(true)}
+                      onClick={(e) => {
+                        // Prevent the dropdown from closing
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowManualInput(true);
+                      }}
                     >
                       <div className="flex items-center w-full">
                         <Key className="mr-2 h-4 w-4" />

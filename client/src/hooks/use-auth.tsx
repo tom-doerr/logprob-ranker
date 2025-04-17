@@ -93,12 +93,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
   
-  // Check for existing API key on mount
+  // Check for existing API key on mount and listen for auth events
   useEffect(() => {
+    // Initial auto authenticate
     autoAuthenticate();
     
     // Mark auth as initialized regardless of result
     setAuthInitialized(true);
+    
+    // Handler for auth state changes (CustomEvent with data)
+    const handleAuthStateChange = (event: Event) => {
+      console.log("[Auth] Received auth-state-change event", (event as CustomEvent).detail);
+      const detail = (event as CustomEvent).detail;
+      
+      // Update state based on the event data
+      if (detail && detail.apiKey) {
+        setApiKey(detail.apiKey);
+        if (detail.method) {
+          setAuthMethod(detail.method);
+        }
+        
+        toast({
+          title: 'AUTHENTICATION UPDATED',
+          description: 'Your credentials have been synchronized across components',
+          duration: 3000,
+        });
+      }
+    };
+    
+    // Standard event handler (no data)
+    const handleApiKeyChanged = () => {
+      console.log("[Auth] Received api-key-changed event");
+      // Re-read from storage since we don't have the data in the event
+      const storedApiKey = getApiKey();
+      const storedAuthMethod = getAuthMethod();
+      
+      if (storedApiKey) {
+        setApiKey(storedApiKey);
+        if (storedAuthMethod) {
+          setAuthMethod(storedAuthMethod);
+        }
+      }
+    };
+    
+    // Add event listeners
+    window.addEventListener('auth-state-change', handleAuthStateChange);
+    window.addEventListener('api-key-changed', handleApiKeyChanged);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('auth-state-change', handleAuthStateChange);
+      window.removeEventListener('api-key-changed', handleApiKeyChanged);
+    };
   }, []);
   
   // Manual API key submission
