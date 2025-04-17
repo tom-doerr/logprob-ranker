@@ -134,15 +134,15 @@ export const MEMORY_CONFIG = {
   // Memory monitoring
   MONITORING: {
     ENABLED: true,               // Enable memory monitoring
-    CHECK_INTERVAL: 30000,       // Check interval in milliseconds (30 seconds)
-    WARNING_THRESHOLD: 100,      // Warning threshold in MB
-    CRITICAL_THRESHOLD: 150,     // Critical threshold in MB
+    CHECK_INTERVAL: 60000,       // Check interval in milliseconds (increased to 60 seconds)
+    WARNING_THRESHOLD: 250,      // Warning threshold in MB (increased)
+    CRITICAL_THRESHOLD: 350,     // Critical threshold in MB (increased)
   },
   
   // Memory cleanup
   CLEANUP: {
-    AUTO_CLEANUP: true,          // Automatically clean up memory when usage is high
-    CLEANUP_THRESHOLD: 200,      // Cleanup threshold in MB
+    AUTO_CLEANUP: false,         // Disabled auto-cleanup to prevent page reloads
+    CLEANUP_THRESHOLD: 400,      // Cleanup threshold in MB (increased)
   },
 };
 

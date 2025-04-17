@@ -114,20 +114,25 @@ function calculateMemoryTrend(): number {
 
 /**
  * Force memory cleanup
+ * - This function attempts to free memory without disrupting the user experience
+ * - No page reloads or refreshes are triggered
  */
 function forceCleanup(): void {
-  console.warn('[MemoryManager] Forcing memory cleanup');
+  console.warn('[MemoryManager] Attempting gentle memory cleanup');
   
-  // Clear caches if available
+  // Clear caches if available, but only non-essential ones
   if ('caches' in window) {
     caches.keys().then(cacheNames => {
       cacheNames.forEach(cacheName => {
-        caches.delete(cacheName);
+        // Only clear caches that aren't essential
+        if (!cacheName.includes('essential') && !cacheName.includes('critical')) {
+          caches.delete(cacheName);
+        }
       });
     });
   }
   
-  // Release image resources
+  // Release image resources that are not in viewport
   cleanupDOMResources();
   
   // Suggest garbage collection
@@ -135,9 +140,11 @@ function forceCleanup(): void {
     try {
       window.gc();
     } catch (e) {
-      console.error('[MemoryManager] Error during forced GC:', e);
+      console.error('[MemoryManager] Error during garbage collection:', e);
     }
   }
+  
+  console.log('[MemoryManager] Memory cleanup completed without page refresh');
 }
 
 /**
