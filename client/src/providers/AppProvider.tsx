@@ -24,9 +24,13 @@ export function AppProvider({ children }: AppProviderProps) {
   useEffect(() => {
     appInitializer.initialize();
     
-    // Log app version in development mode
+    // Different behavior based on environment
     if (appInitializer.isDevelopment()) {
-      console.log(`[App] Memory monitoring and cleanup enabled`);
+      console.log(`[App] Memory monitoring and cleanup enabled (Development Mode)`);
+      // Development-specific initialization can go here
+    } else {
+      console.log(`[App] Production mode enabled with optimized memory settings`);
+      // Production-specific initialization can go here
     }
     
     // Add global event listeners

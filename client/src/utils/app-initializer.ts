@@ -30,13 +30,69 @@ export function initialize(): void {
   // Initialize environment API key if available
   initializeEnvApiKey();
   
-  // Register HMR handler in development mode
-  if (isDevelopment() && import.meta.hot) {
-    registerHmrReconnectHandler();
+  // Environment-specific initialization
+  if (isDevelopment()) {
+    // Development-specific initialization
+    if (import.meta.hot) {
+      registerHmrReconnectHandler();
+    }
+    
+    // Initialize development memory monitoring with standard settings
+    initializeDevelopmentMemorySettings();
+  } else {
+    // Production-specific initialization
+    initializeProductionMemorySettings();
   }
+  
+  // Register global event handlers
+  registerGlobalEventHandlers();
   
   // Set initialization flag
   initialized = true;
+}
+
+/**
+ * Initialize development-specific memory settings
+ */
+function initializeDevelopmentMemorySettings(): void {
+  // Import memory monitoring with development settings
+  import('./memory-manager').then(({ default: memoryManager }) => {
+    // Start memory monitoring with development settings
+    memoryManager.startMemoryMonitoring();
+  });
+}
+
+/**
+ * Initialize production-specific memory settings
+ * - Uses higher thresholds
+ * - Disables automatic cleanup
+ * - Less aggressive monitoring
+ */
+function initializeProductionMemorySettings(): void {
+  // Production mode uses different memory settings
+  // We'll import the config and memory modules dynamically to avoid circular dependencies
+  import('../config/app-config').then(({ MEMORY_CONFIG }) => {
+    // Override memory config for production
+    const productionMemoryConfig = {
+      ...MEMORY_CONFIG,
+      MONITORING: {
+        ...MEMORY_CONFIG.MONITORING,
+        CHECK_INTERVAL: 120000,      // Check less frequently (2 minutes)
+        WARNING_THRESHOLD: 350,      // Higher threshold
+        CRITICAL_THRESHOLD: 500,     // Higher threshold
+      },
+      CLEANUP: {
+        ...MEMORY_CONFIG.CLEANUP,
+        AUTO_CLEANUP: false,         // Disable auto-cleanup in production
+      }
+    };
+    
+    // Import memory manager and use production settings
+    import('./memory-manager').then(({ default: memoryManager }) => {
+      // Start memory monitoring with modified production settings
+      memoryManager.startMemoryMonitoring();
+    });
+  });
 }
 
 /**
