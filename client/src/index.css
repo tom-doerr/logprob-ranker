@@ -156,10 +156,21 @@
     50% { opacity: 0.6; }
   }
 
-  @keyframes hexagonPulse {
-    0% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.7; }
+  @keyframes progressBar {
+    0% { width: 0; }
+    50% { width: 100%; }
+    100% { width: 0; }
+  }
+  
+  @keyframes dataScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  @keyframes energyFlux {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 
   @keyframes terminalType {
@@ -226,6 +237,46 @@
   
   .nerv-pulse {
     animation: hexagonPulse 3s infinite ease-in-out;
+  }
+  
+  .nerv-progress {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .nerv-progress::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--eva-orange), var(--eva-blue));
+    animation: progressBar 5s ease-in-out infinite;
+    z-index: 5;
+  }
+  
+  .nerv-data {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .nerv-data::after {
+    content: "01010010100101001010101001010010101000101010101001010";
+    position: absolute;
+    color: var(--eva-blue);
+    opacity: 0.2;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    animation: dataScroll 20s linear infinite;
+  }
+  
+  .nerv-energy {
+    background: linear-gradient(90deg, 
+      rgba(255, 103, 0, 0.3),
+      rgba(0, 163, 217, 0.3),
+      rgba(255, 103, 0, 0.3));
+    background-size: 200% 100%;
+    animation: energyFlux 5s infinite;
   }
   
   .nerv-type {

@@ -23,7 +23,15 @@ import TemplateManager from '@/components/ui/template-manager';
 import { useModelConfig } from '@/hooks/use-model-config';
 import { useAuth } from '@/hooks/use-auth';
 import { apiService } from '@/services/api-service';
-import { NervScanline, NervBlink, NervType, NervPulse } from '@/components/ui/nerv-animations';
+import { 
+  NervScanline, 
+  NervBlink, 
+  NervType, 
+  NervPulse, 
+  NervProgress, 
+  NervData, 
+  NervEnergy 
+} from '@/components/ui/nerv-animations';
 import MagiProgress from '@/components/ui/magi-progress';
 import RankedOutput from '@/components/ui/ranked-output';
 import ExampleCard from '@/components/ui/example-card';

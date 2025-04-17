@@ -17,6 +17,18 @@ export const NervPulse: React.FC<NervAnimationProps> = ({ children, className = 
   <span className={`nerv-pulse ${className}`}>{children}</span>
 );
 
+export const NervProgress: React.FC<NervAnimationProps> = ({ children, className = '' }) => (
+  <div className={`nerv-progress ${className}`}>{children}</div>
+);
+
+export const NervData: React.FC<NervAnimationProps> = ({ children, className = '' }) => (
+  <div className={`nerv-data ${className}`}>{children}</div>
+);
+
+export const NervEnergy: React.FC<NervAnimationProps> = ({ children, className = '' }) => (
+  <div className={`nerv-energy ${className}`}>{children}</div>
+);
+
 export const NervType: React.FC<NervAnimationProps> = ({ children, className = '' }) => (
   <span className={`nerv-type ${className}`}>{children}</span>
 );
@@ -46,9 +58,9 @@ export const AttributeScore: React.FC<{name: string; score: number; className?: 
   score, 
   className = '' 
 }) => (
-  <div className={`flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-pulse ${className}`}>
+  <div className={`flex items-center justify-between p-2 bg-black/5 rounded-md border border-[var(--eva-orange)]/30 nerv-progress ${className}`}>
     <span className="text-xs font-medium text-[var(--eva-text)]">{name}:</span>
-    <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full">
+    <span className="text-xs bg-[var(--eva-green-bg)] text-[var(--eva-green)] px-2 py-0.5 rounded-full nerv-energy">
       {score.toFixed(4)}
     </span>
   </div>
