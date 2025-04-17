@@ -108,6 +108,7 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   const [autoStopThreshold, setAutoStopThreshold] = useState(5);
   const [threadCount, setThreadCount] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAborted, setIsAborted] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
   const [newAttribute, setNewAttribute] = useState('');
@@ -1128,25 +1129,42 @@ ${generatedOutput}`
                         threadCount={threadCount}
                       />
                       
-                      <Button 
-                        onClick={generateOutputs} 
-                        disabled={isGenerating || !prompt.trim() || !logProbTemplate.trim()} 
-                        className="w-full mt-3 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
-                      >
-                        {isGenerating ? (
-                          <>
+                      {isGenerating ? (
+                        <div className="flex gap-2 mt-3 w-full">
+                          <Button 
+                            onClick={() => {
+                              setIsGenerating(false);
+                              toast({
+                                title: 'OPERATION ABORTED',
+                                description: 'Pattern generation process terminated.',
+                                variant: 'destructive',
+                              });
+                            }}
+                            className="w-1/3 eva-button bg-black/60 border-[var(--eva-red)] text-[var(--eva-red)] hover:bg-[var(--eva-red)] hover:text-black font-bold py-3 flex items-center justify-center"
+                          >
+                            <X className="mr-2 h-4 w-4 flex-shrink-0" />
+                            <span>ABORT</span>
+                          </Button>
+                          <Button 
+                            disabled={true}
+                            className="w-2/3 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
+                          >
                             <Loader2 className="mr-2 h-4 w-4 animate-spin flex-shrink-0" />
                             <span className="truncate mx-1">
                               PROCESSING ANGEL PATTERN
                             </span>
-                          </>
-                        ) : (
-                          <>
-                            <Flame className="mr-2 h-4 w-4 flex-shrink-0" />
-                            <span>INITIATE EVANGELION</span>
-                          </>
-                        )}
-                      </Button>
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={generateOutputs} 
+                          disabled={!prompt.trim() || !logProbTemplate.trim()} 
+                          className="w-full mt-3 eva-button text-[var(--eva-orange)] font-bold py-3 flex items-center justify-center"
+                        >
+                          <Flame className="mr-2 h-4 w-4 flex-shrink-0" />
+                          <span>INITIATE EVANGELION</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </TabsContent>
