@@ -118,6 +118,12 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAborted, setIsAborted] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
+  
+  // Reset generating state on component mount
+  useEffect(() => {
+    setIsGenerating(false);
+    setIsAborted(false);
+  }, []);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
   const [newAttribute, setNewAttribute] = useState('');
   const [selectedOutputIdx, setSelectedOutputIdx] = useState<number | null>(null);
@@ -478,9 +484,9 @@ ${generatedOutput}`
       
       // Generate outputs in sequence to avoid overwhelming the API
       for (let i = 0; i < numberOfVariants; i++) {
-        // Check if generation has been aborted
-        if (!isGenerating || isAborted) {
-          console.log('Generation aborted by user');
+        // This check was causing issues - we should only check if the user has explicitly clicked abort
+        if (isAborted) {
+          console.log('Generation explicitly aborted by user');
           toast({
             title: 'Operation Aborted',
             description: 'Generation process terminated by user.',
