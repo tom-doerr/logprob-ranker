@@ -975,10 +975,11 @@ ${generatedOutput}`;
                       </div>
                       
                       <div className="border border-[var(--eva-orange)] rounded-md p-3">
-                        <label className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                        <label htmlFor="number-of-variants" className="block text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                           Number of Variants
                         </label>
                         <Input
+                          id="number-of-variants"
                           type="number"
                           min={1}
                           value={numberOfVariants}
@@ -1022,10 +1023,11 @@ ${generatedOutput}`;
                         </div>
                         
                         <div className={useAutoStop ? "block" : "hidden"}>
-                          <p className="text-xs text-[var(--eva-text)] mb-2 font-mono">
+                          <label htmlFor="auto-stop-threshold" className="text-xs text-[var(--eva-text)] mb-2 font-mono">
                             TERMINATE AFTER [BATCHES WITHOUT IMPROVEMENT]:
-                          </p>
+                          </label>
                           <Input
+                            id="auto-stop-threshold"
                             type="text"
                             min={1}
                             max={100}
@@ -1078,7 +1080,7 @@ ${generatedOutput}`;
                         
                         <div className="space-y-4">
                           <div className="bg-black/20 p-2 sm:p-3 rounded-md">
-                            <label className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                            <label htmlFor="temperature" className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                               Temperature
                             </label>
                             <div className="relative">
@@ -1112,7 +1114,7 @@ ${generatedOutput}`;
                           </div>
                           
                           <div className="bg-black/20 p-2 sm:p-3 rounded-md">
-                            <label className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
+                            <label htmlFor="max-tokens" className="block text-xs sm:text-sm font-medium text-[var(--eva-orange)] uppercase tracking-wider mb-1">
                               Max Tokens
                             </label>
                             <div className="flex items-center space-x-2">
