@@ -80,12 +80,18 @@ export const AppHeader: React.FC = () => {
               <TooltipTrigger asChild>
                 <div className="relative">
                   {isAuthenticated ? (
-                    <div 
-                      className="border border-[var(--eva-green)] text-[var(--eva-green)] bg-[var(--eva-green-bg)]/30 px-3 py-1.5 rounded-md hidden sm:flex items-center"
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Open the dropdown programmatically
+                        document.getElementById('auth-dropdown-trigger')?.click();
+                      }}
+                      className="border border-[var(--eva-green)] text-[var(--eva-green)] bg-[var(--eva-green-bg)]/30 hover:bg-[var(--eva-green)] hover:text-black px-3 py-1.5 rounded-md hidden sm:flex items-center"
                     >
                       <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                       <span className="font-mono text-xs tracking-wider">AUTHENTICATED</span>
-                    </div>
+                    </Button>
                   ) : (
                     <Button 
                       variant="outline" 
@@ -104,7 +110,9 @@ export const AppHeader: React.FC = () => {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-black border border-[var(--eva-orange)] text-[var(--eva-text)] text-xs">
-                {isAuthenticated ? "Authentication status: Active" : "Click to authenticate with OpenRouter"}
+                {isAuthenticated 
+                  ? "Authentication active - Click to manage API key options" 
+                  : "Click to authenticate with OpenRouter"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
