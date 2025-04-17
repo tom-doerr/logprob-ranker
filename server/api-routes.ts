@@ -97,5 +97,81 @@ router.get('/models', async (req: Request, res: Response) => {
   }
 });
 
+// Diagnostic endpoint to check API key configuration
+router.get('/status', async (req: Request, res: Response) => {
+  try {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(200).json({
+        status: 'error',
+        message: 'API key not configured in environment variables',
+        keyExists: false,
+        keyMasked: null
+      });
+    }
+    
+    // Mask most of the key for security
+    const maskedKey = apiKey.substring(0, 8) + '...' + apiKey.substring(apiKey.length - 4);
+    
+    // Test the key with a simple request
+    try {
+      console.log('Testing API key with models endpoint...');
+      
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://repl.it',
+          'X-Title': 'NERV AI Interface - Diagnostic Test'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API key test failed:', errorText);
+        
+        return res.status(200).json({
+          status: 'error',
+          message: `API key test failed: ${response.status} ${response.statusText}`,
+          keyExists: true,
+          keyMasked: maskedKey,
+          error: errorText
+        });
+      }
+      
+      const data = await response.json();
+      const modelCount = data && data.data ? data.data.length : 0;
+      
+      return res.status(200).json({
+        status: 'success',
+        message: 'API key configured and working',
+        keyExists: true,
+        keyMasked: maskedKey,
+        modelCount,
+        models: data && data.data ? data.data.slice(0, 3).map((m: any) => m.id) : [] // Return first 3 models
+      });
+    } catch (apiError) {
+      console.error('Error testing API key:', apiError);
+      
+      return res.status(200).json({
+        status: 'error',
+        message: 'API key testing failed with error',
+        keyExists: true,
+        keyMasked: maskedKey,
+        error: apiError instanceof Error ? apiError.message : String(apiError)
+      });
+    }
+  } catch (error) {
+    console.error('Status check error:', error);
+    
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to check API key status',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 // Export the router
 export default router;
