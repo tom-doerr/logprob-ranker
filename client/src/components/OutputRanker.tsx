@@ -326,10 +326,8 @@ const OutputRanker: FC<OutputRankerProps> = () => {
           console.log(`Making API request for index ${index}`);
           console.log(`Using model: ${modelToUse}`);
           
-          const response = await fetch('/api/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          try {
+            const data = await apiService.createChatCompletion({
               model: modelToUse,
               messages: [
                 { role: 'system', content: 'You are a creative assistant that provides a single concise response.' },
@@ -337,20 +335,16 @@ const OutputRanker: FC<OutputRankerProps> = () => {
               ],
               temperature: temperature || 0.7,
               max_tokens: maxTokens || 1000
-            })
-          });
+            });
           
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API error ${response.status}: ${errorText}`);
-          }
-          
-          const data = await response.json();
-          
-          if (data?.choices?.[0]?.message?.content) {
-            generatedOutput = data.choices[0].message.content;
-          } else {
-            throw new Error('Invalid API response format');
+            if (data?.choices?.[0]?.message?.content) {
+              generatedOutput = data.choices[0].message.content;
+            } else {
+              throw new Error('Invalid API response format');
+            }
+          } catch (error) {
+            console.error(`API request error: ${error}`);
+            throw error;
           }
         }
         
@@ -400,25 +394,18 @@ ${generatedOutput}`;
             }
           } else {
             try {
-              const evalResponse = await fetch('/api/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  model: modelToUse,
-                  messages: [
-                    { role: 'system', content: evalPrompt },
-                    { role: 'user', content: 'Provide your evaluation as JSON.' }
-                  ],
-                  temperature: 0.1,
-                  max_tokens: 500
-                })
+              const evalData = await apiService.createChatCompletion({
+                model: modelToUse,
+                messages: [
+                  { role: 'system', content: evalPrompt },
+                  { role: 'user', content: 'Provide your evaluation as JSON.' }
+                ],
+                temperature: 0.1,
+                max_tokens: 500
               });
               
-              if (evalResponse.ok) {
-                const evalData = await evalResponse.json();
-                if (evalData?.choices?.[0]?.message?.content) {
-                  evaluationContent = evalData.choices[0].message.content;
-                }
+              if (evalData?.choices?.[0]?.message?.content) {
+                evaluationContent = evalData.choices[0].message.content;
               }
             } catch (e) {
               console.error('API evaluation error:', e);
