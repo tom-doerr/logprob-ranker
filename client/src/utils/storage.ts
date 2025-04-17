@@ -115,6 +115,17 @@ export const authStorage = {
     }
   },
   
+  // Clear auth method
+  clearAuthMethod(): boolean {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear auth method:', error);
+      return false;
+    }
+  },
+  
   // Get code verifier (for PKCE OAuth)
   getCodeVerifier(): string | null {
     return localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);

@@ -85,13 +85,15 @@ class ApiService {
    * Get available models
    */
   async getModels() {
-    // We're using our server proxy now, so we don't need to include the API key
-    // in the request headers anymore. The server will add it from the environment.
+    // Use our utility to consistently handle auth tokens across methods and environments
     
-    const headers = {
+    const baseHeaders = {
       'HTTP-Referer': window.location.origin,
       'X-Title': APP_CONFIG.APP.NAME
     };
+    
+    // Apply the appropriate authorization headers based on authentication method
+    const headers = createApiRequestHeaders(baseHeaders);
     
     return this.apiRequest('/models', {
       method: 'GET',

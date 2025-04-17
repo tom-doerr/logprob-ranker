@@ -7,16 +7,38 @@ const router = Router();
 // Proxy chat completions endpoint
 router.post('/chat/completions', async (req: Request, res: Response) => {
   try {
-    // Get environment API key
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Check for client-provided auth tokens
+    let apiKey;
+    let authHeader = '';
     
-    if (!apiKey) {
-      return res.status(401).json({ 
-        error: 'API key is required but not configured in environment variables' 
-      });
+    // Check if client sent Authorization header (OAuth token)
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      console.log('Using client OAuth token for OpenRouter API request');
+      authHeader = req.headers.authorization;
+    } 
+    // Check if client sent x-api-key header (manual API key)
+    else if (req.headers['x-api-key']) {
+      console.log('Using client-provided API key for OpenRouter API request');
+      const clientApiKey = Array.isArray(req.headers['x-api-key']) 
+        ? req.headers['x-api-key'][0] 
+        : req.headers['x-api-key'];
+      
+      authHeader = `Bearer ${clientApiKey}`;
+    }
+    // Fall back to environment variable
+    else {
+      apiKey = process.env.OPENROUTER_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(401).json({ 
+          error: 'API key is required but not configured in environment variables' 
+        });
+      }
+      
+      console.log('Using environment API key for OpenRouter API request');
+      authHeader = `Bearer ${apiKey}`;
     }
     
-    console.log('Proxying request to OpenRouter API with environment API key');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     // Forward the request to OpenRouter API
@@ -24,7 +46,7 @@ router.post('/chat/completions', async (req: Request, res: Response) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': authHeader,
         'HTTP-Referer': Array.isArray(req.headers.referer) ? req.headers.referer[0] : (req.headers.referer || 'https://repl.it'),
         'X-Title': Array.isArray(req.headers['x-title']) ? req.headers['x-title'][0] : (req.headers['x-title'] || 'NERV AI Interface')
       },
@@ -55,13 +77,36 @@ router.post('/chat/completions', async (req: Request, res: Response) => {
 // Proxy models endpoint
 router.get('/models', async (req: Request, res: Response) => {
   try {
-    // Get environment API key
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Check for client-provided auth tokens
+    let apiKey;
+    let authHeader = '';
     
-    if (!apiKey) {
-      return res.status(401).json({ 
-        error: 'API key is required but not configured in environment variables' 
-      });
+    // Check if client sent Authorization header (OAuth token)
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      console.log('Using client OAuth token for OpenRouter API models request');
+      authHeader = req.headers.authorization;
+    } 
+    // Check if client sent x-api-key header (manual API key)
+    else if (req.headers['x-api-key']) {
+      console.log('Using client-provided API key for OpenRouter API models request');
+      const clientApiKey = Array.isArray(req.headers['x-api-key']) 
+        ? req.headers['x-api-key'][0] 
+        : req.headers['x-api-key'];
+      
+      authHeader = `Bearer ${clientApiKey}`;
+    }
+    // Fall back to environment variable
+    else {
+      apiKey = process.env.OPENROUTER_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(401).json({ 
+          error: 'API key is required but not configured in environment variables' 
+        });
+      }
+      
+      console.log('Using environment API key for OpenRouter API models request');
+      authHeader = `Bearer ${apiKey}`;
     }
     
     console.log('Proxying models request to OpenRouter API');
@@ -70,7 +115,7 @@ router.get('/models', async (req: Request, res: Response) => {
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': authHeader,
         'HTTP-Referer': Array.isArray(req.headers.referer) ? req.headers.referer[0] : (req.headers.referer || 'https://repl.it'),
         'X-Title': Array.isArray(req.headers['x-title']) ? req.headers['x-title'][0] : (req.headers['x-title'] || 'NERV AI Interface')
       }

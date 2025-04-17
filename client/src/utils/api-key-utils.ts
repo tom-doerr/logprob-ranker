@@ -80,11 +80,26 @@ export function getCurrentApiKeyInfo(): ApiKeyInfo {
 /**
  * Ensures API key headers are consistently added to requests
  */
-export function addApiKeyHeaders(headers: HeadersInit = {}): HeadersInit {
+export function addApiKeyHeaders(headers: HeadersInit = {}): Record<string, string> {
   const apiKeyInfo = getCurrentApiKeyInfo();
-  const headersObj = headers instanceof Headers ? 
-    Object.fromEntries(headers.entries()) : 
-    { ...headers };
+  
+  // Convert headers to a plain object we can modify
+  let headersObj: Record<string, string> = {};
+  
+  if (headers instanceof Headers) {
+    // Convert Headers object to plain object
+    headers.forEach((value, key) => {
+      headersObj[key] = value;
+    });
+  } else if (Array.isArray(headers)) {
+    // Convert header entries array to object
+    headers.forEach(([key, value]) => {
+      headersObj[key] = value;
+    });
+  } else {
+    // Already an object
+    headersObj = { ...headers as Record<string, string> };
+  }
   
   // Don't add API key for browser model
   if (apiKeyInfo.method === 'browser') {
@@ -107,15 +122,18 @@ export function addApiKeyHeaders(headers: HeadersInit = {}): HeadersInit {
 /**
  * Generates complete headers for an API request
  */
-export function createApiRequestHeaders(customHeaders: HeadersInit = {}): HeadersInit {
+export function createApiRequestHeaders(customHeaders: HeadersInit = {}): Record<string, string> {
   const baseHeaders = {
     'Content-Type': 'application/json',
   };
+  
+  // Convert custom headers to object format
+  const customHeadersObj = addApiKeyHeaders(customHeaders);
   
   // Merge base headers with API key headers and custom headers
   return {
     ...baseHeaders,
     ...addApiKeyHeaders({}),
-    ...customHeaders
+    ...customHeadersObj
   };
 }
