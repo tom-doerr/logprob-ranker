@@ -86,6 +86,21 @@ const TestAuthFlow = () => {
     setIsAuthenticated(isAuth);
   }, []);
   
+  // Listen for auth state change events
+  React.useEffect(() => {
+    const handleAuthStateChange = (event: CustomEvent) => {
+      const { apiKey: newApiKey, method } = event.detail;
+      setApiKey(newApiKey || '');
+      setAuthMethod(method);
+      setIsAuthenticated(!!newApiKey);
+    };
+    
+    window.addEventListener('auth-state-change', handleAuthStateChange as EventListener);
+    return () => {
+      window.removeEventListener('auth-state-change', handleAuthStateChange as EventListener);
+    };
+  }, []);
+  
   // Handle manual key input
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);
