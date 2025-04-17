@@ -6,6 +6,7 @@
 import { APP_CONFIG } from '../config/app-config';
 import { authStorage } from '../utils/storage';
 import { ChatMessage } from '../hooks/use-chat-service';
+import { createApiRequestHeaders, getCurrentApiKeyInfo } from '../utils/api-key-utils';
 
 // Base URL for API requests
 // Using our own local API proxy to avoid exposing API keys
@@ -47,14 +48,20 @@ class ApiService {
       signal
     } = options;
     
-    // We're using our server proxy now, so we don't need to include the API key
-    // in the request headers anymore. The server will add it from the environment.
+    // We need to ensure our OAuth token is properly included when using OAuth login
+    // The createApiRequestHeaders utility will handle adding the right auth headers
     
-    const headers = {
+    const baseHeaders = {
       'Content-Type': 'application/json',
       'HTTP-Referer': window.location.origin,
       'X-Title': APP_CONFIG.APP.NAME
     };
+    
+    // Get API key info to decide how to handle authentication
+    const apiKeyInfo = getCurrentApiKeyInfo();
+    
+    // Apply the appropriate authorization headers based on authentication method
+    const headers = createApiRequestHeaders(baseHeaders);
     
     const body = JSON.stringify({
       model,
