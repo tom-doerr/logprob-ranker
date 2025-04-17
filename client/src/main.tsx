@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import { initializeApp, registerHmrReconnectHandler } from "./utils/app-initializer";
 import { startMemoryMonitoring, fixCommonReactLeaks } from "./utils/memory-monitor";
+import { registerVisibilityCleanupHandler, cleanupAllModelResources } from "./utils/model-cleanup";
 
 // Start memory leak detection and prevention
 if (process.env.NODE_ENV === 'development') {
@@ -17,7 +18,13 @@ if (process.env.NODE_ENV === 'development') {
   // Fix common React memory leaks
   fixCommonReactLeaks();
   
-  console.log('[App] Memory monitoring enabled');
+  // Register handler to clean up AI models when user switches tabs
+  registerVisibilityCleanupHandler();
+  
+  // Initial memory cleanup
+  cleanupAllModelResources();
+  
+  console.log('[App] Memory monitoring and cleanup enabled');
 }
 
 // Initialize the app with persistence management

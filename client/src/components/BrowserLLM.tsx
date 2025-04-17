@@ -81,7 +81,9 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       if (engineRef.current) {
         try {
           // Attempt to dispose of the engine resources
-          if (typeof engineRef.current.dispose === 'function') {
+          // @ts-ignore: Engine might have dispose method in some versions
+          if (engineRef.current.dispose && typeof engineRef.current.dispose === 'function') {
+            // @ts-ignore: Using dispose method
             await engineRef.current.dispose();
           } else {
             // Force garbage collection by removing all references
@@ -147,8 +149,9 @@ const BrowserLLM: FC<BrowserLLMProps> = ({
       if (engineRef.current) {
         try {
           // Attempt to dispose of the engine resources
-          if (typeof engineRef.current.dispose === 'function') {
-            // Use synchronous disposal since we're in cleanup
+          // @ts-ignore: Engine might have dispose method in some versions
+          if (engineRef.current.dispose && typeof engineRef.current.dispose === 'function') {
+            // @ts-ignore: Using dispose method with casting
             (engineRef.current.dispose as Function)();
           } else {
             // Force garbage collection by removing all references

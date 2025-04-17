@@ -137,17 +137,55 @@ const TensorflowLLM: FC<TensorflowLLMProps> = ({
 
   // Initialize TensorFlow on load
   useEffect(() => {
+    let isMounted = true;
+    
     const initTf = async () => {
       try {
-        await tf.ready();
-        console.log('TensorFlow.js ready');
+        if (isMounted) {
+          await tf.ready();
+          console.log('TensorFlow.js ready');
+        }
       } catch (err) {
         console.error('Error initializing TensorFlow.js:', err);
       }
     };
     
     initTf();
-  }, []);
+    
+    // Clean up TensorFlow resources on unmount
+    return () => {
+      isMounted = false;
+      
+      // Dispose of any TensorFlow memory
+      try {
+        // Dispose all tensors
+        tf.disposeVariables();
+        
+        // Clean the backend
+        if (tf.getBackend()) {
+          // Manually clear TensorFlow's memory cache
+          // @ts-ignore: Accessing internal property for cleanup
+          if (tf.engine && tf.engine().backend && tf.engine().backend.dispose) {
+            // @ts-ignore: Accessing internal property for cleanup
+            tf.engine().backend.dispose();
+          }
+          
+          // Force garbage collection if available
+          if (window.gc) window.gc();
+        }
+        
+        console.log('TensorFlow resources cleaned up');
+      } catch (err) {
+        console.error('Error cleaning up TensorFlow resources:', err);
+      }
+      
+      // Reset local state
+      if (model) {
+        setModel(null);
+        setIsModelReady(false);
+      }
+    };
+  }, [model]);
 
   return (
     <div className="w-full flex flex-col space-y-4">
