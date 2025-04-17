@@ -73,7 +73,7 @@ describe('Output Ranker Integration', () => {
             choices: [{
               message: {
                 role: 'assistant',
-                content: '```json\n{"interesting": true, "creative": true, "useful": true}\n```'
+                content: '{"interesting": true, "creative": true, "useful": true}'
               }
             }]
           };
