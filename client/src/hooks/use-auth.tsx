@@ -7,16 +7,10 @@ import {
 } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { 
-  getApiKey, 
-  saveApiKey, 
-  clearApiKey,
   generateCodeVerifier,
-  saveCodeVerifier,
-  createSHA256CodeChallenge,
-  getAuthMethod,
-  saveAuthMethod,
-  hasValidApiKey
+  createSHA256CodeChallenge
 } from '../utils/pkce';
+import { authStorage } from '../utils/storage';
 import { generateAuthUrl } from '../lib/openrouter';
 
 interface AuthContextType {
@@ -54,10 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Auto-authenticate with saved credentials on app start
   const autoAuthenticate = () => {
-    const storedApiKey = getApiKey();
-    const storedAuthMethod = getAuthMethod();
+    const storedApiKey = authStorage.getApiKey();
+    const storedAuthMethod = authStorage.getAuthMethod();
     
-    if (storedApiKey && hasValidApiKey()) {
+    if (storedApiKey && authStorage.isAuthenticated()) {
       setApiKey(storedApiKey);
       
       // Use stored auth method if available, otherwise determine from key
@@ -67,13 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Try to determine auth method from key format
         if (storedApiKey === 'browser-llm') {
           setAuthMethod('browser');
-          saveAuthMethod('browser');
+          authStorage.setAuthMethod('browser');
         } else if (storedApiKey.startsWith('sk-or-')) {
           setAuthMethod('manual');
-          saveAuthMethod('manual');
+          authStorage.setAuthMethod('manual');
         } else {
           setAuthMethod('oauth');
-          saveAuthMethod('oauth');
+          authStorage.setAuthMethod('oauth');
         }
       }
       
@@ -125,8 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleApiKeyChanged = () => {
       console.log("[Auth] Received api-key-changed event");
       // Re-read from storage since we don't have the data in the event
-      const storedApiKey = getApiKey();
-      const storedAuthMethod = getAuthMethod();
+      const storedApiKey = authStorage.getApiKey();
+      const storedAuthMethod = authStorage.getAuthMethod();
       
       if (storedApiKey) {
         setApiKey(storedApiKey);
@@ -152,8 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!manualApiKey.trim()) return;
     
     setApiKey(manualApiKey);
-    saveApiKey(manualApiKey);
-    saveAuthMethod('manual');
+    authStorage.setApiKey(manualApiKey);
+    authStorage.setAuthMethod('manual');
     setManualApiKey('');
     setAuthMethod('manual');
     
@@ -171,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Generate and save code verifier
       const codeVerifier = generateCodeVerifier();
-      saveCodeVerifier(codeVerifier);
+      authStorage.saveCodeVerifier(codeVerifier);
       
       // Generate code challenge
       const codeChallenge = await createSHA256CodeChallenge(codeVerifier);
@@ -195,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       // Save OAuth as the preferred auth method
-      saveAuthMethod('oauth');
+      authStorage.setAuthMethod('oauth');
       setAuthMethod('oauth');
       
       // Generate and navigate to auth URL
@@ -220,8 +214,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Enable browser model mode
   const enableBrowserModel = () => {
     setApiKey('browser-llm');
-    saveApiKey('browser-llm');
-    saveAuthMethod('browser');
+    authStorage.setApiKey('browser-llm');
+    authStorage.setAuthMethod('browser');
     setAuthMethod('browser');
     
     // Notify app of auth state change
@@ -236,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout
   const logout = () => {
     setApiKey(null);
-    clearApiKey();
+    authStorage.clearAuth();
     setAuthMethod(null);
     
     // Notify app of auth state change
