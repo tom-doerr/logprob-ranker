@@ -3,6 +3,16 @@
  * Provides centralized initialization for the application
  */
 
+// Add typing for window._env
+declare global {
+  interface Window {
+    _env?: {
+      OPENROUTER_API_KEY?: string;
+      [key: string]: string | undefined;
+    };
+  }
+}
+
 // Module state
 let initialized = false;
 
@@ -17,6 +27,9 @@ export function initialize(): void {
   
   console.log('[AppInitializer] Initializing application');
   
+  // Initialize environment API key if available
+  initializeEnvApiKey();
+  
   // Register HMR handler in development mode
   if (isDevelopment() && import.meta.hot) {
     registerHmrReconnectHandler();
@@ -24,6 +37,38 @@ export function initialize(): void {
   
   // Set initialization flag
   initialized = true;
+}
+
+/**
+ * Initialize API key from environment variables
+ */
+function initializeEnvApiKey(): void {
+  // Import here to avoid circular dependencies
+  import('../utils/storage').then(({ authStorage }) => {
+    // Check if already authenticated
+    if (authStorage.isAuthenticated()) {
+      console.log('[AppInitializer] Using existing authentication');
+      return;
+    }
+    
+    // Try to use the environment API key if available
+    try {
+      // Check if we're running on server with environment variables
+      if (window && window._env && window._env.OPENROUTER_API_KEY) {
+        const envApiKey = window._env.OPENROUTER_API_KEY;
+        if (envApiKey && envApiKey.length > 0) {
+          console.log('[AppInitializer] Using environment API key');
+          authStorage.setApiKey(envApiKey);
+          authStorage.setAuthMethod('manual');
+          
+          // Dispatch event to inform app of authentication
+          window.dispatchEvent(new Event('api-key-changed'));
+        }
+      }
+    } catch (error) {
+      console.error('[AppInitializer] Error initializing environment API key:', error);
+    }
+  });
 }
 
 /**
