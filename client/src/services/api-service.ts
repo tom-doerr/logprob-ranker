@@ -4,7 +4,7 @@
  */
 
 import { APP_CONFIG } from '../config/app-config';
-import { getApiKey } from '../utils/pkce';
+import { authStorage } from '../utils/storage';
 import { ChatMessage } from '../hooks/use-chat-service';
 
 // Base URL for API requests
@@ -46,7 +46,7 @@ class ApiService {
       signal
     } = options;
     
-    const apiKey = getApiKey();
+    const apiKey = authStorage.getApiKey();
     
     if (!apiKey) {
       throw new Error('API key is required but not provided');
@@ -81,7 +81,7 @@ class ApiService {
    * Get available models
    */
   async getModels() {
-    const apiKey = getApiKey();
+    const apiKey = authStorage.getApiKey();
     
     if (!apiKey) {
       throw new Error('API key is required but not provided');
