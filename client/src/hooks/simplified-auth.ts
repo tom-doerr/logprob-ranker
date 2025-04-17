@@ -52,11 +52,11 @@ export function useSimplifiedAuth(): AuthState {
   
   // Get the authentication state from storage
   const restorePreviousAuth = useCallback(() => {
-    const { apiKey, authMethod } = authStorage.getAuthData();
+    const { apiKey, method: storedMethod } = authStorage.getAuthData();
     
-    if (apiKey && authMethod) {
+    if (apiKey && storedMethod) {
       setApiKey(apiKey);
-      setMethod(authMethod);
+      setMethod(storedMethod);
       return true;
     }
     
