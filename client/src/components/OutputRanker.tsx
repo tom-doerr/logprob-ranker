@@ -120,11 +120,20 @@ const OutputRanker: FC<OutputRankerProps> = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAborted, setIsAborted] = useState(false);
   const [rankedOutputs, setRankedOutputs] = useState<RankedOutput[]>([]);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   
   // Reset generating state on component mount
   useEffect(() => {
     setIsGenerating(false);
     setIsAborted(false);
+    
+    // Cleanup function to ensure we abort any ongoing generation when unmounting
+    return () => {
+      if (abortController) {
+        console.log('Aborting browser model generation on component unmount');
+        abortController.abort();
+      }
+    };
   }, []);
   const [selectedExample, setSelectedExample] = useState<LogProbExample | null>(null);
   const [newAttribute, setNewAttribute] = useState('');
@@ -170,8 +179,23 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       // Escape key to stop generation
       if (e.key === 'Escape' && isGenerating) {
         e.preventDefault();
-        // We'll abort by setting the flag; the generation loop will handle cleanup and notification
+        
+        // Set abort flag
         setIsAborted(true);
+        
+        // Also abort via AbortController if available
+        if (abortController) {
+          console.log('Aborting via Escape key');
+          abortController.abort();
+          setAbortController(null);
+          
+          // Notify user
+          toast({
+            title: 'Generation Aborted',
+            description: 'Operation canceled via Escape key',
+            variant: 'destructive',
+          });
+        }
       }
     };
     
@@ -249,6 +273,11 @@ const OutputRanker: FC<OutputRankerProps> = () => {
 
   // Helper function to generate and evaluate a single output
   const generateAndEvaluateOutput = async (index: number): Promise<RankedOutput | null> => {
+    // Check if we've been aborted before starting
+    if (isAborted || (abortController && abortController.signal.aborted)) {
+      console.log(`Skipping generation for index ${index} - abort detected`);
+      return null;
+    }
     try {
       console.log(`Starting generateAndEvaluateOutput for index ${index}`);
       
@@ -503,6 +532,10 @@ ${generatedOutput}`;
     setIsGenerating(true);
     setIsAborted(false);
     setRankedOutputs([]);
+    
+    // Create a new abort controller for this generation session
+    const controller = new AbortController();
+    setAbortController(controller);
 
     try {
       console.log(`Starting multiple output generation (${numberOfVariants} variants requested) with ${threadCount} threads`);
@@ -576,8 +609,14 @@ ${generatedOutput}`;
         variant: 'destructive',
       });
     } finally {
+      // Clean up state
       setIsGenerating(false);
       setIsAborted(false);
+      
+      // Clean up the abort controller
+      setAbortController(null);
+      
+      console.log('Generation process finished and resources cleaned up');
     }
   };
 
@@ -1131,9 +1170,22 @@ ${generatedOutput}`;
                         <div className="flex gap-2 mt-3 w-full">
                           <Button 
                             onClick={() => {
+                              // Set the abort flag and cancel all ongoing requests
                               setIsAborted(true);
-                              // We'll let the generator loop handle the toast notification
-                              // and properly clean up the resources before stopping
+                              
+                              // Abort any ongoing requests via AbortController
+                              if (abortController) {
+                                console.log('Aborting generation process via AbortController');
+                                abortController.abort();
+                                setAbortController(null);
+                              }
+                              
+                              // Display notification to user
+                              toast({
+                                title: 'Aborting Generation',
+                                description: 'Stopping all ongoing model requests...',
+                                variant: 'destructive',
+                              });
                             }}
                             className="w-1/3 eva-button bg-black/60 border-[var(--eva-red)] text-[var(--eva-red)] hover:bg-[var(--eva-red)] hover:text-black font-bold py-3 flex items-center justify-center"
                           >
