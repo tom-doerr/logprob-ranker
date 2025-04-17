@@ -8,10 +8,9 @@ import {
   saveCodeVerifier, 
   getCodeVerifier, 
   clearCodeVerifier,
-  getApiKey,
-  clearApiKey,
-  saveApiKey
+  getApiKey
 } from '../utils/pkce';
+import { authStorage } from '../utils/storage';
 
 enum DemoStep {
   GenerateCodes = 1,
@@ -127,7 +126,7 @@ const DemoSection: FC = () => {
       
       // Store the API key
       setApiKey(data.key);
-      saveApiKey(data.key);
+      authStorage.setApiKey(data.key);
       setCurrentStep(DemoStep.UseApiKey);
       
       toast({
@@ -207,7 +206,7 @@ const DemoSection: FC = () => {
     setApiResponse(null);
     setCurrentStep(DemoStep.GenerateCodes);
     clearCodeVerifier();
-    clearApiKey();
+    authStorage.clearAuth();
     
     toast({
       title: "Demo reset",
@@ -419,7 +418,7 @@ const DemoSection: FC = () => {
                         const key = e.target.value.trim();
                         if (key) {
                           setApiKey(key);
-                          saveApiKey(key);
+                          authStorage.setApiKey(key);
                           setCurrentStep(DemoStep.UseApiKey);
                           toast({
                             title: "API key set manually",
@@ -434,7 +433,7 @@ const DemoSection: FC = () => {
                         setCurrentStep(DemoStep.UseApiKey);
                         const demoKey = `sk-or-v1-demo-${Math.random().toString(36).substring(2, 10)}`;
                         setApiKey(demoKey);
-                        saveApiKey(demoKey);
+                        authStorage.setApiKey(demoKey);
                         toast({
                           title: "Demo key generated",
                           description: "Using a simulated API key for demo purposes",
@@ -489,7 +488,7 @@ const DemoSection: FC = () => {
                       value={apiKey || ''}
                       onChange={(e) => {
                         setApiKey(e.target.value);
-                        if (e.target.value) saveApiKey(e.target.value);
+                        if (e.target.value) authStorage.setApiKey(e.target.value);
                       }}
                       className="flex-1 px-3 py-2 border border-neutral-300 rounded-md text-sm font-mono text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
                       placeholder="Enter OpenRouter API key"
