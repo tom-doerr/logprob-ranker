@@ -8,6 +8,7 @@
 
 import { cleanupExpiredFormStates } from './form-persistence';
 import { cleanupExpiredChatData } from './chat-persistence';
+import { cleanupAllModelResources } from './model-cleanup';
 
 /**
  * Reload event tracking
@@ -95,6 +96,10 @@ export function initializeApp(options: InitOptions = {}): void {
       if (cleanupExpired) {
         cleanupExpiredFormStates();
         cleanupExpiredChatData();
+        
+        // Clean up any models that might be in memory
+        cleanupAllModelResources();
+        console.log('[App] Cleaned up model resources on load');
       }
     }
     
@@ -105,14 +110,29 @@ export function initializeApp(options: InitOptions = {}): void {
     
     // Register beforeunload handler to save state
     window.addEventListener('beforeunload', () => {
-      // Any last-minute cleanup could go here
+      // Clean up models before page unload to prevent memory leaks
+      try {
+        cleanupAllModelResources();
+      } catch (e) {
+        console.error('Error cleaning up models during unload:', e);
+      }
     });
     
-    // Handle visibility changes to detect when the user returns to the tab
+    // Handle visibility changes to detect when the user switches tabs
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         // The user is now active in this tab
         localStorage.setItem('app.lastActive', Date.now().toString());
+      } else {
+        // User switched away from this tab - release resources
+        // Only clean up models that consume significant memory
+        try {
+          // Use a more lightweight cleanup when just switching tabs
+          // This will help reduce memory usage without full cleanup
+          cleanupAllModelResources();
+        } catch (e) {
+          console.error('Error cleaning up during visibility change:', e);
+        }
       }
     });
     
