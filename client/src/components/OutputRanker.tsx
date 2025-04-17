@@ -221,7 +221,15 @@ const OutputRanker: FC<OutputRankerProps> = () => {
       setUseAutoStop(storedUseAutoStop);
       setAutoStopThreshold(storedThreshold);
       setThreadCount(storedThreadCount);
-      setUseLocalModels(storedUseLocalModels);
+      
+      // Set the useLocalModels state based on authentication status
+      // If API key exists, we can use cloud models, otherwise force browser models
+      if (!apiKey && !storedUseLocalModels) {
+        console.log('No API key found, forcing browser model mode');
+        setUseLocalModels(true);
+      } else {
+        setUseLocalModels(storedUseLocalModels);
+      }
       
       // Only set these if the hooks are available
       if (setTemperature && storedTemperature) {
@@ -242,7 +250,7 @@ const OutputRanker: FC<OutputRankerProps> = () => {
     } catch (error) {
       console.error('Failed to load saved settings:', error);
     }
-  }, []);
+  }, [apiKey]);
   
   // Reload saved results whenever they change
   const loadSavedResults = () => {
