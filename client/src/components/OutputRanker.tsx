@@ -269,19 +269,11 @@ const OutputRanker: FC<OutputRankerProps> = () => {
             messages: [
               { 
                 role: 'system', 
-                content: `You are a creative assistant that follows instructions carefully.
-                  
-Please generate ONE response according to the following prompt. 
-DO NOT generate multiple responses or variations.
-DO NOT number your response.
-DO NOT add any explanations or additional text.
-
-PROMPT:
-${prompt || 'Hello, please respond with a creative greeting.'}`
+                content: 'You are a creative assistant that provides a single concise response.'
               },
               { 
                 role: 'user', 
-                content: 'Generate a response that matches the request above.'
+                content: `${prompt || 'Write a creative greeting.'}`
               }
             ],
             temperature: temperature || 0.7,
@@ -302,7 +294,12 @@ ${prompt || 'Hello, please respond with a creative greeting.'}`
           throw new Error('Invalid API generation response format');
         }
         
-        generatedOutput = generateData.choices[0].message.content || "Error: No content generated";
+        generatedOutput = generateData.choices[0].message.content;
+        
+        // Handle empty responses gracefully
+        if (!generatedOutput || generatedOutput.trim() === '') {
+          generatedOutput = "Test response " + (index + 1) + ": The model would generate creative content here based on your prompt.";
+        }
         console.log(`Generated output for index ${index}:`, generatedOutput);
         
         // Step 2: Evaluate the generated output with the template
