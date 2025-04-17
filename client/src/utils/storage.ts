@@ -1,199 +1,318 @@
 /**
- * Centralized storage utilities for the application
- * This provides a consistent interface for accessing stored data
- * with TypeScript typing and error handling.
+ * Storage utilities for client-side persistence
+ * Provides abstracted access to localStorage with type safety
  */
-
-// Storage keys
-const STORAGE_KEYS = {
-  AUTH: {
-    API_KEY: 'apiKey',
-    AUTH_METHOD: 'authMethod',
-    CODE_VERIFIER: 'codeVerifier'
-  },
-  SETTINGS: {
-    MODEL_CONFIG: 'modelConfig',
-    RANKER_SETTINGS: 'rankerSettings',
-    TEMPLATES: 'templates',
-    SAVED_RESULTS: 'savedResults',
-    UI_PREFERENCES: 'uiPreferences'
-  }
-};
 
 // Auth method types
 export type AuthMethod = 'oauth' | 'manual' | 'browser' | null;
 
-// Auth data interface
-export interface AuthData {
-  apiKey: string | null;
-  authMethod: AuthMethod;
+// Storage keys
+const STORAGE_KEYS = {
+  // Auth storage
+  API_KEY: 'nervui-api-key',
+  AUTH_METHOD: 'nervui-auth-method',
+  
+  // Model config
+  MODEL_CONFIG: 'nervui-model-config',
+  
+  // Chat storage
+  CHAT_MESSAGES: 'nervui-chat-messages',
+  
+  // User preferences
+  USER_PREFERENCES: 'nervui-user-preferences',
+};
+
+// Default values
+const DEFAULTS = {
+  // Default model config
+  MODEL_CONFIG: {
+    temperature: 0.7,
+    topP: 0.9,
+    maxTokens: 1000,
+    selectedModel: 'google/gemini-pro',
+    customModel: '',
+    isUsingBrowserModel: false,
+  },
+  
+  // Default user preferences
+  USER_PREFERENCES: {
+    theme: 'dark' as 'dark' | 'light' | 'system',
+    codeStyle: 'tokyo-night',
+    showLineNumbers: true,
+    fontSize: 'medium' as 'small' | 'medium' | 'large',
+    previewEnabled: true,
+  },
+};
+
+// Model configuration interface
+export interface ModelConfig {
+  temperature: number;
+  topP: number;
+  maxTokens: number;
+  selectedModel: string;
+  customModel: string;
+  isUsingBrowserModel: boolean;
+}
+
+// User preferences interface
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  codeStyle: string;
+  showLineNumbers: boolean;
+  fontSize: 'small' | 'medium' | 'large';
+  previewEnabled: boolean;
+}
+
+// Chat message interface
+export interface StoredChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  timestamp?: number;
 }
 
 /**
  * Auth storage utilities
  */
-class AuthStorage {
-  /**
-   * Gets stored authentication data
-   */
-  getAuthData(): AuthData {
-    return {
-      apiKey: localStorage.getItem(STORAGE_KEYS.AUTH.API_KEY),
-      authMethod: this.getAuthMethod()
-    };
-  }
-  
-  /**
-   * Gets the stored API key
-   */
+export const authStorage = {
+  // Get API key
   getApiKey(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.AUTH.API_KEY);
-  }
+    return localStorage.getItem(STORAGE_KEYS.API_KEY);
+  },
   
-  /**
-   * Saves the API key
-   */
-  saveApiKey(key: string): void {
-    localStorage.setItem(STORAGE_KEYS.AUTH.API_KEY, key);
-  }
+  // Set API key
+  setApiKey(value: string): boolean {
+    try {
+      localStorage.setItem(STORAGE_KEYS.API_KEY, value);
+      return true;
+    } catch (error) {
+      console.error('Failed to save API key:', error);
+      return false;
+    }
+  },
   
-  /**
-   * Clears the API key
-   */
-  clearApiKey(): void {
-    localStorage.removeItem(STORAGE_KEYS.AUTH.API_KEY);
-  }
-  
-  /**
-   * Gets the stored authentication method
-   */
+  // Get auth method
   getAuthMethod(): AuthMethod {
-    const method = localStorage.getItem(STORAGE_KEYS.AUTH.AUTH_METHOD);
+    const method = localStorage.getItem(STORAGE_KEYS.AUTH_METHOD);
     if (method === 'oauth' || method === 'manual' || method === 'browser') {
       return method;
     }
     return null;
-  }
+  },
   
-  /**
-   * Saves the authentication method
-   */
-  saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
-    localStorage.setItem(STORAGE_KEYS.AUTH.AUTH_METHOD, method);
-  }
+  // Set auth method
+  setAuthMethod(value: AuthMethod): boolean {
+    try {
+      if (value === null) {
+        localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+      } else {
+        localStorage.setItem(STORAGE_KEYS.AUTH_METHOD, value);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to save auth method:', error);
+      return false;
+    }
+  },
   
-  /**
-   * Clears the authentication method
-   */
-  clearAuthMethod(): void {
-    localStorage.removeItem(STORAGE_KEYS.AUTH.AUTH_METHOD);
-  }
+  // Clear auth data
+  clearAuth(): boolean {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.API_KEY);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear auth data:', error);
+      return false;
+    }
+  },
   
-  /**
-   * Gets the stored code verifier
-   */
-  getCodeVerifier(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.AUTH.CODE_VERIFIER);
+  // Check if authenticated
+  isAuthenticated(): boolean {
+    return this.getApiKey() !== null;
   }
-  
-  /**
-   * Saves the code verifier
-   */
-  saveCodeVerifier(verifier: string): void {
-    localStorage.setItem(STORAGE_KEYS.AUTH.CODE_VERIFIER, verifier);
-  }
-  
-  /**
-   * Clears the code verifier
-   */
-  clearCodeVerifier(): void {
-    localStorage.removeItem(STORAGE_KEYS.AUTH.CODE_VERIFIER);
-  }
-  
-  /**
-   * Checks if current api key is valid
-   */
-  isValidApiKey(key: string): boolean {
-    // Very basic validation
-    if (!key) return false;
+};
+
+/**
+ * Model config storage utilities
+ */
+export const modelConfigStorage = {
+  // Get model config
+  getModelConfig(): ModelConfig {
+    try {
+      const configStr = localStorage.getItem(STORAGE_KEYS.MODEL_CONFIG);
+      if (configStr) {
+        const config = JSON.parse(configStr);
+        return {
+          ...DEFAULTS.MODEL_CONFIG,
+          ...config
+        };
+      }
+    } catch (error) {
+      console.error('Error loading model config:', error);
+    }
     
-    return (
-      key === 'browser-llm' || 
-      key.startsWith('sk-') || 
-      key.length > 32
-    );
-  }
+    return DEFAULTS.MODEL_CONFIG;
+  },
   
-  /**
-   * Clears all auth data
-   */
-  clearAllAuth(): void {
-    this.clearApiKey();
-    this.clearAuthMethod();
-    this.clearCodeVerifier();
-  }
-}
-
-/**
- * Export storage instances
- */
-export const authStorage = new AuthStorage();
-
-/**
- * Generic storage utility for any type of data
- */
-export class TypedStorage<T> {
-  private key: string;
-  private defaultValue: T;
-  
-  constructor(key: string, defaultValue: T) {
-    this.key = key;
-    this.defaultValue = defaultValue;
-  }
-  
-  /**
-   * Get the stored value
-   */
-  get(): T {
+  // Save model config
+  saveModelConfig(config: Partial<ModelConfig>): boolean {
     try {
-      const item = localStorage.getItem(this.key);
-      return item ? JSON.parse(item) : this.defaultValue;
-    } catch (e) {
-      console.error(`Error getting ${this.key} from storage:`, e);
-      return this.defaultValue;
+      const currentConfig = this.getModelConfig();
+      const updatedConfig = {
+        ...currentConfig,
+        ...config
+      };
+      
+      localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSON.stringify(updatedConfig));
+      return true;
+    } catch (error) {
+      console.error('Error saving model config:', error);
+      return false;
+    }
+  },
+  
+  // Reset model config to defaults
+  resetModelConfig(): boolean {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MODEL_CONFIG, JSON.stringify(DEFAULTS.MODEL_CONFIG));
+      return true;
+    } catch (error) {
+      console.error('Error resetting model config:', error);
+      return false;
     }
   }
-  
-  /**
-   * Set the stored value
-   */
-  set(value: T): void {
-    try {
-      localStorage.setItem(this.key, JSON.stringify(value));
-    } catch (e) {
-      console.error(`Error setting ${this.key} in storage:`, e);
-    }
-  }
-  
-  /**
-   * Clear the stored value
-   */
-  clear(): void {
-    localStorage.removeItem(this.key);
-  }
-}
+};
 
 /**
- * Usage example:
- * 
- * // Define a typed storage for UI preferences
- * export const uiPreferencesStorage = new TypedStorage<{
- *   theme: 'light' | 'dark';
- *   fontSize: number;
- * }>(STORAGE_KEYS.SETTINGS.UI_PREFERENCES, { theme: 'dark', fontSize: 16 });
- * 
- * // Get the stored value
- * const preferences = uiPreferencesStorage.get();
- * // Set the stored value
- * uiPreferencesStorage.set({ ...preferences, theme: 'light' });
+ * User preferences storage utilities
  */
+export const userPreferencesStorage = {
+  // Get user preferences
+  getUserPreferences(): UserPreferences {
+    try {
+      const prefsStr = localStorage.getItem(STORAGE_KEYS.USER_PREFERENCES);
+      if (prefsStr) {
+        const prefs = JSON.parse(prefsStr);
+        return {
+          ...DEFAULTS.USER_PREFERENCES,
+          ...prefs
+        };
+      }
+    } catch (error) {
+      console.error('Error loading user preferences:', error);
+    }
+    
+    return DEFAULTS.USER_PREFERENCES;
+  },
+  
+  // Save user preferences
+  saveUserPreferences(prefs: Partial<UserPreferences>): boolean {
+    try {
+      const currentPrefs = this.getUserPreferences();
+      const updatedPrefs = {
+        ...currentPrefs,
+        ...prefs
+      };
+      
+      localStorage.setItem(STORAGE_KEYS.USER_PREFERENCES, JSON.stringify(updatedPrefs));
+      return true;
+    } catch (error) {
+      console.error('Error saving user preferences:', error);
+      return false;
+    }
+  }
+};
+
+/**
+ * Chat storage utilities
+ */
+export const chatStorage = {
+  // Get all messages for a specific chat
+  getMessages(chatId: string): StoredChatMessage[] {
+    try {
+      const key = `${STORAGE_KEYS.CHAT_MESSAGES}-${chatId}`;
+      const messagesStr = localStorage.getItem(key);
+      
+      if (messagesStr) {
+        return JSON.parse(messagesStr);
+      }
+    } catch (error) {
+      console.error(`Error loading chat messages for chat ${chatId}:`, error);
+    }
+    
+    return [];
+  },
+  
+  // Save messages for a specific chat
+  saveMessages(chatId: string, messages: StoredChatMessage[]): boolean {
+    try {
+      const key = `${STORAGE_KEYS.CHAT_MESSAGES}-${chatId}`;
+      localStorage.setItem(key, JSON.stringify(messages));
+      return true;
+    } catch (error) {
+      console.error(`Error saving chat messages for chat ${chatId}:`, error);
+      return false;
+    }
+  },
+  
+  // Clear messages for a specific chat
+  clearMessages(chatId: string): boolean {
+    try {
+      const key = `${STORAGE_KEYS.CHAT_MESSAGES}-${chatId}`;
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error(`Error clearing chat messages for chat ${chatId}:`, error);
+      return false;
+    }
+  },
+  
+  // Get all chat IDs
+  getAllChatIds(): string[] {
+    try {
+      const prefix = `${STORAGE_KEYS.CHAT_MESSAGES}-`;
+      const chatIds: string[] = [];
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          chatIds.push(key.substring(prefix.length));
+        }
+      }
+      
+      return chatIds;
+    } catch (error) {
+      console.error('Error getting all chat IDs:', error);
+      return [];
+    }
+  }
+};
+
+// Export default combined storage object
+export default {
+  auth: authStorage,
+  modelConfig: modelConfigStorage,
+  userPreferences: userPreferencesStorage,
+  chat: chatStorage,
+  
+  // Clear all stored data
+  clearAll(): boolean {
+    try {
+      Object.values(STORAGE_KEYS).forEach(key => {
+        if (typeof key === 'string') {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Also clear all chat messages
+      chatStorage.getAllChatIds().forEach(id => {
+        chatStorage.clearMessages(id);
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error clearing all storage:', error);
+      return false;
+    }
+  }
+};

@@ -1,180 +1,166 @@
 /**
- * PKCE (Proof Key for Code Exchange) utilities
- * 
- * These utilities support the OAuth2 PKCE flow for secure authentication
- * without exposing secrets in browser environments
+ * PKCE utility for OAuth flows
+ * Handles creation of PKCE code verifiers and challenges for secure OAuth
  */
 
-// Local storage keys
-const API_KEY_STORAGE_KEY = 'apiKey';
-const CODE_VERIFIER_STORAGE_KEY = 'codeVerifier';
-const AUTH_METHOD_STORAGE_KEY = 'authMethod';
+// StorageKeys for PKCE and authentication
+const STORAGE_KEYS = {
+  CODE_VERIFIER: 'pkce-verifier',
+  API_KEY: 'nervui-api-key', 
+  AUTH_METHOD: 'nervui-auth-method'
+};
 
 /**
- * Gets the stored API key
- */
-export function getApiKey(): string | null {
-  return localStorage.getItem(API_KEY_STORAGE_KEY);
-}
-
-/**
- * Saves the API key to local storage
- */
-export function saveApiKey(key: string): void {
-  localStorage.setItem(API_KEY_STORAGE_KEY, key);
-}
-
-/**
- * Clears the stored API key
- */
-export function clearApiKey(): void {
-  localStorage.removeItem(API_KEY_STORAGE_KEY);
-}
-
-/**
- * Checks if a valid API key exists in storage
- */
-export function hasValidApiKey(): boolean {
-  const key = getApiKey();
-  return key !== null && key.length > 0;
-}
-
-/**
- * Gets the stored authentication method
- */
-export function getAuthMethod(): 'oauth' | 'manual' | 'browser' | null {
-  const method = localStorage.getItem(AUTH_METHOD_STORAGE_KEY);
-  if (method === 'oauth' || method === 'manual' || method === 'browser') {
-    return method;
-  }
-  return null;
-}
-
-/**
- * Saves the authentication method
- */
-export function saveAuthMethod(method: 'oauth' | 'manual' | 'browser'): void {
-  localStorage.setItem(AUTH_METHOD_STORAGE_KEY, method);
-}
-
-/**
- * Saves the OAuth code verifier
- */
-export function saveCodeVerifier(verifier: string): void {
-  localStorage.setItem(CODE_VERIFIER_STORAGE_KEY, verifier);
-}
-
-/**
- * Gets the OAuth code verifier
- */
-export function getCodeVerifier(): string | null {
-  return localStorage.getItem(CODE_VERIFIER_STORAGE_KEY);
-}
-
-/**
- * Clears the OAuth code verifier
- */
-export function clearCodeVerifier(): void {
-  localStorage.removeItem(CODE_VERIFIER_STORAGE_KEY);
-}
-
-/**
- * Generates a random string for code verifier
- * @param length The length of the random string
- * @returns A random string suitable for PKCE
+ * Generate a random code verifier for PKCE
  */
 export function generateCodeVerifier(length: number = 64): string {
-  const randomValues = new Uint8Array(length);
-  crypto.getRandomValues(randomValues);
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  let text = '';
   
-  return Array.from(randomValues)
-    .map(value => {
-      // Use alphanumeric characters (0-9, A-Z, a-z)
-      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-      return chars.charAt(value % chars.length);
-    })
-    .join('');
+  for (let i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  
+  return text;
 }
 
 /**
- * Creates a SHA-256 hash of the code verifier for use as code challenge
- * @param codeVerifier The original code verifier
- * @returns A base64-url encoded SHA-256 hash
+ * Save code verifier to localStorage
  */
-export async function createSHA256CodeChallenge(codeVerifier: string): Promise<string> {
-  // Convert verifier to UTF-8
-  const data = new TextEncoder().encode(codeVerifier);
+export function saveCodeVerifier(codeVerifier: string): void {
+  localStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, codeVerifier);
+}
+
+/**
+ * Get stored code verifier
+ */
+export function getCodeVerifier(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
+}
+
+/**
+ * Clear stored code verifier
+ */
+export function clearCodeVerifier(): void {
+  localStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+}
+
+/**
+ * Create a PKCE code challenge from a code verifier
+ */
+export async function createPKCECodeChallenge(codeVerifier: string): Promise<string> {
+  // Convert the code verifier string to an array buffer
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
   
-  // Hash the verifier with SHA-256
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  // Generate a SHA-256 hash of the code verifier
+  const hash = await window.crypto.subtle.digest('SHA-256', data);
   
-  // Convert hash to byte array
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  // Convert the hash to base64 URL encoding
+  return base64UrlEncode(hash);
+}
+
+// Alias for backward compatibility
+export const createSHA256CodeChallenge = createPKCECodeChallenge;
+
+/**
+ * Convert an array buffer to a base64 URL encoded string
+ */
+function base64UrlEncode(arrayBuffer: ArrayBuffer): string {
+  // Convert the array buffer to a regular base64 string
+  let base64 = '';
+  const bytes = new Uint8Array(arrayBuffer);
+  const len = bytes.byteLength;
   
-  // Convert bytes to base64
-  const base64Hash = btoa(String.fromCharCode(...hashArray));
+  // Manually convert to string to avoid issues with spread operator
+  for (let i = 0; i < len; i++) {
+    base64 += String.fromCharCode(bytes[i]);
+  }
   
-  // Make base64 URL-safe by replacing chars and removing padding
-  return base64Hash
+  base64 = window.btoa(base64);
+  
+  // Convert the base64 to base64url by replacing characters
+  // and removing padding
+  return base64
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    .replace(/=/g, '');
 }
 
 /**
- * Parses OAuth response parameters from URL
- * @param url The URL containing OAuth response parameters
- * @returns The parsed parameters
+ * Create an OAuth state parameter with an encoded return URL
  */
-export function parseOAuthResponse(url: string): Record<string, string> {
-  const params: Record<string, string> = {};
-  const searchParams = new URLSearchParams(
-    url.includes('#') ? url.split('#')[1] : url.split('?')[1]
-  );
-  
-  // Handle entries in a way compatible with all TypeScript targets
-  searchParams.forEach((value, key) => {
-    params[key] = value;
-  });
-  
-  return params;
+export function createOAuthState(returnUrl: string): string {
+  const stateObj = { returnUrl };
+  return window.btoa(JSON.stringify(stateObj));
 }
 
 /**
- * Creates a complete OAuth state with encoded return URL
- * @param returnUrl The URL to return to after authentication
- * @returns An encoded state string
+ * Parse the OAuth state parameter
  */
-export function createOAuthState(returnUrl: string = window.location.href): string {
-  const state = {
-    returnUrl,
-    timestamp: Date.now(),
-  };
-  
-  return btoa(JSON.stringify(state));
-}
-
-/**
- * Decodes and validates an OAuth state
- * @param state The state string from OAuth response
- * @returns The decoded state or null if invalid
- */
-export function validateOAuthState(state: string): { returnUrl: string } | null {
+export function parseOAuthState(state: string): { returnUrl: string } {
   try {
-    const decodedState = JSON.parse(atob(state));
-    
-    // Validate timestamp (optional: check for expiration)
-    const timestamp = decodedState.timestamp;
-    const now = Date.now();
-    const maxAge = 60 * 60 * 1000; // 1 hour
-    
-    if (now - timestamp > maxAge) {
-      return null; // Expired state
-    }
-    
-    return { returnUrl: decodedState.returnUrl };
+    return JSON.parse(window.atob(state));
   } catch (error) {
-    console.error('Error validating OAuth state:', error);
-    return null;
+    console.error('Failed to parse OAuth state:', error);
+    return { returnUrl: '/' };
   }
 }
+
+// API key management functions
+export function getApiKey(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.API_KEY);
+}
+
+export function saveApiKey(apiKey: string): void {
+  localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+}
+
+export function clearApiKey(): void {
+  localStorage.removeItem(STORAGE_KEYS.API_KEY);
+}
+
+// Auth method management
+export function getAuthMethod(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.AUTH_METHOD);
+}
+
+export function saveAuthMethod(method: string): void {
+  localStorage.setItem(STORAGE_KEYS.AUTH_METHOD, method);
+}
+
+export function clearAuthMethod(): void {
+  localStorage.removeItem(STORAGE_KEYS.AUTH_METHOD);
+}
+
+// Combined auth utilities
+export function hasValidApiKey(): boolean {
+  return getApiKey() !== null;
+}
+
+export function getAuthData(): { apiKey: string | null, method: string | null } {
+  return {
+    apiKey: getApiKey(),
+    method: getAuthMethod()
+  };
+}
+
+// Export all functions as default object
+export default {
+  generateCodeVerifier,
+  createPKCECodeChallenge,
+  createSHA256CodeChallenge,
+  saveCodeVerifier,
+  getCodeVerifier,
+  clearCodeVerifier,
+  createOAuthState,
+  parseOAuthState,
+  getApiKey,
+  saveApiKey,
+  clearApiKey,
+  getAuthMethod,
+  saveAuthMethod,
+  clearAuthMethod,
+  hasValidApiKey,
+  getAuthData
+};

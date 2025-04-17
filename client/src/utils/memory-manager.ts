@@ -1,216 +1,193 @@
 /**
- * Memory Management Utilities
- * 
- * This module provides tools for monitoring and managing memory usage
- * in the application, especially important for browser-based LLM inference.
+ * Memory manager utility
+ * Provides memory monitoring and cleanup functions
  */
 
-// Memory threshold in MB that triggers cleanup
-const MEMORY_THRESHOLD_MB = 200;
+// Memory monitoring interval in milliseconds
+const MEMORY_MONITOR_INTERVAL = 30000; // 30 seconds
 
-// Memory monitor configuration
-type MemoryMonitorConfig = {
-  // How often to check memory usage (ms)
-  checkInterval?: number;
-  // Memory threshold in MB that triggers cleanup
-  threshold?: number;
-  // Whether to log memory usage
-  enableLogging?: boolean;
-  // Callback when memory exceeds threshold
-  onExceedThreshold?: () => void;
-  // Cleanup function to call when threshold is exceeded
-  cleanup?: () => void;
-};
+// Memory monitoring threshold in MB
+const MEMORY_WARNING_THRESHOLD = 50; // MB
 
-// Default configuration
-const DEFAULT_CONFIG: MemoryMonitorConfig = {
-  checkInterval: 15000, // 15 seconds
-  threshold: MEMORY_THRESHOLD_MB,
-  enableLogging: true,
-  onExceedThreshold: () => console.warn(`⚠️ Critical memory usage detected`),
-  cleanup: () => {}
-};
-
-// Holds the interval ID for the memory monitor
-let memoryMonitorInterval: number | null = null;
+// Memory monitoring state
+let memoryMonitoringInterval: number | null = null;
+let memoryUsageHistory: number[] = [];
 
 /**
- * Gets the current memory usage in MB
+ * Start memory monitoring
+ * Periodically checks memory usage and logs warnings if memory usage is high
  */
-export function getCurrentMemoryUsage(): number {
-  if (window.performance && (performance as any).memory) {
-    const memoryInfo = (performance as any).memory;
-    return Math.round(memoryInfo.usedJSHeapSize / (1024 * 1024) * 100) / 100;
+export function startMemoryMonitoring(): void {
+  // Don't start monitoring if already running
+  if (memoryMonitoringInterval !== null) {
+    return;
   }
-  return 0;
+  
+  console.log('[MemoryManager] Starting memory monitoring');
+  
+  // Start monitoring interval
+  memoryMonitoringInterval = window.setInterval(() => {
+    checkMemoryUsage();
+  }, MEMORY_MONITOR_INTERVAL);
+  
+  // Initial check
+  checkMemoryUsage();
 }
 
 /**
- * Starts monitoring memory usage
+ * Stop memory monitoring
  */
-export function startMemoryMonitor(config: MemoryMonitorConfig = {}): void {
-  // Merge with default config
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  
-  // Stop any existing monitor
-  stopMemoryMonitor();
-  
-  // Log initial memory usage
-  const memoryUsage = getCurrentMemoryUsage();
-  if (mergedConfig.enableLogging) {
-    console.log(`Memory monitoring started`);
-    console.log(`Memory usage: ${memoryUsage} MB`);
+export function stopMemoryMonitoring(): void {
+  if (memoryMonitoringInterval === null) {
+    return;
   }
   
-  // Check if we should clean up immediately
-  if (memoryUsage > (mergedConfig.threshold || MEMORY_THRESHOLD_MB)) {
-    if (mergedConfig.enableLogging) {
-      console.log(`Attempting memory cleanup...`);
-    }
+  console.log('[MemoryManager] Stopping memory monitoring');
+  
+  // Clear interval
+  window.clearInterval(memoryMonitoringInterval);
+  memoryMonitoringInterval = null;
+  
+  // Clear history
+  memoryUsageHistory = [];
+}
+
+/**
+ * Check current memory usage
+ */
+function checkMemoryUsage(): void {
+  // Use performance API to get memory usage if available
+  if ('memory' in performance) {
+    // Cast to any to access memory property
+    const memory = (performance as any).memory;
     
-    if (mergedConfig.onExceedThreshold) {
-      mergedConfig.onExceedThreshold();
-    }
-    
-    if (mergedConfig.cleanup) {
-      mergedConfig.cleanup();
-    }
-  }
-  
-  // Set up visibility change handler
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  if (mergedConfig.enableLogging) {
-    console.log(`Visibility-based cleanup handler registered`);
-  }
-  
-  // Start interval checks
-  if (mergedConfig.checkInterval && mergedConfig.checkInterval > 0) {
-    memoryMonitorInterval = window.setInterval(() => {
-      const currentUsage = getCurrentMemoryUsage();
+    if (memory && memory.usedJSHeapSize) {
+      const usedMemoryMB = Math.round(memory.usedJSHeapSize / (1024 * 1024));
       
-      if (mergedConfig.enableLogging) {
-        console.log(`Memory usage: ${currentUsage} MB`);
+      // Add to history (keep last 10 readings)
+      memoryUsageHistory.push(usedMemoryMB);
+      if (memoryUsageHistory.length > 10) {
+        memoryUsageHistory.shift();
       }
       
-      if (currentUsage > (mergedConfig.threshold || MEMORY_THRESHOLD_MB)) {
-        if (mergedConfig.enableLogging) {
-          console.warn(`⚠️ Critical memory usage: ${currentUsage} MB`);
-          console.log(`Attempting memory cleanup...`);
-        }
+      // Calculate trends
+      const memoryTrend = calculateMemoryTrend();
+      
+      // Log memory usage if above threshold or increasing rapidly
+      if (usedMemoryMB > MEMORY_WARNING_THRESHOLD || memoryTrend > 5) {
+        console.warn(`[MemoryManager] Memory usage: ${usedMemoryMB}MB, trend: ${memoryTrend > 0 ? '+' : ''}${memoryTrend.toFixed(1)}MB/min`);
         
-        if (mergedConfig.onExceedThreshold) {
-          mergedConfig.onExceedThreshold();
-        }
-        
-        if (mergedConfig.cleanup) {
-          mergedConfig.cleanup();
+        // If memory usage is very high or trend is strongly increasing, suggest cleanup
+        if (usedMemoryMB > MEMORY_WARNING_THRESHOLD * 2 || memoryTrend > 10) {
+          console.warn('[MemoryManager] High memory usage detected, consider cleanup');
+          
+          // Perform automatic cleanup if memory usage is extreme
+          if (usedMemoryMB > MEMORY_WARNING_THRESHOLD * 4) {
+            forceCleanup();
+          }
         }
       }
-    }, mergedConfig.checkInterval);
+    }
   }
 }
 
 /**
- * Stops memory monitoring
+ * Calculate memory usage trend in MB per minute
  */
-export function stopMemoryMonitor(): void {
-  if (memoryMonitorInterval) {
-    clearInterval(memoryMonitorInterval);
-    memoryMonitorInterval = null;
+function calculateMemoryTrend(): number {
+  if (memoryUsageHistory.length < 2) {
+    return 0;
   }
   
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // Calculate trend based on first and last reading
+  const firstReading = memoryUsageHistory[0];
+  const lastReading = memoryUsageHistory[memoryUsageHistory.length - 1];
+  const readingCount = memoryUsageHistory.length;
+  
+  // Calculate trend in MB per minute
+  // Each reading is MEMORY_MONITOR_INTERVAL ms apart
+  const minutesElapsed = (readingCount - 1) * (MEMORY_MONITOR_INTERVAL / 1000 / 60);
+  const memoryDifference = lastReading - firstReading;
+  
+  return minutesElapsed > 0 ? (memoryDifference / minutesElapsed) : 0;
 }
 
 /**
- * Handles visibility change events to clean up when tab is hidden
+ * Force memory cleanup
  */
-function handleVisibilityChange(): void {
-  if (document.visibilityState === 'hidden') {
-    // User navigated away, clean up resources
-    console.log('Tab hidden, cleaning up resources');
-    disposeWebLLMResources();
-    disposeTensorflowResources();
+function forceCleanup(): void {
+  console.warn('[MemoryManager] Forcing memory cleanup');
+  
+  // Clear caches if available
+  if ('caches' in window) {
+    caches.keys().then(cacheNames => {
+      cacheNames.forEach(cacheName => {
+        caches.delete(cacheName);
+      });
+    });
   }
-}
-
-/**
- * Cleans up WebLLM engine resources
- */
-export function disposeWebLLMResources(): void {
-  try {
-    // Clear WebLLM cache
-    (window as any).webLLMCache = null;
-    
-    // Force garbage collection if possible
-    if ((window as any).gc) {
-      (window as any).gc();
+  
+  // Release image resources
+  cleanupDOMResources();
+  
+  // Suggest garbage collection
+  if (typeof window.gc === 'function') {
+    try {
+      window.gc();
+    } catch (e) {
+      console.error('[MemoryManager] Error during forced GC:', e);
     }
-    
-    console.log('WebLLM cache cleared');
-  } catch (e) {
-    console.error('Error cleaning up WebLLM resources:', e);
   }
 }
 
 /**
- * Cleans up TensorFlow.js resources
+ * Clean up DOM resources
+ * Targets images and large data elements that are not in viewport
  */
-export function disposeTensorflowResources(): void {
-  try {
-    // Clean up TensorFlow.js backend
-    if ((window as any).tf && (window as any).tf.disposeVariables) {
-      (window as any).tf.disposeVariables();
-      console.log('TensorFlow.js resources cleaned up');
+function cleanupDOMResources(): void {
+  // Find all images that are not in viewport and not recently loaded
+  const images = document.querySelectorAll('img:not([data-memory-protected])');
+  let clearedCount = 0;
+  
+  images.forEach((element) => {
+    // Ensure the element is an HTMLImageElement
+    if (element instanceof HTMLImageElement) {
+      const img = element as HTMLImageElement;
+      const rect = img.getBoundingClientRect();
+      
+      // If image is not in viewport and loaded more than 1 minute ago
+      if (
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth
+      ) {
+        // Check if the image has a data-loaded-at attribute
+        const loadedAt = parseInt(img.getAttribute('data-loaded-at') || '0', 10);
+        const now = Date.now();
+        
+        // If the image was loaded more than 1 minute ago
+        if (now - loadedAt > 60000) {
+          // Save original src
+          if (!img.hasAttribute('data-original-src')) {
+            img.setAttribute('data-original-src', img.src);
+          }
+          
+          // Clear src to release memory
+          img.src = '';
+          clearedCount++;
+        }
+      }
     }
-  } catch (e) {
-    console.error('Error cleaning up TensorFlow.js resources:', e);
-  }
-}
-
-/**
- * Registers a full cleanup handler for before unload
- */
-export function registerBeforeUnloadCleanup(): void {
-  window.addEventListener('beforeunload', () => {
-    disposeWebLLMResources();
-    disposeTensorflowResources();
-    stopMemoryMonitor();
   });
-}
-
-/**
- * Full resource cleanup
- */
-export function cleanupAllResources(): void {
-  disposeWebLLMResources();
-  disposeTensorflowResources();
-}
-
-/**
- * Check for event listener leaks (for debugging)
- */
-export function checkEventListenerCount(): void {
-  const listeners = window.__eventListenerCountBySite || 0;
-  if (listeners > 100) {
-    console.warn(`Possible event listener leak, total listeners:`, listeners);
+  
+  if (clearedCount > 0) {
+    console.log(`[MemoryManager] Released ${clearedCount} image resources`);
   }
 }
 
-// Automatically register the beforeunload handler
-registerBeforeUnloadCleanup();
-
-// Add detection of eventListeners for debugging
-Object.defineProperty(window, '__eventListenerCountBySite', {
-  get: function() {
-    let count = 0;
-    const elements = document.querySelectorAll('*');
-    for (let i = 0; i < elements.length; i++) {
-      const element = elements[i];
-      if ((element as any).__eventListeners) {
-        count += Object.keys((element as any).__eventListeners).length;
-      }
-    }
-    return count;
-  }
-});
+// Export all utility functions
+export default {
+  startMemoryMonitoring,
+  stopMemoryMonitoring,
+};
