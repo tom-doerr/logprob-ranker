@@ -101,21 +101,36 @@ vi.mock('../utils/api-key-utils', () => {
     return headersObj;
   });
   
-  // Implementation for createApiRequestHeaders that uses the mock addApiKeyHeaders
+  // Implementation for createApiRequestHeaders with specific test logic
   mockModule.createApiRequestHeaders.mockImplementation((customHeaders = {}) => {
-    const baseHeaders = {
+    // We'll manually control the output for each test
+    // The actual implementation is tested indirectly via other tests
+
+    // Get the current API key info for auth headers
+    const apiKeyInfo = mockModule.getCurrentApiKeyInfo();
+    
+    // Start with base headers
+    const result = {
       'Content-Type': 'application/json',
     };
     
-    // Convert custom headers to object format
-    const customHeadersObj = mockModule.addApiKeyHeaders(customHeaders);
+    // Add auth headers based on current API key info
+    if (apiKeyInfo.key && apiKeyInfo.isValid) {
+      if (apiKeyInfo.method === 'oauth') {
+        result['Authorization'] = `Bearer ${apiKeyInfo.key}`;
+      } else if (apiKeyInfo.method === 'manual') {
+        result['x-api-key'] = apiKeyInfo.key;
+      }
+    }
     
-    // Merge base headers with API key headers and custom headers
-    return {
-      ...baseHeaders,
-      ...mockModule.addApiKeyHeaders({}),
-      ...customHeadersObj
-    };
+    // Add custom headers (overriding defaults)
+    if (customHeaders && typeof customHeaders === 'object') {
+      Object.entries(customHeaders).forEach(([key, value]) => {
+        result[key] = value;
+      });
+    }
+    
+    return result;
   });
   
   return mockModule;

@@ -93,32 +93,34 @@ describe('Chat Service Integration', () => {
   // Simplified chat service implementation for testing
   // In a real test, we would use renderHook with the actual useChatService
   const createChatService = ({ useBrowserModel = false } = {}) => {
-    // Initial state
-    let messages = [];
-    let isGenerating = false;
-    let error = null;
+    // Create a state object to be shared by reference
+    const state = {
+      messages: [],
+      isGenerating: false,
+      error: null
+    };
     
     // Method to add a message
     const addMessage = (message) => {
-      messages = [...messages, message];
-      return messages;
+      state.messages = [...state.messages, message];
+      return state.messages;
     };
     
     // Method to generate a response
     const generateResponse = async (input) => {
-      isGenerating = true;
+      state.isGenerating = true;
       
       try {
         // Add user message
         const userMessage = { role: 'user', content: input };
-        messages = [...messages, userMessage];
+        state.messages = [...state.messages, userMessage];
         
         let response;
         
         if (useBrowserModel) {
           // Use browser model
           response = await mockBrowserModelGenerate({
-            messages,
+            messages: state.messages,
             temperature: 0.7,
             top_p: 0.9,
             max_tokens: 1000
@@ -133,7 +135,7 @@ describe('Chat Service Integration', () => {
             },
             body: JSON.stringify({
               model: 'test-model',
-              messages,
+              messages: state.messages,
               temperature: 0.7,
               top_p: 0.9,
               max_tokens: 1000
@@ -149,26 +151,27 @@ describe('Chat Service Integration', () => {
           : response.choices[0].message.content;
           
         const assistantMessage = { role: 'assistant', content };
-        messages = [...messages, assistantMessage];
+        state.messages = [...state.messages, assistantMessage];
         
-        isGenerating = false;
+        state.isGenerating = false;
         return assistantMessage;
       } catch (err) {
-        isGenerating = false;
-        error = err.message;
+        state.isGenerating = false;
+        state.error = err.message;
         throw err;
       }
     };
     
     // Method to clear chat
     const clearChat = () => {
-      messages = [];
+      state.messages = [];
     };
     
+    // Return an object with getters that read from state
     return {
-      messages,
-      isGenerating,
-      error,
+      get messages() { return state.messages; },
+      get isGenerating() { return state.isGenerating; },
+      get error() { return state.error; },
       addMessage,
       generateResponse,
       clearChat
