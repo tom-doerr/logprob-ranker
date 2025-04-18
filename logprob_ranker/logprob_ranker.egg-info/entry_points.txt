@@ -1,0 +1,2 @@
+[console_scripts]
+logprob-ranker = logprob_ranker.cli:main
