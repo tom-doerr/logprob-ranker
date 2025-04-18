@@ -4,65 +4,90 @@ Example of using LogProbRanker with OpenAI's API.
 
 import asyncio
 import os
-import sys
+import json
 from openai import AsyncOpenAI
+
+# Import the logprob ranker
 from logprob_ranker import LogProbRanker, LogProbConfig, RankedOutput
 
 async def main():
     # Check for API key
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        print("Error: OPENAI_API_KEY environment variable is required.")
-        print("Please set it with: export OPENAI_API_KEY='your-api-key'")
-        sys.exit(1)
-    
+        print("ERROR: OPENAI_API_KEY environment variable not set.")
+        print("Please set your OpenAI API key as an environment variable.")
+        print("Example: export OPENAI_API_KEY=your-key-here")
+        return
+
     # Initialize OpenAI client
     client = AsyncOpenAI(api_key=api_key)
     
-    # Create a configuration
+    # Create a ranker with callback for real-time updates
+    def on_output(output: RankedOutput):
+        print(f"\nOutput #{output.index + 1}:")
+        print(f"Content: {output.output[:100]}...")
+        print(f"LogProb Score: {output.logprob:.3f}")
+        if output.attribute_scores:
+            print("Attribute Scores:")
+            for attr in output.attribute_scores:
+                print(f"  - {attr.name}: {attr.score:.3f}")
+    
+    # Create a configuration    
     config = LogProbConfig(
-        num_variants=3,  # Generate 3 variants
-        thread_count=3,  # Process 3 threads in parallel
-        temperature=0.8,
+        num_variants=3,  # Generate 3 outputs
+        thread_count=3,  # Use 3 parallel threads
+        temperature=0.7,
+        max_tokens=300,
+        top_p=1.0,
+        # Define evaluation criteria
         template="""{ 
   "interesting": LOGPROB_TRUE,
   "creative": LOGPROB_TRUE,
-  "useful": LOGPROB_TRUE
+  "useful": LOGPROB_TRUE,
+  "well_structured": LOGPROB_TRUE
 }"""
     )
     
-    # Progress callback
-    def on_output(output: RankedOutput):
-        print(f"Generated output {output.index + 1} with logprob score: {output.logprob:.3f}")
-    
-    # Initialize ranker
+    # Initialize the ranker
     ranker = LogProbRanker(
         llm_client=client,
         config=config,
         on_output_callback=on_output
     )
     
-    # Define prompt
-    prompt = "Suggest a unique product idea for eco-conscious pet owners"
+    # Define a prompt
+    prompt = "Generate a unique product idea for eco-conscious pet owners"
     
-    print(f"Prompt: {prompt}")
-    print(f"Generating {config.num_variants} variants...")
+    print(f"Using OpenAI to generate and rank outputs for: {prompt}")
+    print("Generating outputs (this may take a minute)...")
     
     # Rank outputs
-    ranked_outputs = await ranker.rank_outputs(prompt)
+    results = await ranker.rank_outputs(prompt)
     
-    # Display results
-    print("\nResults (ranked by logprob score):")
-    print("----------------------------------")
+    # Display ranked results
+    print("\n===== RANKED RESULTS =====")
+    for i, result in enumerate(results):
+        print(f"\n{i+1}. Score: {result.logprob:.3f}")
+        print(f"Output: {result.output}")
     
-    for i, output in enumerate(ranked_outputs):
-        print(f"\n{i+1}. Score: {output.logprob:.3f}")
-        print(f"   Output: {output.output}")
-        
-        if output.attribute_scores:
-            print("   Attribute Scores:")
-            for attr in output.attribute_scores:
-                print(f"     - {attr.name}: {attr.score:.3f}")
+    # Save results to file
+    with open("openai_results.json", "w") as f:
+        # Convert the results to JSON-serializable format
+        serialized_results = [
+            {
+                "index": r.index,
+                "logprob": r.logprob,
+                "output": r.output,
+                "attribute_scores": [
+                    {"name": a.name, "score": a.score}
+                    for a in (r.attribute_scores or [])
+                ]
+            }
+            for r in results
+        ]
+        json.dump(serialized_results, f, indent=2)
+    
+    print("\nResults saved to openai_results.json")
 
 if __name__ == "__main__":
     asyncio.run(main())

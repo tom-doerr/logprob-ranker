@@ -1,0 +1,8 @@
+{
+  "correctness": LOGPROB_TRUE,
+  "efficiency": LOGPROB_TRUE,
+  "readability": LOGPROB_TRUE,
+  "follows_best_practices": LOGPROB_TRUE,
+  "handles_edge_cases": LOGPROB_TRUE,
+  "well_documented": LOGPROB_TRUE
+}

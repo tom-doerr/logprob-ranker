@@ -1,0 +1,8 @@
+{
+  "persuasive": LOGPROB_TRUE,
+  "clear_value_proposition": LOGPROB_TRUE,
+  "engaging_tone": LOGPROB_TRUE,
+  "memorable": LOGPROB_TRUE,
+  "appropriate_for_target_audience": LOGPROB_TRUE,
+  "actionable": LOGPROB_TRUE
+}
