@@ -28,6 +28,8 @@ setup(
     install_requires=[
         "aiohttp>=3.8.0",
         "litellm>=1.0.0",
+        "asyncio>=3.4.3",
+        "typing-extensions>=4.0.0",
     ],
     extras_require={
         "dev": [
