@@ -4,7 +4,13 @@ Script to run async tests for the LiteLLMAdapter.
 
 import unittest
 import asyncio
-from test_litellm_adapter import TestLiteLLMAdapter
+import sys
+import os
+
+# Add parent directory to path so we can import the package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from tests.test_litellm_adapter import TestLiteLLMAdapter
 
 def run_async_test(test_case):
     """Run an async test method."""
