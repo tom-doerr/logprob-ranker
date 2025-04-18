@@ -20,6 +20,11 @@ LLM_MODEL=command python litellm_example.py  # Cohere
 import asyncio
 import os
 import json
+import sys
+from pathlib import Path
+
+# Add the parent directory to sys.path to make the package importable in examples
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from logprob_ranker import (
     LogProbConfig,
     LiteLLMAdapter,
@@ -38,7 +43,7 @@ def on_output(output: RankedOutput):
             print(f"  {attr.name}: {attr.score:.3f}")
 
 
-def get_api_key_for_model(model: str) -> str:
+def get_api_key_for_model(model: str) -> str | None:
     """Get the appropriate API key based on the model name."""
     if "gpt" in model.lower() or "openai" in model.lower():
         return os.environ.get("OPENAI_API_KEY")

@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="logprob-ranker",
-    version="0.1.0",
+    version="0.2.0",  # Updated for LiteLLM multi-provider integration
     author="AI Developers",
     author_email="example@example.com",
-    description="A package for ranking LLM outputs using log probability scoring",
+    description="A package for ranking LLM outputs using log probability scoring with support for multiple LLM providers",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/logprob-ranker",

@@ -24,7 +24,12 @@ import asyncio
 import os
 import json
 import time
+import sys
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
+
+# Add the parent directory to sys.path to make the package importable in examples
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from logprob_ranker import (
     LogProbConfig,
     LiteLLMAdapter,
