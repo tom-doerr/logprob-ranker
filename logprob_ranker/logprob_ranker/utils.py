@@ -42,8 +42,6 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
     Returns:
         A dictionary of the parsed JSON
     """
-    print(f"DEBUG: Attempting to parse evaluation JSON: {evaluation_text}")
-    
     # Clean input - remove backticks, codeblocks, and other common markdown formatting
     cleaned_text = evaluation_text
     
@@ -52,14 +50,12 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
     code_block_match = re.search(code_block_pattern, cleaned_text)
     if code_block_match:
         cleaned_text = code_block_match.group(1)
-        print(f"DEBUG: Extracted from code block: {cleaned_text}")
     
     # Remove any leading/trailing content that's not part of the JSON
     json_block_pattern = r'\s*(\{[\s\S]*\})\s*'
     json_block_match = re.search(json_block_pattern, cleaned_text)
     if json_block_match:
         cleaned_text = json_block_match.group(1)
-        print(f"DEBUG: Extracted JSON block: {cleaned_text}")
     
     # Replace various boolean representations
     cleaned_text = cleaned_text.replace('True', 'true').replace('False', 'false')
@@ -85,19 +81,15 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
     ]
     
     # Try each parsing method
-    for i, parse_method in enumerate(parsing_methods):
+    for parse_method in parsing_methods:
         try:
-            print(f"DEBUG: Trying parsing method {i+1}")
             result = parse_method(cleaned_text)
             if result:
-                print(f"DEBUG: Successfully parsed with method {i+1}: {result}")
                 return result
-        except Exception as e:
-            print(f"DEBUG: Parsing method {i+1} failed: {str(e)}")
+        except Exception:
             continue
     
-    # Final fallback: construct a mock result if all else fails
-    print("DEBUG: All parsing methods failed, returning empty dict")
+    # Final fallback: return empty dict if all parsing methods fail
     return {}
 
 
@@ -145,7 +137,9 @@ def calculate_logprob_score(attribute_scores: List[AttributeScore]) -> float:
     
     # Calculate the average score
     total = sum(attr.score for attr in attribute_scores)
-    return total / len(attribute_scores)
+    avg_score = total / len(attribute_scores)
+    
+    return avg_score
 
 
 def sort_ranked_outputs(outputs: List[RankedOutput]) -> List[RankedOutput]:

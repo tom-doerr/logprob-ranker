@@ -155,27 +155,31 @@ class LogProbRanker:
             # Extract evaluation
             evaluation_text = evaluation_response["choices"][0]["message"]["content"]
             
-            # Debug: print raw evaluation response
-            print(f"\nDEBUG: Raw evaluation text [{index}]:\n{evaluation_text}")
-            
             try:
                 evaluation_json = parse_evaluation_json(evaluation_text)
-                print(f"DEBUG: Parsed JSON [{index}]: {evaluation_json}")
-            except Exception as e:
-                print(f"DEBUG: Error parsing evaluation JSON [{index}]: {str(e)}")
+            except Exception:
                 evaluation_json = {}
             
             # Calculate scores
             attribute_scores = []
+            
+            # First check if we have attributes in the evaluation JSON that match our template
             for attr in self.attributes:
-                # Debug: print attribute check
-                print(f"DEBUG: Checking attribute [{attr}] in JSON: {attr in evaluation_json}")
-                
-                # Convert boolean to score (true = 1.0, false = 0.0)
-                score = 1.0 if evaluation_json.get(attr, False) else 0.0
-                # Add an explanation based on whether criterion was met
-                explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
-                attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
+                if attr in evaluation_json:
+                    # Convert boolean to score (true = 1.0, false = 0.0)
+                    score = 1.0 if evaluation_json.get(attr, False) else 0.0
+                    # Add an explanation based on whether criterion was met
+                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
+                    attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
+            
+            # If no matches found with template attributes, use all attributes from the evaluation JSON
+            if not attribute_scores and evaluation_json:
+                for attr, value in evaluation_json.items():
+                    # Convert boolean to score (true = 1.0, false = 0.0)
+                    score = 1.0 if value else 0.0
+                    # Add an explanation based on whether criterion was met
+                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
+                    attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
             
             # Calculate overall logprob score
             logprob = calculate_logprob_score(attribute_scores)
