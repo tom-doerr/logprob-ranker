@@ -9,8 +9,7 @@ from .ranker import (
     LogProbConfig,
     RankedOutput,
     AttributeScore,
-    OpenAIAdapter,
-    AnthropicAdapter
+    LiteLLMAdapter
 )
 
 __all__ = [
@@ -18,6 +17,5 @@ __all__ = [
     "LogProbConfig",
     "RankedOutput",
     "AttributeScore",
-    "OpenAIAdapter",
-    "AnthropicAdapter"
+    "LiteLLMAdapter"
 ]

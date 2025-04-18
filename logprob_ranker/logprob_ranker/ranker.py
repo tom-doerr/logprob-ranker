@@ -222,10 +222,9 @@ class LogProbRanker:
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
         """
-        Create a chat completion using the provided LLM client.
+        Create a chat completion using LiteLLM.
         
-        This is an internal method that adapts to different LLM client implementations.
-        Override this in a subclass to support different LLM clients.
+        This is an internal method that uses LiteLLM to call any supported LLM provider.
         
         Args:
             messages: List of message objects (role and content)
@@ -236,89 +235,101 @@ class LogProbRanker:
         Returns:
             The raw response from the LLM client
         """
-        # Default implementation for OpenAI-like clients
-        response = await self.llm_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Default model
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p
-        )
+        # Use LiteLLM to handle the completion request
+        model = self.model if hasattr(self, 'model') else "gpt-3.5-turbo"
         
-        # Convert the response to a simple dict format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": response.choices[0].message.role,
-                        "content": response.choices[0].message.content
+        # Make the completion request
+        try:
+            response = await litellm.acompletion(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p
+            )
+            
+            # Return in standardized format
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": response.choices[0].message.role,
+                            "content": response.choices[0].message.content
+                        }
                     }
-                }
-            ]
-        }
+                ]
+            }
+        except Exception as e:
+            print(f"Error in LiteLLM completion: {str(e)}")
+            raise
 
 
-class OpenAIAdapter(LogProbRanker):
-    """Adapter for the OpenAI API client"""
+class LiteLLMAdapter(LogProbRanker):
+    """
+    Adapter for using LiteLLM with any supported model/provider.
+    
+    LiteLLM supports various providers like OpenAI, Anthropic, Cohere, 
+    Hugging Face, Azure, PaLM, etc.
+    """
+    
+    def __init__(
+        self,
+        model: str,
+        api_key: Optional[str] = None,
+        config: Optional[LogProbConfig] = None,
+        on_output_callback: Optional[Callable[[RankedOutput], None]] = None,
+        **kwargs
+    ):
+        """
+        Initialize the LiteLLM adapter.
+        
+        Args:
+            model: The model identifier (e.g., "gpt-4", "claude-2", "command-nightly")
+            api_key: Optional API key (uses env variables if not provided)
+            config: Optional configuration settings
+            on_output_callback: Optional callback function
+            **kwargs: Additional parameters to pass to LiteLLM
+        """
+        super().__init__(None, config, on_output_callback)
+        self.model = model
+        self.api_key = api_key
+        self.kwargs = kwargs
+        
+        # Set API key if provided
+        if api_key:
+            if "anthropic" in model.lower() or model.lower().startswith("claude"):
+                litellm.anthropic_api_key = api_key
+            elif "openai" in model.lower() or model.lower().startswith("gpt"):
+                litellm.openai_api_key = api_key
+            else:
+                # Set a generic api_key and let LiteLLM handle it
+                self.kwargs["api_key"] = api_key
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
-        # Use the client to create a chat completion
-        response = await self.llm_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # You can configure this if needed
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p
-        )
-        
-        # Convert the response to a simple dict format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": response.choices[0].message.role,
-                        "content": response.choices[0].message.content
+        """
+        Create a chat completion using LiteLLM.
+        """
+        try:
+            response = await litellm.acompletion(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                **self.kwargs
+            )
+            
+            # Return in standardized format
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": response.choices[0].message.role,
+                            "content": response.choices[0].message.content
+                        }
                     }
-                }
-            ]
-        }
-
-
-class AnthropicAdapter(LogProbRanker):
-    """Adapter for the Anthropic API client"""
-    
-    async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
-        # Convert messages to Anthropic format
-        system = None
-        prompt = ""
-        
-        for msg in messages:
-            if msg["role"] == "system":
-                system = msg["content"]
-            elif msg["role"] == "user":
-                prompt += f"\n\nHuman: {msg['content']}"
-            elif msg["role"] == "assistant":
-                prompt += f"\n\nAssistant: {msg['content']}"
-        
-        prompt += "\n\nAssistant:"
-        
-        # Call Anthropic API
-        response = await self.llm_client.completions.create(
-            model="claude-2",  # You can configure this
-            prompt=prompt,
-            max_tokens_to_sample=max_tokens,
-            temperature=temperature,
-            system=system
-        )
-        
-        # Convert to the expected format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": response.completion
-                    }
-                }
-            ]
-        }
+                ]
+            }
+        except Exception as e:
+            print(f"Error in LiteLLM completion with model {self.model}: {str(e)}")
+            raise
