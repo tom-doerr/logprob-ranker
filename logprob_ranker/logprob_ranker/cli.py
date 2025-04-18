@@ -137,16 +137,27 @@ async def run_rank_command(args: argparse.Namespace) -> None:
     # Get API key (from args or environment variable)
     api_key = args.api_key
     if not api_key:
-        if args.provider == "openai":
-            api_key = os.environ.get("OPENAI_API_KEY")
+        # Map providers to their environment variable names
+        provider_env_vars = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "azure": "AZURE_API_KEY",
+            "cohere": "COHERE_API_KEY",
+            "huggingface": "HUGGINGFACE_API_KEY",
+            "palm": "PALM_API_KEY",
+            "custom": "CUSTOM_API_KEY"
+        }
+        
+        env_var = provider_env_vars.get(args.provider)
+        if env_var:
+            api_key = os.environ.get(env_var)
             if not api_key:
-                print("Error: OpenAI API key not provided. Please set OPENAI_API_KEY environment variable or use --api-key.")
+                print(f"Error: {args.provider.capitalize()} API key not provided. "
+                      f"Please set {env_var} environment variable or use --api-key.")
                 sys.exit(1)
-        elif args.provider == "anthropic":
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            if not api_key:
-                print("Error: Anthropic API key not provided. Please set ANTHROPIC_API_KEY environment variable or use --api-key.")
-                sys.exit(1)
+        else:
+            print(f"Error: Unknown provider '{args.provider}'")
+            sys.exit(1)
     
     # Create config
     config = LogProbConfig(
@@ -193,6 +204,32 @@ async def run_rank_command(args: argparse.Namespace) -> None:
             print(f"Error saving results: {e}")
 
 
+def print_provider_help() -> None:
+    """Print helpful information about supported providers and models."""
+    print("\nSupported LLM Providers and Models:")
+    print("-----------------------------------")
+    providers = {
+        "openai": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
+        "anthropic": ["claude-2", "claude-instant-1"],
+        "azure": ["azure/your-deployment-name"],
+        "cohere": ["command", "command-light", "command-nightly"],
+        "huggingface": ["huggingface/mistralai/Mistral-7B-Instruct-v0.1"],
+        "palm": ["palm/chat-bison"]
+    }
+    
+    for provider, models in providers.items():
+        print(f"\n{provider.upper()}:")
+        print(f"  Environment variable: {provider.upper()}_API_KEY")
+        print("  Example models:")
+        for model in models:
+            print(f"    - {model}")
+    
+    print("\nExample usage:")
+    print("  logprob-ranker rank \"Your prompt here\" --provider openai --model gpt-4")
+    print("  logprob-ranker rank \"Your prompt here\" --provider anthropic --model claude-2")
+    print("\nFor more details, visit: https://github.com/BerriAI/litellm#supported-providers")
+
+
 def main() -> None:
     """Main entry point."""
     parser = setup_parser()
@@ -200,6 +237,7 @@ def main() -> None:
     
     if not args.command:
         parser.print_help()
+        print_provider_help()
         return
     
     if args.command == "rank":
@@ -207,6 +245,7 @@ def main() -> None:
     else:
         print(f"Unknown command: {args.command}")
         parser.print_help()
+        print_provider_help()
 
 
 if __name__ == "__main__":

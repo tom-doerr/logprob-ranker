@@ -4,8 +4,11 @@ Utility functions for the LogProb ranker package.
 
 import json
 import re
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, TypeVar
 import traceback
+
+# Type variable for any RankedOutput-like object
+RankedOutputLike = TypeVar('RankedOutputLike')
 
 # Forward reference for type hints
 try:
@@ -144,12 +147,12 @@ def format_evaluation_prompt(template: str, generated_text: str, eval_prompt: Op
            f"Your evaluation (JSON only):"
 
 
-def serialize_ranked_output(ranked_output: RankedOutput) -> Dict[str, Any]:
+def serialize_ranked_output(ranked_output: Any) -> Dict[str, Any]:
     """
     Convert a RankedOutput object to a dictionary for serialization.
     
     Args:
-        ranked_output: The RankedOutput object
+        ranked_output: The RankedOutput object (from any module)
         
     Returns:
         A dictionary representation
@@ -160,14 +163,22 @@ def serialize_ranked_output(ranked_output: RankedOutput) -> Dict[str, Any]:
         "index": ranked_output.index,
     }
     
-    if ranked_output.attribute_scores:
+    if hasattr(ranked_output, "attribute_scores") and ranked_output.attribute_scores:
         result["attribute_scores"] = [
             {"name": a.name, "score": a.score}
             for a in ranked_output.attribute_scores
         ]
     
-    if ranked_output.raw_evaluation:
+    if hasattr(ranked_output, "raw_evaluation") and ranked_output.raw_evaluation:
         result["raw_evaluation"] = ranked_output.raw_evaluation
+    
+    # Include any additional attributes that might be present in extended classes
+    if hasattr(ranked_output, "provider"):
+        result["provider"] = ranked_output.provider
+    if hasattr(ranked_output, "model"):
+        result["model"] = ranked_output.model
+    if hasattr(ranked_output, "generation_time"):
+        result["generation_time"] = ranked_output.generation_time
     
     return result
 
