@@ -70,9 +70,17 @@ class OpenRouterAdapter(LogProbRanker):
         Returns:
             The raw response from litellm
         """
-        # Use litellm with the specified model
+        # Use litellm with the specified model - prepend 'openrouter/' to model name
+        # This tells litellm to use OpenRouter as the provider
+        openrouter_model = f"openrouter/{self.model}"
+        
+        # Set up API key
+        api_key = self.api_key
+        
+        # Use litellm with OpenRouter
         response = await litellm.acompletion(
-            model=self.model,
+            model=openrouter_model,
+            api_key=api_key,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,

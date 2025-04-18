@@ -41,8 +41,8 @@ async def main():
         print("Get an API key from https://openrouter.ai")
         return
     
-    # Set up the model to use (using Gemini Flash to save costs)
-    model = "gemini-flash"  # Short name, will be expanded to "google/gemini-flash"
+    # Set up the model to use (using a well-supported model)
+    model = "gpt-3.5-turbo"  # Will be expanded to "openai/gpt-3.5-turbo"
     
     # Create configuration
     config = LogProbConfig(
@@ -88,9 +88,9 @@ def run_sync_example():
         print("Error: OPENROUTER_API_KEY environment variable not set")
         return
     
-    # Create the adapter with Gemini Flash (cost-effective)
+    # Create the adapter with GPT-3.5-Turbo
     ranker = OpenRouterAdapter(
-        model="google/gemini-flash",
+        model="gpt-3.5-turbo",
         api_key=api_key,
         config=LogProbConfig(num_variants=2, max_tokens=100)
     )
@@ -112,8 +112,11 @@ def run_sync_example():
     print(result.output)
     
     print("\nAttribute scores:")
-    for attr in result.attribute_scores:
-        print(f"{attr.name}: {attr.score:.2f} - {attr.explanation}")
+    if result.attribute_scores:
+        for attr in result.attribute_scores:
+            print(f"{attr.name}: {attr.score:.2f} - {attr.explanation}")
+    else:
+        print("No attribute scores available - using logprob score only")
 
 
 if __name__ == "__main__":
