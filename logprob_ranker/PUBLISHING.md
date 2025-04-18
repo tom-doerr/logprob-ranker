@@ -1,80 +1,91 @@
-# Publishing to PyPI
+# Publishing Guide for LogProb Ranker
 
-This document describes how to publish the LogProb Ranker package to PyPI.
+This document outlines the steps to prepare and publish the LogProb Ranker package to PyPI.
 
 ## Prerequisites
 
-1. Create a PyPI account at https://pypi.org/account/register/
-2. Install build and twine:
-   ```bash
-   pip install build twine
-   ```
+Before publishing, ensure you have the following tools installed:
 
-## Preparing for Release
+```bash
+pip install build twine
+```
 
-1. Update the version number in:
-   - `pyproject.toml`
-   - `setup.py` 
-   - `logprob_ranker/__init__.py`
+## Version Update Checklist
 
-2. Update `CHANGELOG.md` with the changes in this release.
+Before each release, update the following files:
 
-3. Make sure all tests pass:
-   ```bash
-   python -m unittest discover tests
-   ```
+1. `logprob_ranker/__init__.py`: Update the `__version__` variable
+2. `setup.py`: Update the `version` parameter to match
+3. `CHANGELOG.md`: Add a new section with version, date, and changes
 
 ## Building the Package
 
-Build both source distribution and wheel:
+From the repository root:
 
 ```bash
+# Clean previous builds
+rm -rf build/ dist/ *.egg-info/
+
+# Build the package
 python -m build
 ```
 
-This will create a `dist` directory with the package files.
+This will create both source and wheel distributions in the `dist/` directory.
 
-## Testing the Package Locally
+## Testing the Package
 
-You can install the package locally to test it:
+Before publishing to PyPI, test the package locally:
 
 ```bash
-pip install -e .
+# Create a virtual environment
+python -m venv test_env
+source test_env/bin/activate  # On Windows: test_env\Scripts\activate
+
+# Install the local package
+pip install dist/logprob_ranker-X.Y.Z-py3-none-any.whl
+
+# Test the package
+python -c "from logprob_ranker import LogProbConfig, LiteLLMAdapter; print('Package works!')"
+
+# Clean up
+deactivate
+rm -rf test_env/
 ```
 
-## Uploading to TestPyPI (Recommended)
+## Uploading to TestPyPI (Optional)
 
-Before publishing to the main PyPI repository, test your package on TestPyPI:
-
-```bash
-python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-```
-
-Then install and test your package from TestPyPI:
+To test the publishing process without affecting the real PyPI:
 
 ```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple logprob-ranker
+# Upload to TestPyPI
+python -m twine upload --repository testpypi dist/*
+
+# Install from TestPyPI
+pip install --index-url https://test.pypi.org/simple/ logprob-ranker
 ```
 
 ## Publishing to PyPI
 
-Once you've verified everything works on TestPyPI, upload to the main PyPI repository:
+Once you've verified everything works:
 
 ```bash
+# Upload to PyPI
 python -m twine upload dist/*
 ```
 
+You'll need to enter your PyPI username and password.
+
 ## After Publishing
 
-1. Create a new release on GitHub with the same version number.
-2. Tag the release in git:
+1. Create a GitHub release with the same version number
+2. Tag the release in your git repository:
    ```bash
-   git tag v0.1.0
-   git push --tags
+   git tag v0.X.Y
+   git push origin v0.X.Y
    ```
 
 ## Troubleshooting
 
-- If you get an error about the package already existing, you need to increment the version number.
-- If you need to update the package description or metadata, update the relevant files and rebuild.
-- If your package has dependencies, make sure they're correctly listed in `pyproject.toml` and `setup.py`.
+If you encounter "File already exists" errors when uploading to PyPI:
+- You cannot upload a file with the same name twice to PyPI (even if deleted)
+- Increment the version number and rebuild the package

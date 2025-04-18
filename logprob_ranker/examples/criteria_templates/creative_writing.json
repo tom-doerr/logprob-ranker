@@ -1,7 +1,7 @@
 {
   "engaging": LOGPROB_TRUE,
   "creative": LOGPROB_TRUE,
-  "surprising": LOGPROB_TRUE,
-  "coherent": LOGPROB_TRUE,
-  "emotional_impact": LOGPROB_TRUE
+  "original": LOGPROB_TRUE,
+  "emotional_impact": LOGPROB_TRUE,
+  "coherent": LOGPROB_TRUE
 }

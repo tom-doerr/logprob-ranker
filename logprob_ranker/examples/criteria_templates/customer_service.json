@@ -1,0 +1,7 @@
+{
+  "helpful": LOGPROB_TRUE,
+  "empathetic": LOGPROB_TRUE,
+  "professional": LOGPROB_TRUE,
+  "clear": LOGPROB_TRUE,
+  "solution_oriented": LOGPROB_TRUE
+}

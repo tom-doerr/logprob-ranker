@@ -10,21 +10,26 @@ import traceback
 # Type variable for any RankedOutput-like object
 RankedOutputLike = TypeVar('RankedOutputLike')
 
-# Forward reference for type hints
+# Define classes for type checking, these will be shadowed by actual imports when available
+class AttributeScore:
+    """Type stub for AttributeScore."""
+    name: str
+    score: float
+
+class RankedOutput:
+    """Type stub for RankedOutput."""
+    output: str
+    logprob: float
+    index: int
+    attribute_scores: Optional[List[AttributeScore]]
+    raw_evaluation: Optional[str]
+
+# Forward reference for actual implementation
 try:
     from .ranker import AttributeScore, RankedOutput
 except ImportError:
-    # For type checking only
-    class AttributeScore:
-        name: str
-        score: float
-    
-    class RankedOutput:
-        output: str
-        logprob: float
-        index: int
-        attribute_scores: Optional[List[AttributeScore]]
-        raw_evaluation: Optional[str]
+    # Will use the type stubs defined above
+    pass
 
 
 def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
@@ -195,15 +200,17 @@ def deserialize_ranked_output(data: Dict[str, Any]) -> RankedOutput:
     """
     attribute_scores = None
     if "attribute_scores" in data:
-        attribute_scores = [
-            AttributeScore(name=a["name"], score=a["score"])
-            for a in data["attribute_scores"]
-        ]
+        attribute_scores = []
+        for a in data["attribute_scores"]:
+            attr_score = AttributeScore()
+            attr_score.name = a["name"]
+            attr_score.score = a["score"]
+            attribute_scores.append(attr_score)
     
-    return RankedOutput(
-        output=data["output"],
-        logprob=data["logprob"],
-        index=data["index"],
-        attribute_scores=attribute_scores,
-        raw_evaluation=data.get("raw_evaluation")
-    )
+    result = RankedOutput()
+    result.output = data["output"]
+    result.logprob = data["logprob"]
+    result.index = data["index"]
+    result.attribute_scores = attribute_scores
+    result.raw_evaluation = data.get("raw_evaluation")
+    return result

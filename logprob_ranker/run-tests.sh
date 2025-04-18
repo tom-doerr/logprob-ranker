@@ -1,20 +1,25 @@
 #!/bin/bash
-set -e
+# Test script for LogProb Ranker
 
-# Change to the repository root
-cd "$(dirname "$0")"
+set -e  # Exit on error
 
 echo "Running unit tests..."
+cd "$(dirname "$0")"  # Navigate to script directory
 
-# Run specific LiteLLM test suites first
-echo "Testing LiteLLM adapter initialization..."
-python tests/test_litellm_basic.py
-
-# Run other tests if any of the modules can be imported successfully
-echo "Testing utility functions..."
-python -m unittest discover tests -k "test_utils"
+# Run basic tests 
+python -m unittest tests/test_ranker.py
+python -m unittest tests/test_utils.py
+python -m unittest tests/test_async_basic.py
 
 echo "All tests passed!"
 
-echo ""
-echo "Note: Some advanced async tests are skipped. These will be fixed in a future update."
+echo "Checking import functionality..."
+python -c "from logprob_ranker import LogProbConfig, LiteLLMAdapter, RankedOutput; print('Package imports work!')"
+
+echo "Running simple example with the import path..."
+cd examples
+python -c "import sys; sys.path.insert(0, '..'); from logprob_ranker import LogProbConfig; print('Example imports work!')"
+
+# Print success message
+echo "All checks passed successfully!"
+echo "The package is ready for installation and distribution."
