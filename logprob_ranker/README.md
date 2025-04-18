@@ -13,19 +13,22 @@ The logprob self-ranking algorithm works by:
 
 This approach allows for more nuanced evaluation than simple temperature-based sampling.
 
+## Features
+
+- Multiple LLM provider support through LiteLLM integration
+- Consistent API across all providers (OpenAI, Anthropic, Azure, Cohere, etc.)
+- Both command-line and programmatic interfaces
+- Customizable evaluation criteria
+- Asynchronous and synchronous APIs
+- Support for parallel execution
+
 ## Installation
 
 You can install LogProb Ranker using pip:
 
 ```bash
-# Basic installation
+# Standard installation (includes LiteLLM for multi-provider support)
 pip install logprob-ranker
-
-# With OpenAI support
-pip install "logprob-ranker[openai]"
-
-# With both OpenAI and Anthropic support
-pip install "logprob-ranker[openai,anthropic]"
 ```
 
 ## Usage
@@ -38,25 +41,36 @@ The simplest way to use LogProb Ranker is via the command line:
 # Set your API key as an environment variable
 export OPENAI_API_KEY="your-key-here"
 
-# Basic usage
+# Basic usage with OpenAI (default provider)
 logprob-ranker rank "Suggest a unique product idea for eco-conscious pet owners" --variants 3
 
 # With custom criteria
 logprob-ranker rank "Write marketing copy for a new AI product" --template criteria.json --output results.json
+
+# Using different providers
+export ANTHROPIC_API_KEY="your-anthropic-key"
+logprob-ranker rank "Explain quantum computing" --provider anthropic
+
+# Specify a specific model
+logprob-ranker rank "Describe the benefits of solar energy" --model gpt-4
+
+# Using Azure OpenAI
+export AZURE_API_KEY="your-azure-key"
+logprob-ranker rank "Compare EVs to gas cars" --provider azure --model azure/gpt-4-deployment
 ```
 
 ### Python API
 
-For more control, use the Python API:
+For more control, use the Python API with LiteLLM adapter support:
 
 ```python
 import asyncio
-from openai import AsyncOpenAI
-from logprob_ranker import LogProbRanker, LogProbConfig, RankedOutput
+import os
+from logprob_ranker import LiteLLMAdapter, LogProbConfig, RankedOutput
 
 async def main():
-    # Initialize OpenAI client
-    client = AsyncOpenAI(api_key="your-key-here")
+    # Get API key from environment
+    api_key = os.environ.get("OPENAI_API_KEY")
     
     # Create a configuration
     config = LogProbConfig(
@@ -70,9 +84,10 @@ async def main():
 }"""
     )
     
-    # Initialize ranker
-    ranker = LogProbRanker(
-        llm_client=client,
+    # Initialize ranker with LiteLLM adapter
+    ranker = LiteLLMAdapter(
+        model="gpt-3.5-turbo",  # Can be any model supported by LiteLLM
+        api_key=api_key,
         config=config
     )
     
@@ -94,12 +109,33 @@ if __name__ == "__main__":
 For a synchronous API:
 
 ```python
-from logprob_ranker import LogProbRanker, LogProbConfig
-from openai import OpenAI
+from logprob_ranker import LiteLLMAdapter, LogProbConfig
+import os
 
-client = OpenAI(api_key="your-key-here")
-ranker = LogProbRanker(llm_client=client)
+# Get API key from environment
+api_key = os.environ.get("OPENAI_API_KEY")
+
+# Create ranker
+ranker = LiteLLMAdapter(model="gpt-3.5-turbo", api_key=api_key)
+
+# Get ranked outputs
 ranked_outputs = ranker.rank_outputs_sync("Your prompt here")
+```
+
+You can use other providers just by changing the model:
+
+```python
+# Anthropic
+ranker = LiteLLMAdapter(
+    model="claude-2", 
+    api_key=os.environ.get("ANTHROPIC_API_KEY")
+)
+
+# Azure OpenAI
+ranker = LiteLLMAdapter(
+    model="azure/deployment-name", 
+    api_key=os.environ.get("AZURE_API_KEY")
+)
 ```
 
 ## Criteria Templates
@@ -124,6 +160,22 @@ You can customize:
 - Number of variants to generate
 - Temperature and other LLM settings
 - Parallel processing (thread count)
+
+## Supported LLM Providers
+
+LogProb Ranker uses LiteLLM to support various LLM providers:
+
+| Provider     | CLI Option    | Model Format Example    | Required Environment Variable |
+|--------------|---------------|-------------------------|------------------------------|
+| OpenAI       | `--provider openai` | `gpt-3.5-turbo`, `gpt-4` | `OPENAI_API_KEY` |
+| Anthropic    | `--provider anthropic` | `claude-2`, `claude-instant-1` | `ANTHROPIC_API_KEY` |
+| Azure OpenAI | `--provider azure` | `azure/deployment-name` | `AZURE_API_KEY` |
+| Cohere       | `--provider cohere` | `command`, `command-light` | `COHERE_API_KEY` |
+| HuggingFace  | `--provider huggingface` | `huggingface/mistralai/Mistral-7B-Instruct-v0.1` | `HUGGINGFACE_API_KEY` |
+| Palm (Google)| `--provider palm` | `palm/chat-bison` | `PALM_API_KEY` |
+| VertexAI     | N/A (Python API only) | `vertex_ai/chat-bison` | Configured via Google Cloud |
+
+For a complete list of supported models and providers, please refer to the [LiteLLM documentation](https://github.com/BerriAI/litellm).
 
 ## Contributing
 
