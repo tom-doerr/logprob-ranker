@@ -43,7 +43,6 @@ class TestOpenRouterE2E(unittest.TestCase):
         # Create a minimal config for testing
         self.config = LogProbConfig(
             num_variants=2,  # Generate only 2 variants to save costs
-            num_top_results=1,
             max_tokens=50,  # Keep responses short
             temperature=0.7,
         )

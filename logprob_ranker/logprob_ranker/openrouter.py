@@ -6,6 +6,7 @@ enabling access to various AI models through a single API.
 """
 
 import os
+import asyncio
 from typing import Optional, Dict, Any, List, Callable
 import litellm
 
@@ -44,7 +45,7 @@ class OpenRouterAdapter(LogProbRanker):
             **kwargs: Additional parameters to pass to the API call
         """
         super().__init__(None, config, on_output_callback)
-        self.model = model
+        self.model = get_full_model_name(model)  # Ensure we use the full model name
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
         self.kwargs = kwargs
         
@@ -79,7 +80,93 @@ class OpenRouterAdapter(LogProbRanker):
             **self.kwargs
         )
         
-        return response
+        # Return in standardized format
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": response.choices[0].message.role,
+                        "content": response.choices[0].message.content
+                    }
+                }
+            ]
+        }
+        
+    async def arank(self, prompt: str, criteria: Optional[str] = None) -> RankedOutput:
+        """
+        Generate and rank outputs for the prompt asynchronously.
+        
+        Args:
+            prompt: The prompt to generate content from
+            criteria: Optional criteria for evaluation (overrides the template if provided)
+            
+        Returns:
+            The best RankedOutput based on logprob scores
+        """
+        # If criteria is provided, create a temporary template
+        original_template = None
+        if criteria:
+            original_template = self.config.template
+            # Extract attributes from criteria and create a template
+            attributes = []
+            for line in criteria.split('\n'):
+                line = line.strip()
+                if line and line[0].isdigit() and '.' in line:
+                    # Extract attribute name from numbered list items
+                    parts = line.split('.', 1)
+                    if len(parts) > 1:
+                        attr_text = parts[1].strip()
+                        # Convert the attribute text to a valid JSON key
+                        attr_name = attr_text.split()[0].lower().replace('-', '_')
+                        attributes.append(attr_name)
+            
+            # Create a template with the extracted attributes
+            if attributes:
+                template_parts = []
+                for attr in attributes:
+                    template_parts.append(f'  "{attr}": LOGPROB_TRUE')
+                
+                self.config.template = "{\n" + ",\n".join(template_parts) + "\n}"
+                
+                # Also update the evaluation prompt to include the criteria
+                self.config.evaluation_prompt = f"""You are an evaluator. 
+Evaluate the following text based on these criteria:
+
+{criteria}
+
+Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."""
+        
+        try:
+            # Generate and rank outputs
+            results = await self.rank_outputs(prompt)
+            
+            # Return the best result
+            if results:
+                return results[0]  # First result is the highest ranked
+            else:
+                # Create a default output if no results
+                return RankedOutput(
+                    output="No valid outputs were generated.",
+                    logprob=0.0,
+                    index=-1
+                )
+        finally:
+            # Restore original template if we modified it
+            if original_template:
+                self.config.template = original_template
+    
+    def rank(self, prompt: str, criteria: Optional[str] = None) -> RankedOutput:
+        """
+        Synchronous version of arank.
+        
+        Args:
+            prompt: The prompt to generate content from
+            criteria: Optional criteria for evaluation (overrides the template if provided)
+            
+        Returns:
+            The best RankedOutput based on logprob scores
+        """
+        return asyncio.run(self.arank(prompt, criteria))
 
 
 # Add supported models for easy reference

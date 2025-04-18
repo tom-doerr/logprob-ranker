@@ -47,7 +47,6 @@ async def main():
     # Create configuration
     config = LogProbConfig(
         num_variants=3,      # Generate 3 different outputs
-        num_top_results=1,   # Return only the best one
         temperature=0.7,     # Moderate creativity
         max_tokens=150,      # Keep responses concise
     )

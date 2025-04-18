@@ -24,6 +24,7 @@ class AttributeScore:
     """
     name: str
     score: float
+    explanation: str = ""  # Optional explanation for the score
 
 
 @dataclass
@@ -36,6 +37,19 @@ class RankedOutput:
     index: int
     attribute_scores: Optional[List[AttributeScore]] = None
     raw_evaluation: Optional[str] = None
+    
+    @property
+    def total_score(self) -> float:
+        """
+        Calculate the total score from attribute scores.
+        
+        If no attribute scores are available, returns the logprob score.
+        """
+        if not self.attribute_scores:
+            return self.logprob
+        
+        # Sum all attribute scores
+        return sum(attr.score for attr in self.attribute_scores)
 
 
 @dataclass
@@ -147,7 +161,9 @@ class LogProbRanker:
             for attr in self.attributes:
                 # Convert boolean to score (true = 1.0, false = 0.0)
                 score = 1.0 if evaluation_json.get(attr, False) else 0.0
-                attribute_scores.append(AttributeScore(name=attr, score=score))
+                # Add an explanation based on whether criterion was met
+                explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
+                attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
             
             # Calculate overall logprob score
             logprob = calculate_logprob_score(attribute_scores)
