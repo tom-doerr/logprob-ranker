@@ -27,10 +27,9 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "aiohttp>=3.8.0",
+        "litellm>=1.0.0",
     ],
     extras_require={
-        "openai": ["openai>=1.0.0"],
-        "anthropic": ["anthropic>=0.5.0"],
         "dev": [
             "pytest>=7.0.0",
             "black>=23.0.0",

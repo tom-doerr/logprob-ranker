@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable, Union
 from concurrent.futures import ThreadPoolExecutor
+import litellm
 from .utils import (
     parse_evaluation_json,
     extract_template_attributes,

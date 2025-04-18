@@ -25,11 +25,10 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "aiohttp>=3.8.0",
+    "litellm>=1.0.0",
 ]
 
 [project.optional-dependencies]
-openai = ["openai>=1.0.0"]
-anthropic = ["anthropic>=0.5.0"]
 dev = [
     "pytest>=7.0.0",
     "black>=23.0.0",
