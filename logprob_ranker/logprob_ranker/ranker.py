@@ -154,11 +154,23 @@ class LogProbRanker:
             
             # Extract evaluation
             evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-            evaluation_json = parse_evaluation_json(evaluation_text)
+            
+            # Debug: print raw evaluation response
+            print(f"\nDEBUG: Raw evaluation text [{index}]:\n{evaluation_text}")
+            
+            try:
+                evaluation_json = parse_evaluation_json(evaluation_text)
+                print(f"DEBUG: Parsed JSON [{index}]: {evaluation_json}")
+            except Exception as e:
+                print(f"DEBUG: Error parsing evaluation JSON [{index}]: {str(e)}")
+                evaluation_json = {}
             
             # Calculate scores
             attribute_scores = []
             for attr in self.attributes:
+                # Debug: print attribute check
+                print(f"DEBUG: Checking attribute [{attr}] in JSON: {attr in evaluation_json}")
+                
                 # Convert boolean to score (true = 1.0, false = 0.0)
                 score = 1.0 if evaluation_json.get(attr, False) else 0.0
                 # Add an explanation based on whether criterion was met

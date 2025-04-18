@@ -124,9 +124,39 @@ class OpenRouterAdapter(LogProbRanker):
                     parts = line.split('.', 1)
                     if len(parts) > 1:
                         attr_text = parts[1].strip()
-                        # Convert the attribute text to a valid JSON key
-                        attr_name = attr_text.split()[0].lower().replace('-', '_')
-                        attributes.append(attr_name)
+                        # Convert the key concepts to a valid JSON key
+                        # Take the first few words to capture the essence of the criteria
+                        words = attr_text.split()
+                        # Extract a meaningful attribute name (typically the first 1-3 words)
+                        if len(words) > 0:
+                            # Different strategies for attribute name extraction
+                            if 'language' in attr_text.lower():
+                                attr_name = 'language'
+                            elif 'clarity' in attr_text.lower():
+                                attr_name = 'clarity'
+                            elif 'example' in attr_text.lower() or 'analogies' in attr_text.lower():
+                                attr_name = 'examples'
+                            elif 'structure' in attr_text.lower():
+                                attr_name = 'structure'
+                            elif 'creativity' in attr_text.lower() or 'creative' in attr_text.lower():
+                                attr_name = 'creativity'
+                            elif 'relevant' in attr_text.lower() or 'relevance' in attr_text.lower():
+                                attr_name = 'relevance'
+                            elif 'technical' in attr_text.lower() or 'accuracy' in attr_text.lower():
+                                attr_name = 'accuracy'
+                            elif 'emotional' in attr_text.lower() or 'impact' in attr_text.lower():
+                                attr_name = 'impact'
+                            elif 'thorough' in attr_text.lower():
+                                attr_name = 'thoroughness'
+                            elif 'engaging' in attr_text.lower() or 'fun' in attr_text.lower():
+                                attr_name = 'engagement'
+                            elif 'imagery' in attr_text.lower():
+                                attr_name = 'imagery'
+                            else:
+                                # Default: use the first word as the attribute name
+                                attr_name = words[0].lower().replace('-', '_')
+                            
+                            attributes.append(attr_name)
             
             # Create a template with the extracted attributes
             if attributes:
@@ -136,13 +166,33 @@ class OpenRouterAdapter(LogProbRanker):
                 
                 self.config.template = "{\n" + ",\n".join(template_parts) + "\n}"
                 
+                # Create expected JSON format to guide the model
+                expected_json = "{\n"
+                for attr in attributes:
+                    expected_json += f'  "{attr}": true,\n'
+                # Remove the trailing comma and close the JSON
+                expected_json = expected_json.rstrip(',\n') + "\n}"
+                
                 # Also update the evaluation prompt to include the criteria
-                self.config.evaluation_prompt = f"""You are an evaluator. 
-Evaluate the following text based on these criteria:
+                self.config.evaluation_prompt = f"""You are an evaluator who evaluates text based on specific criteria.
 
+I will provide you with a text and criteria for evaluation. Your task is to evaluate how well the text meets each criterion.
+
+EVALUATION CRITERIA:
 {criteria}
 
-Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."""
+For each criterion, evaluate if the text meets it. Return ONLY a JSON object with your evaluation, where keys are the criteria and values are boolean (true/false).
+
+You MUST use EXACTLY these keys in your JSON response:
+{expected_json}
+
+Replace the values (all currently set to true) with your actual evaluation (true or false).
+
+IMPORTANT: 
+1. Return ONLY the JSON object, nothing else.
+2. Use EXACTLY the JSON keys shown above.
+3. Use only true or false as values (not strings "true" or "false").
+4. Be fair and objective in your evaluation."""
         
         try:
             # Generate and rank outputs

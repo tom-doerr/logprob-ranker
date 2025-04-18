@@ -42,29 +42,63 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
     Returns:
         A dictionary of the parsed JSON
     """
-    try:
-        # First try to parse directly
-        return json.loads(evaluation_text)
-    except json.JSONDecodeError:
+    print(f"DEBUG: Attempting to parse evaluation JSON: {evaluation_text}")
+    
+    # Clean input - remove backticks, codeblocks, and other common markdown formatting
+    cleaned_text = evaluation_text
+    
+    # Remove markdown code blocks
+    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
+    code_block_match = re.search(code_block_pattern, cleaned_text)
+    if code_block_match:
+        cleaned_text = code_block_match.group(1)
+        print(f"DEBUG: Extracted from code block: {cleaned_text}")
+    
+    # Remove any leading/trailing content that's not part of the JSON
+    json_block_pattern = r'\s*(\{[\s\S]*\})\s*'
+    json_block_match = re.search(json_block_pattern, cleaned_text)
+    if json_block_match:
+        cleaned_text = json_block_match.group(1)
+        print(f"DEBUG: Extracted JSON block: {cleaned_text}")
+    
+    # Replace various boolean representations
+    cleaned_text = cleaned_text.replace('True', 'true').replace('False', 'false')
+    cleaned_text = cleaned_text.replace('"true"', 'true').replace('"false"', 'false')
+    cleaned_text = cleaned_text.replace("'true'", 'true').replace("'false'", 'false')
+    
+    # Attempt multiple parsing strategies
+    parsing_methods = [
+        # Direct parsing
+        lambda t: json.loads(t),
+        
+        # Try with regex extraction of JSON object
+        lambda t: json.loads(re.search(r'\{[^{]*\}', t).group(0)) if re.search(r'\{[^{]*\}', t) else None,
+        
+        # Try fixing common JSON syntax errors
+        lambda t: json.loads(t.replace("'", '"')
+                             .replace(',\n}', '\n}')
+                             .replace(',}', '}')
+                             .replace('},]', '}]')),
+        
+        # More aggressive regex
+        lambda t: json.loads(re.search(r'\{[\s\S]*\}', t).group(0)) if re.search(r'\{[\s\S]*\}', t) else None
+    ]
+    
+    # Try each parsing method
+    for i, parse_method in enumerate(parsing_methods):
         try:
-            # Try to extract JSON object from text using regex
-            json_pattern = r'\{[^{]*\}'
-            match = re.search(json_pattern, evaluation_text)
-            
-            if match:
-                json_str = match.group(0)
-                
-                # Clean up Python booleans
-                json_str = json_str.replace('True', 'true').replace('False', 'false')
-                
-                # Parse the extracted JSON
-                return json.loads(json_str)
-            else:
-                # No valid JSON found
-                return {}
-        except Exception:
-            # Return empty dict if all parsing attempts fail
-            return {}
+            print(f"DEBUG: Trying parsing method {i+1}")
+            result = parse_method(cleaned_text)
+            if result:
+                print(f"DEBUG: Successfully parsed with method {i+1}: {result}")
+                return result
+        except Exception as e:
+            print(f"DEBUG: Parsing method {i+1} failed: {str(e)}")
+            continue
+    
+    # Final fallback: construct a mock result if all else fails
+    print("DEBUG: All parsing methods failed, returning empty dict")
+    return {}
 
 
 def extract_template_attributes(template: str) -> List[str]:
