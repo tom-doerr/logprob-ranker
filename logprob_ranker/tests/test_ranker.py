@@ -129,6 +129,14 @@ class TestLogProbRanker(unittest.TestCase):
             # Check results
             self.assertEqual(len(results), 2)
             self.assertEqual(results[0].output, "Test 1")
+    
+    def test_generate_and_evaluate_output(self):
+        """Run the async test for generate_and_evaluate_output."""
+        run_async_test(self.async_test_generate_and_evaluate_output)
+    
+    def test_rank_outputs(self):
+        """Run the async test for rank_outputs."""
+        run_async_test(self.async_test_rank_outputs)
 
 # Helper to run async tests
 def run_async_test(test_case):
