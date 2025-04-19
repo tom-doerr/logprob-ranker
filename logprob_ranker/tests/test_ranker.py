@@ -127,25 +127,7 @@ class TestLogProbRanker(unittest.TestCase):
             self.assertEqual(results[0].index, 1)  # Higher index had higher score
             self.assertEqual(results[1].index, 0)
     
-    async def async_test_arank(self):
-        """Test the arank method."""
-        # Setup mock for rank_outputs to return a list of outputs
-        mock_outputs = [
-            RankedOutput(output="Output 1", logprob=0.8, index=0),
-            RankedOutput(output="Output 2", logprob=0.6, index=1)
-        ]
-        
-        # Patch the rank_outputs method
-        with patch.object(self.ranker, 'rank_outputs', return_value=mock_outputs):
-            # Call the arank method
-            result = await self.ranker.arank("Test prompt")
-            
-            # Check the result is the first (highest-ranked) output
-            self.assertEqual(result, mock_outputs[0])
-    
-    def test_arank(self):
-        """Run the async test for arank."""
-        run_async_test(self.async_test_arank)
+    # Note: arank method is only in the OpenRouter adapter, not in the base LogProbRanker class
     
     def test_rank_outputs_sync(self):
         """Test the synchronous wrapper for rank_outputs."""
