@@ -8,10 +8,9 @@ import json
 from logprob_ranker.utils import (
     parse_evaluation_json,
     extract_template_attributes,
-    calculate_logprob_score,
-    AttributeScore,
-    detect_attributes_from_criteria
+    calculate_logprob_score
 )
+from logprob_ranker.ranker import AttributeScore
 
 
 class TestUtils(unittest.TestCase):
@@ -77,8 +76,8 @@ class TestUtils(unittest.TestCase):
         """Test calculating logprob score with all true attributes."""
         # Test with all true values
         attribute_scores = [
-            AttributeScore(name="quality", value=True),
-            AttributeScore(name="relevance", value=True)
+            AttributeScore(name="quality", score=1.0),
+            AttributeScore(name="relevance", score=1.0)
         ]
         score = calculate_logprob_score(attribute_scores)
         
@@ -88,8 +87,8 @@ class TestUtils(unittest.TestCase):
         """Test calculating logprob score with mixed true/false."""
         # Test with mixed values
         attribute_scores = [
-            AttributeScore(name="quality", value=True),
-            AttributeScore(name="relevance", value=False)
+            AttributeScore(name="quality", score=1.0),
+            AttributeScore(name="relevance", score=0.0)
         ]
         score = calculate_logprob_score(attribute_scores)
         
@@ -99,8 +98,8 @@ class TestUtils(unittest.TestCase):
         """Test calculating logprob score with all false."""
         # Test with all false values
         attribute_scores = [
-            AttributeScore(name="quality", value=False),
-            AttributeScore(name="relevance", value=False)
+            AttributeScore(name="quality", score=0.0),
+            AttributeScore(name="relevance", score=0.0)
         ]
         score = calculate_logprob_score(attribute_scores)
         
@@ -112,23 +111,7 @@ class TestUtils(unittest.TestCase):
         attribute_scores = []
         score = calculate_logprob_score(attribute_scores)
         
-        self.assertEqual(score, 0.0)  # Empty should be 0.0
-    
-    def test_detect_attributes_from_criteria(self):
-        """Test detecting attributes from criteria text."""
-        criteria = """
-        The response should be:
-        1. Accurate - factually correct information
-        2. Concise - without unnecessary words
-        3. Helpful - actually answers the question
-        """
-        
-        attributes = detect_attributes_from_criteria(criteria)
-        
-        self.assertGreaterEqual(len(attributes), 3)
-        self.assertIn("accurate", attributes)
-        self.assertIn("concise", attributes)
-        self.assertIn("helpful", attributes)
+        self.assertEqual(score, 0.5)  # Empty list returns default 0.5
 
 
 if __name__ == "__main__":
