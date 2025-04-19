@@ -64,7 +64,7 @@ class TestOpenRouterAdapter(unittest.TestCase):
         self.mock_litellm.acompletion.assert_called_once()
         call_args = self.mock_litellm.acompletion.call_args
         
-        self.assertEqual(call_args[1]["model"], "openai/gpt-3.5-turbo")
+        self.assertEqual(call_args[1]["model"], "openrouter/gpt-3.5-turbo")
         self.assertEqual(call_args[1]["messages"], messages)
         self.assertEqual(call_args[1]["temperature"], 0.7)
         self.assertEqual(call_args[1]["max_tokens"], 100)
