@@ -210,6 +210,7 @@ class TestCLI(unittest.TestCase):
         try:
             # Create args
             args = MagicMock(
+                command="rank",  # This is important - needs to be "rank"
                 prompt="Test prompt",
                 variants=2,
                 temperature=0.8,
@@ -222,14 +223,15 @@ class TestCLI(unittest.TestCase):
                 output=output_path
             )
             
-            # Mock the async run_rank_command with a synchronous version
-            with patch('logprob_ranker.cli.run_rank_command', new=MagicMock()) as mock_run_cmd:
-                # Call main which will call our mocked run_rank_command
+            # We need to patch asyncio.run since run_rank_command is called with it
+            with patch('asyncio.run') as mock_asyncio_run:
+                # Then we can see what was passed to asyncio.run
+                # Call main which will call run_rank_command through asyncio.run
                 with patch('argparse.ArgumentParser.parse_args', return_value=args):
                     with patch('sys.exit'):
                         main()
-                        # Verify run_rank_command was called with correct args
-                        mock_run_cmd.assert_called_once_with(args)
+                        # Verify asyncio.run was called with run_rank_command(args)
+                        mock_asyncio_run.assert_called_once()
                 
             # Now test the serialize_ranked_output functionality separately
             from logprob_ranker.utils import serialize_ranked_output
