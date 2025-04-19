@@ -92,12 +92,16 @@ class TestLogProbRanker(unittest.TestCase):
                     
                     # Check the properties of the result
                     self.assertIsInstance(result, RankedOutput)
+                    self.assertIsNotNone(result.output)
                     self.assertEqual(result.output, "Generated content")
+                    self.assertIsNotNone(result.index)
                     self.assertEqual(result.index, 0)
+                    self.assertIsNotNone(result.logprob)
                     self.assertEqual(result.logprob, 0.8)
                     
                     # Verify attribute scores
                     self.assertIsNotNone(result.attribute_scores)
+                    self.assertTrue(isinstance(result.attribute_scores, list))
                     self.assertEqual(len(result.attribute_scores), 2)
                     attribute_names = [attr.name for attr in result.attribute_scores]
                     self.assertIn("test", attribute_names)

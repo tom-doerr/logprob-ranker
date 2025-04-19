@@ -64,7 +64,7 @@ class TestOpenRouterAdapter(unittest.TestCase):
         self.mock_litellm.acompletion.assert_called_once()
         call_args = self.mock_litellm.acompletion.call_args
         
-        self.assertEqual(call_args[1]["model"], "openrouter/gpt-3.5-turbo")
+        self.assertEqual(call_args[1]["model"], "openrouter/openai/gpt-3.5-turbo")
         self.assertEqual(call_args[1]["messages"], messages)
         self.assertEqual(call_args[1]["temperature"], 0.7)
         self.assertEqual(call_args[1]["max_tokens"], 100)
@@ -81,32 +81,45 @@ class TestOpenRouterAdapter(unittest.TestCase):
             RankedOutput(output="Output 2", logprob=0.7, index=1)
         ]
         
-        with patch.object(self.adapter, 'rank_outputs', return_value=mock_results):
-            # Call the arank method
-            result = await self.adapter.arank("Test prompt")
-            
-            # Verify the result is the first (highest ranked) output
-            self.assertEqual(result, mock_results[0])
-            
-            # Test with custom criteria
-            with patch.object(self.adapter, 'rank_outputs', return_value=mock_results):
-                result = await self.adapter.arank("Test prompt", criteria="Test criteria")
-                self.assertEqual(result, mock_results[0])
+        # Create an AsyncMock for the rank_outputs method
+        self.adapter.rank_outputs = AsyncMock(return_value=mock_results)
+        
+        # Call the arank method
+        result = await self.adapter.arank("Test prompt")
+        
+        # Verify the result is the first (highest ranked) output
+        self.assertEqual(result, mock_results[0])
+        
+        # Test with custom criteria
+        self.adapter.rank_outputs.reset_mock()  # Reset the mock for clean test
+        self.adapter.rank_outputs = AsyncMock(return_value=mock_results)
+        
+        result = await self.adapter.arank("Test prompt", criteria="Test criteria")
+        self.assertEqual(result, mock_results[0])
     
     def test_rank(self):
         """Test the synchronous rank method."""
-        # Mock the asyncio.run function
+        # Mock the asyncio.run function and arank method
         mock_result = RankedOutput(output="Test output", logprob=0.8, index=0)
         
-        with patch('asyncio.run', return_value=mock_result) as mock_run:
-            # Call the rank method
-            result = self.adapter.rank("Test prompt")
-            
-            # Verify asyncio.run was called with arank
-            mock_run.assert_called_once()
-            
-            # Verify the result
-            self.assertEqual(result, mock_result)
+        # Create a mock arank coroutine function
+        mock_coro = MagicMock()
+        mock_coro.__await__ = lambda: iter([None])  # Make it awaitable
+        
+        # Mock the arank method to return our mock coroutine
+        with patch.object(self.adapter, 'arank', return_value=mock_coro) as mock_arank:
+            with patch('asyncio.run', return_value=mock_result) as mock_run:
+                # Call the rank method
+                result = self.adapter.rank("Test prompt")
+                
+                # Verify asyncio.run was called
+                mock_run.assert_called_once()
+                
+                # Verify arank was called with correct parameters
+                mock_arank.assert_called_once_with("Test prompt", None)
+                
+                # Verify the result
+                self.assertEqual(result, mock_result)
     
     def test_create_chat_completion(self):
         """Run the async test for _create_chat_completion."""
