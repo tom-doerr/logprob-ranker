@@ -28,6 +28,10 @@ class TestOpenRouterAdapter(unittest.TestCase):
         self.litellm_patch = patch('logprob_ranker.openrouter.litellm')
         self.mock_litellm = self.litellm_patch.start()
         
+        # Create a mock for os.environ
+        self.env_patch = patch.dict('os.environ', {"OPENROUTER_API_KEY": "env_test_api_key"})
+        self.env_patch.start()
+        
         # Create the OpenRouter adapter
         self.adapter = OpenRouterAdapter(
             model="gpt-3.5-turbo",
@@ -38,6 +42,7 @@ class TestOpenRouterAdapter(unittest.TestCase):
     def tearDown(self):
         """Tear down test fixtures."""
         self.litellm_patch.stop()
+        self.env_patch.stop()
     
     async def async_test_create_chat_completion(self):
         """Test the _create_chat_completion method."""
