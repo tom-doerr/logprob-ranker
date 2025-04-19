@@ -6,7 +6,7 @@ A Python library for ranking LLM outputs using log probability scoring with mult
 
 LogProb Ranker is a library that helps you automatically generate and rank multiple outputs from language models according to specific criteria you define. It uses a smart "self-ranking" algorithm that gets the model to evaluate its own outputs against your criteria, resulting in better quality responses.
 
-![LogProb Ranking Process](https://github.com/yourusername/logprob-ranker/raw/main/docs/images/logprob-ranking.png)
+![LogProb Ranking Process](https://github.com/tom-doerr/logprob-ranker/raw/main/docs/images/logprob-ranking.png)
 
 ### Key Features
 
@@ -84,7 +84,21 @@ Where `my_criteria.json` contains:
 }
 ```
 
+## How it Works
+
+LogProb Ranker generates multiple outputs for your prompt and then evaluates each one against a set of criteria you specify:
+
+1. **Generation**: The system creates multiple output variants from your prompt
+2. **Evaluation**: Each output is evaluated against your criteria template
+3. **Scoring**: Outputs are assigned scores based on how well they match your criteria
+4. **Ranking**: Results are sorted from best to worst based on total score
+5. **Selection**: The top-ranked output is typically chosen as the final result
+
+The evaluation uses a clever technique where the AI model is asked to assess whether each output satisfies your criteria. The likelihood (log probability) of the model answering "yes" becomes the score, resulting in better evaluations than simple self-grading.
+
 ## Supported Providers
+
+### LiteLLM Integration
 
 LogProb Ranker uses [LiteLLM](https://github.com/BerriAI/litellm) to support multiple LLM providers:
 
@@ -93,6 +107,30 @@ LogProb Ranker uses [LiteLLM](https://github.com/BerriAI/litellm) to support mul
 - **Cohere**: models like "command", "command-light" (COHERE_API_KEY)
 - **Google**: models like "gemini-pro" (GOOGLE_API_KEY)
 - And many more providers supported by LiteLLM
+
+### OpenRouter Integration
+
+For even more model options, LogProb Ranker provides an OpenRouter adapter:
+
+```python
+from logprob_ranker import LogProbConfig, OpenRouterAdapter
+
+config = LogProbConfig(
+    num_variants=3,
+    template='{"helpful": LOGPROB_TRUE, "accurate": LOGPROB_TRUE}'
+)
+
+# Use OpenRouter to access models from various providers
+ranker = OpenRouterAdapter(
+    model="openai/gpt-4-turbo",  # Access OpenAI's GPT-4 via OpenRouter
+    config=config
+)
+
+result = ranker.rank("Explain quantum computing in simple terms.")
+print(result.output)
+```
+
+This integration allows you to access many models through a single API key (OPENROUTER_API_KEY).
 
 ## Examples
 
