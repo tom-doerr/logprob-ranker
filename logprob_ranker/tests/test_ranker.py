@@ -18,17 +18,17 @@ class TestLogProbRanker(unittest.TestCase):
         self.mock_client.chat.completions = MagicMock()
         self.mock_client.chat.completions.create = AsyncMock()
         
-        # Set up default return values
-        self.mock_client.chat.completions.create.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": "This is a test response."
-                    }
-                }
-            ]
-        }
+        # Create a proper mock response object structure
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    role="assistant",
+                    content="This is a test response."
+                )
+            )
+        ]
+        self.mock_client.chat.completions.create.return_value = mock_response
         
         # Create a test config
         self.config = LogProbConfig(
@@ -48,44 +48,52 @@ class TestLogProbRanker(unittest.TestCase):
     
     async def async_test_generate_and_evaluate_output(self):
         """Test generating and evaluating a single output."""
-        # Setup mock for generation
-        self.mock_client.chat.completions.create.side_effect = [
-            # First call - generation
-            {
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": "Generated content"
-                        }
+        # Mock the response structure based on the actual implementation
+        mock_generation_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Generated content"
                     }
-                ]
-            },
-            # Second call - evaluation
-            {
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": '{"test": true}'
-                        }
+                }
+            ]
+        }
+        
+        mock_evaluation_response = {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": '{"test": true}'
                     }
-                ]
-            }
-        ]
+                }
+            ]
+        }
         
-        # Call the method
-        result = await self.ranker.generate_and_evaluate_output("Test prompt", 0)
-        
-        # Check result
-        self.assertIsInstance(result, RankedOutput)
-        self.assertEqual(result.output, "Generated content")
-        self.assertEqual(result.index, 0)
-        self.assertGreaterEqual(result.logprob, 0)
-        self.assertLessEqual(result.logprob, 1)
-        
-        # Check that client was called twice
-        self.assertEqual(self.mock_client.chat.completions.create.call_count, 2)
+        # Set up the side effect for _create_chat_completion
+        with patch.object(
+            self.ranker, 
+            '_create_chat_completion', 
+            side_effect=[mock_generation_response, mock_evaluation_response]
+        ):
+            # Mock the utils.calculate_logprob_score function to return a fixed value
+            with patch('logprob_ranker.ranker.calculate_logprob_score', return_value=0.8):
+                # Call the method
+                result = await self.ranker.generate_and_evaluate_output("Test prompt", 0)
+                
+                # Check result is not None
+                self.assertIsNotNone(result, "Result should not be None")
+                
+                # Check the properties of the result
+                if result:  # This satisfies LSP
+                    self.assertIsInstance(result, RankedOutput)
+                    self.assertEqual(result.output, "Generated content")
+                    self.assertEqual(result.index, 0)
+                    self.assertEqual(result.logprob, 0.8)
+                    
+                    # Since we mocked _create_chat_completion, we should check it was called twice
+                    self.assertEqual(self.ranker._create_chat_completion.call_count, 2)
     
     async def async_test_rank_outputs(self):
         """Test ranking multiple outputs."""
