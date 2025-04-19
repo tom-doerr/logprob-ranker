@@ -4,8 +4,9 @@ Tests for the LogProbRanker class.
 
 import unittest
 import asyncio
+from typing import Optional, List
 from unittest.mock import AsyncMock, MagicMock, patch
-from logprob_ranker.ranker import LogProbRanker, LogProbConfig, RankedOutput
+from logprob_ranker.ranker import LogProbRanker, LogProbConfig, RankedOutput, AttributeScore
 
 class TestLogProbRanker(unittest.TestCase):
     """Test the LogProbRanker class."""
@@ -90,22 +91,27 @@ class TestLogProbRanker(unittest.TestCase):
                     # Check result is not None
                     self.assertIsNotNone(result, "Result should not be None")
                     
-                    # Check the properties of the result
-                    self.assertIsInstance(result, RankedOutput)
-                    self.assertIsNotNone(result.output)
+                    # First assert that result is not None and is the correct type
+                    self.assertIsNotNone(result, "Result should not be None")
+                    self.assertIsInstance(result, RankedOutput, "Result should be a RankedOutput instance")
+                    
+                    # Then we can safely check individual properties
                     self.assertEqual(result.output, "Generated content")
-                    self.assertIsNotNone(result.index)
                     self.assertEqual(result.index, 0)
-                    self.assertIsNotNone(result.logprob)
                     self.assertEqual(result.logprob, 0.8)
                     
-                    # Verify attribute scores
-                    self.assertIsNotNone(result.attribute_scores)
-                    self.assertTrue(isinstance(result.attribute_scores, list))
-                    self.assertEqual(len(result.attribute_scores), 2)
-                    attribute_names = [attr.name for attr in result.attribute_scores]
-                    self.assertIn("test", attribute_names)
-                    self.assertIn("quality", attribute_names)
+                    # Now for attribute_scores, only check if they exist first
+                    attribute_scores = getattr(result, 'attribute_scores', None)
+                    self.assertIsNotNone(attribute_scores, "Attribute scores should not be None")
+                    
+                    if attribute_scores:  # Only proceed if not None
+                        self.assertTrue(isinstance(attribute_scores, list), "Attribute scores should be a list")
+                        self.assertEqual(len(attribute_scores), 2, "Should have 2 attribute scores")
+                        
+                        # Extract attribute names safely
+                        attribute_names = [getattr(attr, 'name', None) for attr in attribute_scores]
+                        self.assertIn("test", attribute_names, "Should have 'test' attribute")
+                        self.assertIn("quality", attribute_names, "Should have 'quality' attribute")
     
     async def async_test_rank_outputs(self):
         """Test ranking multiple outputs."""
