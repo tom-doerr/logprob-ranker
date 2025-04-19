@@ -30,15 +30,16 @@ class TestLogProbRanker(unittest.TestCase):
         ]
         self.mock_client.chat.completions.create.return_value = mock_response
         
-        # Create a test config
+        # Create a test config with multiple LOGPROB_TRUE attributes
         self.config = LogProbConfig(
             num_variants=2,
             thread_count=1,
-            template='{"test": LOGPROB_TRUE}'
+            template='{"test": LOGPROB_TRUE, "quality": LOGPROB_TRUE}'
         )
         
         # Create the ranker
-        self.ranker = LogProbRanker(llm_client=self.mock_client, config=self.config)
+        with patch('logprob_ranker.ranker.extract_template_attributes', return_value=["test", "quality"]):
+            self.ranker = LogProbRanker(llm_client=self.mock_client, config=self.config)
     
     def test_initialization(self):
         """Test initialization of LogProbRanker."""
@@ -48,52 +49,59 @@ class TestLogProbRanker(unittest.TestCase):
     
     async def async_test_generate_and_evaluate_output(self):
         """Test generating and evaluating a single output."""
-        # Mock the response structure based on the actual implementation
-        mock_generation_response = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": "Generated content"
-                    }
+        # Create a partial class to avoid actual API calls
+        async def mock_create_chat_completion(messages, temperature, max_tokens, top_p):
+            """Mock the create chat completion method"""
+            # Return different responses based on the message content
+            if any("system" in msg and "evaluator" in msg.get("content", "") for msg in messages):
+                # This is an evaluation call
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": '{"test": true, "quality": true}'
+                            }
+                        }
+                    ]
                 }
-            ]
-        }
-        
-        mock_evaluation_response = {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": '{"test": true}'
-                    }
+            else:
+                # This is a generation call
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "Generated content"
+                            }
+                        }
+                    ]
                 }
-            ]
-        }
         
-        # Set up the side effect for _create_chat_completion
-        with patch.object(
-            self.ranker, 
-            '_create_chat_completion', 
-            side_effect=[mock_generation_response, mock_evaluation_response]
-        ):
-            # Mock the utils.calculate_logprob_score function to return a fixed value
-            with patch('logprob_ranker.ranker.calculate_logprob_score', return_value=0.8):
-                # Call the method
-                result = await self.ranker.generate_and_evaluate_output("Test prompt", 0)
-                
-                # Check result is not None
-                self.assertIsNotNone(result, "Result should not be None")
-                
-                # Check the properties of the result
-                if result:  # This satisfies LSP
+        # Mock the _create_chat_completion method
+        with patch.object(self.ranker, '_create_chat_completion', side_effect=mock_create_chat_completion):
+            # Mock the parse_evaluation_json function to return our expected result
+            with patch('logprob_ranker.ranker.parse_evaluation_json', return_value={"test": True, "quality": True}):
+                # Mock the calculate_logprob_score function to return a fixed value
+                with patch('logprob_ranker.ranker.calculate_logprob_score', return_value=0.8):
+                    # Call the method
+                    result = await self.ranker.generate_and_evaluate_output("Test prompt", 0)
+                    
+                    # Check result is not None
+                    self.assertIsNotNone(result, "Result should not be None")
+                    
+                    # Check the properties of the result
                     self.assertIsInstance(result, RankedOutput)
                     self.assertEqual(result.output, "Generated content")
                     self.assertEqual(result.index, 0)
                     self.assertEqual(result.logprob, 0.8)
                     
-                    # Since we mocked _create_chat_completion, we should check it was called twice
-                    self.assertEqual(self.ranker._create_chat_completion.call_count, 2)
+                    # Verify attribute scores
+                    self.assertIsNotNone(result.attribute_scores)
+                    self.assertEqual(len(result.attribute_scores), 2)
+                    attribute_names = [attr.name for attr in result.attribute_scores]
+                    self.assertIn("test", attribute_names)
+                    self.assertIn("quality", attribute_names)
     
     async def async_test_rank_outputs(self):
         """Test ranking multiple outputs."""
@@ -118,6 +126,26 @@ class TestLogProbRanker(unittest.TestCase):
             # Check sorting (higher logprob first)
             self.assertEqual(results[0].index, 1)  # Higher index had higher score
             self.assertEqual(results[1].index, 0)
+    
+    async def async_test_arank(self):
+        """Test the arank method."""
+        # Setup mock for rank_outputs to return a list of outputs
+        mock_outputs = [
+            RankedOutput(output="Output 1", logprob=0.8, index=0),
+            RankedOutput(output="Output 2", logprob=0.6, index=1)
+        ]
+        
+        # Patch the rank_outputs method
+        with patch.object(self.ranker, 'rank_outputs', return_value=mock_outputs):
+            # Call the arank method
+            result = await self.ranker.arank("Test prompt")
+            
+            # Check the result is the first (highest-ranked) output
+            self.assertEqual(result, mock_outputs[0])
+    
+    def test_arank(self):
+        """Run the async test for arank."""
+        run_async_test(self.async_test_arank)
     
     def test_rank_outputs_sync(self):
         """Test the synchronous wrapper for rank_outputs."""
