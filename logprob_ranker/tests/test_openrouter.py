@@ -4,10 +4,11 @@ Unit tests for OpenRouter adapter.
 
 import unittest
 import asyncio
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from logprob_ranker.ranker import LogProbConfig, RankedOutput
-from logprob_ranker.openrouter import OpenRouterAdapter
+from logprob_ranker.openrouter import OpenRouterAdapter, get_full_model_name, OPENROUTER_MODELS
 
 
 class TestOpenRouterAdapter(unittest.TestCase):
