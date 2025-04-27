@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable, Union
 from concurrent.futures import ThreadPoolExecutor
 import litellm
+from pydantic import ConfigDict
 from .utils import (
     parse_evaluation_json,
     extract_template_attributes,
@@ -76,6 +77,9 @@ class LogProbConfig:
     # Prompts
     system_prompt: str = "You are a creative assistant that provides a single concise response."
     evaluation_prompt: str = "You are an evaluator. Evaluate the following text based on the criteria.\nReturn ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+
+    # Add ConfigDict to satisfy Pydantic V2+ expectations
+    model_config = ConfigDict()
 
 
 class LogProbRanker:
@@ -214,27 +218,12 @@ class LogProbRanker:
         Returns:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
-        tasks = []
+        results = []
         for i in range(self.config.num_variants):
-            tasks.append(self.generate_and_evaluate_output(prompt, i))
-        
-        # Use thread count for parallel execution
-        if self.config.thread_count > 1:
-            # Split tasks into batches based on thread count
-            batched_results = []
-            for i in range(0, len(tasks), self.config.thread_count):
-                batch = tasks[i:i + self.config.thread_count]
-                batch_results = await asyncio.gather(*batch)
-                batched_results.extend(batch_results)
-            
-            results = batched_results
-        else:
-            # Sequential execution
-            results = await asyncio.gather(*tasks)
-        
-        # Filter out None results (failed generations)
-        results = [r for r in results if r is not None]
-        
+            result = await self.generate_and_evaluate_output(prompt, i)
+            if result is not None:
+                results.append(result)
+
         # Sort by logprob score (highest first)
         sorted_results = sort_ranked_outputs(results)
         
@@ -250,7 +239,17 @@ class LogProbRanker:
         Returns:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
-        return asyncio.run(self.rank_outputs(prompt))
+        # Create and manage a new event loop explicitly for this sync call
+        # to avoid conflicts with pytest-asyncio or other running loops.
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(self.rank_outputs(prompt))
+        finally:
+            loop.close()
+            # Reset the event loop policy in case it was changed
+            asyncio.set_event_loop(None) 
+        return result
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
         """
