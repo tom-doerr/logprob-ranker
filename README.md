@@ -6,6 +6,8 @@ A Python library for ranking LLM outputs using log probability scoring with mult
 
 LogProb Ranker is a library that helps you automatically generate and rank multiple outputs from language models according to specific criteria you define. It uses a smart "self-ranking" algorithm that gets the model to evaluate its own outputs against your criteria, resulting in better quality responses.
 
+![LogProb Ranking Process](https://github.com/tom-doerr/logprob-ranker/raw/main/docs/images/logprob-ranking.png)
+
 ### Key Features
 
 - **Multi-Provider Support**: Works with OpenAI, Anthropic, Cohere, Google, and more via LiteLLM
@@ -55,6 +57,31 @@ results = ranker.rank_outputs_sync("Explain quantum computing in simple terms.")
 best = results[0]
 print(f"Score: {best.logprob:.3f}")
 print(best.output)
+```
+
+### 2. Command-Line Interface
+
+```bash
+# Set your API key in the environment
+export OPENAI_API_KEY=your-api-key
+
+# Use the CLI
+logprob-ranker rank \
+  --provider openai \
+  --model gpt-3.5-turbo \
+  --variants 3 \
+  --template-file my_criteria.json \
+  "Explain quantum computing in simple terms."
+```
+
+Where `my_criteria.json` contains:
+
+```json
+{
+  "helpful": LOGPROB_TRUE,
+  "creative": LOGPROB_TRUE,
+  "concise": LOGPROB_TRUE
+}
 ```
 
 ## How it Works
@@ -107,13 +134,21 @@ This integration allows you to access many models through a single API key (OPEN
 
 ## Examples
 
-Check out the examples directory for more detailed examples:
+Check out the [examples](logprob_ranker/examples/) directory for more detailed examples:
 
-- Simple OpenAI Example: Basic usage with OpenAI
-- LiteLLM Example: Using multiple providers with LiteLLM
-- Multi-Provider Example: Comparing outputs across different LLM providers
-- Custom LLM Adapter: Creating a custom adapter for your own LLM API
+- [Simple OpenAI Example](logprob_ranker/examples/simple_openai_example.py): Basic usage with OpenAI
+- [LiteLLM Example](logprob_ranker/examples/litellm_example.py): Using multiple providers with LiteLLM
+- [Multi-Provider Example](logprob_ranker/examples/multi_provider_example.py): Comparing outputs across different LLM providers
+- [Custom LLM Adapter](logprob_ranker/examples/custom_llm_adapter.py): Creating a custom adapter for your own LLM API
+
+## Documentation
+
+For more detailed documentation, see the [docs](logprob_ranker/docs/) directory.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](logprob_ranker/LICENSE) file for details.
+
+## Changelog
+
+See [CHANGELOG.md](logprob_ranker/CHANGELOG.md) for version history and changes.
