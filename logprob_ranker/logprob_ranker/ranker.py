@@ -126,87 +126,75 @@ class LogProbRanker:
                 {"role": "user", "content": prompt}
             ]
             
-            generation_response = await self._create_chat_completion(
-                messages=generation_messages,
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens,
-                top_p=self.config.top_p
-            )
+            try:
+                generation_response = await self._create_chat_completion(
+                    messages=generation_messages,
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens,
+                    top_p=self.config.top_p
+                )
+                
+                generated_text = generation_response["choices"][0]["message"]["content"]
+            except Exception as e:
+                print(f"Error generating output {index}: {str(e)}")
+                raise  # Re-raise the exception to be handled by the caller
             
-            # Extract generated content
-            generated_text = generation_response["choices"][0]["message"]["content"]
-            
-            # Create evaluation prompt
+            # Evaluate the generated text
             evaluation_prompt = format_evaluation_prompt(
-                template=self.config.template,
-                generated_text=generated_text,
-                eval_prompt=self.config.evaluation_prompt
+                self.config.evaluation_prompt,
+                generated_text,
+                self.config.template
             )
             
-            # Evaluate the generated content
             evaluation_messages = [
-                {"role": "system", "content": self.config.evaluation_prompt},
+                {"role": "system", "content": "You are an evaluator."},
                 {"role": "user", "content": evaluation_prompt}
             ]
             
-            evaluation_response = await self._create_chat_completion(
-                messages=evaluation_messages,
-                temperature=0.0,  # Use low temperature for consistent evaluations
-                max_tokens=500,
-                top_p=1.0
-            )
-            
-            # Extract evaluation
-            evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-            
             try:
-                evaluation_json = parse_evaluation_json(evaluation_text)
-            except Exception:
-                evaluation_json = {}
-            
-            # Calculate scores
-            attribute_scores = []
-            
-            # First check if we have attributes in the evaluation JSON that match our template
-            for attr in self.attributes:
-                if attr in evaluation_json:
-                    # Convert boolean to score (true = 1.0, false = 0.0)
-                    score = 1.0 if evaluation_json.get(attr, False) else 0.0
-                    # Add an explanation based on whether criterion was met
-                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
-                    attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
-            
-            # If no matches found with template attributes, use all attributes from the evaluation JSON
-            if not attribute_scores and evaluation_json:
-                for attr, value in evaluation_json.items():
-                    # Convert boolean to score (true = 1.0, false = 0.0)
-                    score = 1.0 if value else 0.0
-                    # Add an explanation based on whether criterion was met
-                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
-                    attribute_scores.append(AttributeScore(name=attr, score=score, explanation=explanation))
-            
-            # Calculate overall logprob score
-            logprob = calculate_logprob_score(attribute_scores)
-            
-            # Create result
-            result = RankedOutput(
-                output=generated_text,
-                logprob=logprob,
-                index=index,
-                attribute_scores=attribute_scores,
-                raw_evaluation=evaluation_text
-            )
-            
-            # Call callback if provided
-            if self.on_output_callback:
-                self.on_output_callback(result)
+                evaluation_response = await self._create_chat_completion(
+                    messages=evaluation_messages,
+                    temperature=0.0,  # Use deterministic evaluation
+                    max_tokens=500,
+                    top_p=1.0
+                )
                 
-            return result
-        
+                evaluation_text = evaluation_response["choices"][0]["message"]["content"]
+            except Exception as e:
+                print(f"Error evaluating output {index}: {str(e)}")
+                raise  # Re-raise the exception to be handled by the caller
+            
+            # Parse evaluation results
+            try:
+                evaluation_data = parse_evaluation_json(evaluation_text)
+                logprob = calculate_logprob_score(evaluation_data, self.attributes)
+                
+                # Create attribute scores
+                attribute_scores = [
+                    AttributeScore(name=attr, score=1.0 if evaluation_data.get(attr, False) else 0.0)
+                    for attr in self.attributes
+                ]
+                
+                # Create ranked output
+                output = RankedOutput(
+                    output=generated_text,
+                    logprob=logprob,
+                    index=index,
+                    attribute_scores=attribute_scores,
+                    raw_evaluation=evaluation_text
+                )
+                
+                if self.on_output_callback:
+                    self.on_output_callback(output)
+                
+                return output
+            except Exception as e:
+                print(f"Error parsing evaluation for output {index}: {str(e)}")
+                raise  # Re-raise the exception to be handled by the caller
+                
         except Exception as e:
-            # Log error and return None to indicate failure
-            print(f"Error generating output {index}: {str(e)}")
-            return None
+            # Re-raise with more context
+            raise RuntimeError(f"Failed to process output {index}: {str(e)}") from e
     
     async def rank_outputs(self, prompt: str) -> List[RankedOutput]:
         """
@@ -218,16 +206,32 @@ class LogProbRanker:
         Returns:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
+        tasks = []
         results = []
-        for i in range(self.config.num_variants):
-            result = await self.generate_and_evaluate_output(prompt, i)
-            if result is not None:
-                results.append(result)
+        errors = []
 
-        # Sort by logprob score (highest first)
-        sorted_results = sort_ranked_outputs(results)
+        # Create tasks for each variant
+        for i in range(self.config.num_variants):
+            task = asyncio.create_task(self.generate_and_evaluate_output(prompt, i))
+            tasks.append(task)
         
-        return sorted_results
+        # Wait for all tasks to complete
+        for task in asyncio.as_completed(tasks):
+            try:
+                result = await task
+                if result is not None:
+                    results.append(result)
+            except Exception as e:
+                errors.append(str(e))
+                print(f"Error in task: {str(e)}")
+                continue
+        
+        # If we have no valid results and encountered errors, raise the first error
+        if not results and errors:
+            raise RuntimeError(f"All tasks failed. First error: {errors[0]}")
+        
+        # Sort and return results
+        return sort_ranked_outputs(results)
     
     def rank_outputs_sync(self, prompt: str) -> List[RankedOutput]:
         """
@@ -239,17 +243,21 @@ class LogProbRanker:
         Returns:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
-        # Create and manage a new event loop explicitly for this sync call
-        # to avoid conflicts with pytest-asyncio or other running loops.
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
+            # Get or create an event loop for this thread
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the async function
             result = loop.run_until_complete(self.rank_outputs(prompt))
-        finally:
-            loop.close()
-            # Reset the event loop policy in case it was changed
-            asyncio.set_event_loop(None) 
-        return result
+            
+            return result
+        except Exception as e:
+            print(f"Error in rank_outputs_sync: {str(e)}")
+            raise
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
         """

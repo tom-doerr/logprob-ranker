@@ -42,142 +42,132 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
     Returns:
         A dictionary of the parsed JSON
     """
-    # Clean input - remove backticks, codeblocks, and other common markdown formatting
-    cleaned_text = evaluation_text
-    
-    # Remove markdown code blocks
-    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
-    code_block_match = re.search(code_block_pattern, cleaned_text)
-    if code_block_match:
-        cleaned_text = code_block_match.group(1)
-    
-    # Remove any leading/trailing content that's not part of the JSON
-    json_block_pattern = r'\s*(\{[\s\S]*\})\s*'
-    json_block_match = re.search(json_block_pattern, cleaned_text)
-    if json_block_match:
-        cleaned_text = json_block_match.group(1)
-    
-    # Replace various boolean representations
-    cleaned_text = cleaned_text.replace('True', 'true').replace('False', 'false')
-    cleaned_text = cleaned_text.replace('"true"', 'true').replace('"false"', 'false')
-    cleaned_text = cleaned_text.replace("'true'", 'true').replace("'false'", 'false')
-    
-    # Attempt multiple parsing strategies
-    parsing_methods = [
-        # Direct parsing
-        lambda t: json.loads(t),
-        
-        # Try with regex extraction of JSON object
-        lambda t: json.loads(re.search(r'\{[^{]*\}', t).group(0)) if re.search(r'\{[^{]*\}', t) else None,
-        
-        # Try fixing common JSON syntax errors
-        lambda t: json.loads(t.replace("'", '"')
-                             .replace(',\n}', '\n}')
-                             .replace(',}', '}')
-                             .replace('},]', '}]')),
-        
-        # More aggressive regex
-        lambda t: json.loads(re.search(r'\{[\s\S]*\}', t).group(0)) if re.search(r'\{[\s\S]*\}', t) else None
-    ]
-    
-    # Try each parsing method
-    for parse_method in parsing_methods:
+    try:
+        # Try to parse as JSON directly first
+        return json.loads(evaluation_text)
+    except json.JSONDecodeError as e:
+        # If that fails, try to extract JSON from the text
         try:
-            result = parse_method(cleaned_text)
-            if result:
-                return result
-        except Exception:
-            continue
-    
-    # Final fallback: return empty dict if all parsing methods fail
-    return {}
+            # Look for text between curly braces
+            match = re.search(r'\{[^}]+\}', evaluation_text)
+            if match:
+                json_str = match.group(0)
+                return json.loads(json_str)
+            else:
+                raise ValueError("No JSON object found in evaluation text")
+        except Exception as nested_e:
+            raise ValueError(f"Failed to parse evaluation JSON: {str(e)}. Nested error: {str(nested_e)}") from e
 
 
 def extract_template_attributes(template: str) -> List[str]:
     """
-    Extract attribute names from a LogProb template.
+    Extract attribute names from the evaluation template.
     
     Args:
-        template: The LogProb template string
+        template: The evaluation template string
         
     Returns:
-        A list of attribute names
+        List of attribute names
+        
+    Raises:
+        ValueError: If no attributes could be extracted from the template
     """
     try:
-        # Replace LOGPROB_TRUE with true to make it valid JSON
-        valid_json = template.replace('LOGPROB_TRUE', 'true')
+        # First try to parse as JSON directly
+        try:
+            template_json = json.loads(template)
+        except json.JSONDecodeError:
+            # Try replacing LOGPROB_TRUE with a valid JSON value
+            valid_json = template.replace('LOGPROB_TRUE', '"LOGPROB_TRUE"')
+            template_json = json.loads(valid_json)
         
-        # Parse the JSON
-        template_json = json.loads(valid_json)
+        # Extract keys that use LOGPROB_TRUE
+        attributes = [key for key, value in template_json.items() 
+                     if isinstance(value, str) and value.strip('"') == "LOGPROB_TRUE"]
         
-        # Extract the keys
-        return list(template_json.keys())
-    except json.JSONDecodeError:
-        # If parsing fails, use regex to extract attributes
-        pattern = r'"([^"]+)":\s*LOGPROB_TRUE'
-        matches = re.findall(pattern, template)
-        return matches
-    except Exception:
-        # Return empty list if all extraction attempts fail
-        return []
+        if not attributes:
+            # Try regex as a fallback
+            pattern = r'"([^"]+)":\s*LOGPROB_TRUE'
+            attributes = re.findall(pattern, template)
+            
+            if not attributes:
+                raise ValueError("No LOGPROB_TRUE attributes found in template")
+        
+        return attributes
+        
+    except Exception as e:
+        raise ValueError(f"Failed to extract attributes from template: {str(e)}") from e
 
 
-def calculate_logprob_score(attribute_scores: List[AttributeScore]) -> float:
+def calculate_logprob_score(evaluation_data: Dict[str, Any], attributes: List[str]) -> float:
     """
-    Calculate the overall logprob score from attribute scores.
+    Calculate the log probability score from evaluation data.
     
     Args:
-        attribute_scores: List of AttributeScore objects
+        evaluation_data: Dictionary containing evaluation results
+        attributes: List of attributes to consider
         
     Returns:
-        The calculated logprob score
-    """
-    if not attribute_scores:
-        return 0.5  # Default score for empty attributes
-    
-    # Calculate the average score
-    total = sum(attr.score for attr in attribute_scores)
-    avg_score = total / len(attribute_scores)
-    
-    return avg_score
-
-
-def sort_ranked_outputs(outputs: List[RankedOutput]) -> List[RankedOutput]:
-    """
-    Sort ranked outputs by logprob score (highest first).
-    
-    Args:
-        outputs: List of RankedOutput objects
+        The calculated log probability score
         
-    Returns:
-        The sorted list
+    Raises:
+        ValueError: If no valid attributes are found in the evaluation data
     """
-    return sorted(outputs, key=lambda x: x.logprob, reverse=True)
+    try:
+        # Count how many criteria were met
+        true_count = sum(1 for attr in attributes if evaluation_data.get(attr, False))
+        
+        if not attributes:
+            raise ValueError("No attributes provided for scoring")
+            
+        # Calculate score as proportion of criteria met
+        score = true_count / len(attributes)
+        
+        return score
+        
+    except Exception as e:
+        raise ValueError(f"Failed to calculate logprob score: {str(e)}") from e
 
 
-def format_evaluation_prompt(template: str, generated_text: str, eval_prompt: Optional[str] = None) -> str:
+def format_evaluation_prompt(eval_prompt: str, generated_text: str, template: str) -> str:
     """
-    Format the evaluation prompt with the template and generated content.
+    Format the evaluation prompt with the generated text and template.
     
     Args:
-        template: The LogProb template string
+        eval_prompt: The base evaluation prompt
         generated_text: The generated text to evaluate
-        eval_prompt: Optional custom evaluation prompt prefix
+        template: The evaluation template with criteria
         
     Returns:
         The formatted evaluation prompt
     """
-    default_prompt = "You are an evaluator. Evaluate the following text based on the criteria.\n"\
-                     "Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+    try:
+        # Ensure we have all required components
+        if not eval_prompt or not generated_text or not template:
+            raise ValueError("Missing required components for evaluation prompt")
+            
+        # Format the prompt with the text to evaluate and the template
+        prompt = f"{eval_prompt}\n\nText to evaluate:\n{generated_text}\n\nCriteria template:\n{template}"
+        return prompt
+        
+    except Exception as e:
+        raise ValueError(f"Failed to format evaluation prompt: {str(e)}") from e
+
+
+def sort_ranked_outputs(outputs: List[RankedOutput]) -> List[RankedOutput]:
+    """
+    Sort outputs by their total score in descending order.
     
-    prompt = eval_prompt or default_prompt
-    
-    return f"{prompt}\n\n"\
-           f"Text to evaluate:\n"\
-           f"```\n{generated_text}\n```\n\n"\
-           f"Evaluation criteria (return as JSON):\n"\
-           f"```\n{template}\n```\n\n"\
-           f"Your evaluation (JSON only):"
+    Args:
+        outputs: List of RankedOutput objects to sort
+        
+    Returns:
+        Sorted list of RankedOutput objects
+    """
+    try:
+        return sorted(outputs, key=lambda x: x.logprob, reverse=True)
+    except Exception as e:
+        raise ValueError(f"Failed to sort outputs: {str(e)}") from e
 
 
 def serialize_ranked_output(ranked_output: Any) -> Dict[str, Any]:
