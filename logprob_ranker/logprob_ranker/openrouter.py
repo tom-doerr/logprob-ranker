@@ -51,7 +51,7 @@ class OpenRouterAdapter(LogProbRanker):
         
         # Configure litellm to use OpenRouter
         # This tells litellm to route all requests through OpenRouter
-        litellm.openrouter_key = self.api_key
+        # litellm.openrouter_key = self.api_key  # Removed global setting
     
     async def _create_chat_completion(self, 
                                     messages: List[Dict[str, Any]], 
@@ -113,9 +113,14 @@ class OpenRouterAdapter(LogProbRanker):
         """
         # If criteria is provided, create a temporary template
         original_template = None
+        original_eval_prompt = None
         if criteria:
             original_template = self.config.template
-            # Extract attributes from criteria and create a template
+            original_eval_prompt = self.config.evaluation_prompt
+            
+            # Extract attributes and criteria text from the criteria string
+            # Logic assumes criteria is a numbered list, e.g.:
+            # 1. Criterion one description
             attributes = []
             for line in criteria.split('\n'):
                 line = line.strip()
@@ -128,29 +133,32 @@ class OpenRouterAdapter(LogProbRanker):
                         # Take the first few words to capture the essence of the criteria
                         words = attr_text.split()
                         # Extract a meaningful attribute name (typically the first 1-3 words)
+                        lower_attr_text = attr_text.lower()
                         if len(words) > 0:
                             # Different strategies for attribute name extraction
-                            if 'language' in attr_text.lower():
+                            if 'language' in lower_attr_text or 'style' in lower_attr_text:
                                 attr_name = 'language'
-                            elif 'clarity' in attr_text.lower():
+                            elif 'clarity' in lower_attr_text:
                                 attr_name = 'clarity'
-                            elif 'example' in attr_text.lower() or 'analogies' in attr_text.lower():
+                            elif 'example' in lower_attr_text or 'analogies' in lower_attr_text:
                                 attr_name = 'examples'
-                            elif 'structure' in attr_text.lower():
+                            elif 'structure' in lower_attr_text:
                                 attr_name = 'structure'
-                            elif 'creativity' in attr_text.lower() or 'creative' in attr_text.lower():
+                            elif 'creativity' in lower_attr_text or 'creative' in lower_attr_text:
                                 attr_name = 'creativity'
-                            elif 'relevant' in attr_text.lower() or 'relevance' in attr_text.lower():
+                            elif 'relevant' in lower_attr_text or 'relevance' in lower_attr_text:
                                 attr_name = 'relevance'
-                            elif 'technical' in attr_text.lower() or 'accuracy' in attr_text.lower():
+                            elif 'technical' in lower_attr_text or 'accuracy' in lower_attr_text:
                                 attr_name = 'accuracy'
-                            elif 'emotional' in attr_text.lower() or 'impact' in attr_text.lower():
+                            elif 'correct' in lower_attr_text or 'correctness' in lower_attr_text:
+                                attr_name = 'correctness'
+                            elif 'emotional' in lower_attr_text or 'impact' in lower_attr_text:
                                 attr_name = 'impact'
-                            elif 'thorough' in attr_text.lower():
+                            elif 'thorough' in lower_attr_text:
                                 attr_name = 'thoroughness'
-                            elif 'engaging' in attr_text.lower() or 'fun' in attr_text.lower():
+                            elif 'engaging' in lower_attr_text or 'fun' in lower_attr_text:
                                 attr_name = 'engagement'
-                            elif 'imagery' in attr_text.lower():
+                            elif 'imagery' in lower_attr_text:
                                 attr_name = 'imagery'
                             else:
                                 # Default: use the first word as the attribute name
@@ -209,9 +217,11 @@ IMPORTANT:
                     index=-1
                 )
         finally:
-            # Restore original template if we modified it
-            if original_template:
+            # Restore original template and prompt if we modified it
+            if original_template is not None:
                 self.config.template = original_template
+            if original_eval_prompt is not None:
+                self.config.evaluation_prompt = original_eval_prompt
     
     def rank(self, prompt: str, criteria: Optional[str] = None) -> RankedOutput:
         """
