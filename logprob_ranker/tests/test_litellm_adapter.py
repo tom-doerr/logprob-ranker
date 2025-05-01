@@ -31,7 +31,10 @@ class TestLiteLLMAdapter(unittest.TestCase):
         self.sample_response.choices = [
             MagicMock(message=MagicMock(role="assistant", content="Test response"))
         ]
-        self.mock_litellm.acompletion.return_value = self.sample_response
+        
+        async def mock_return(*args, **kwargs):
+            return self.sample_response
+        self.mock_litellm.acompletion.side_effect = mock_return
         
         # Create the adapter
         self.adapter = LiteLLMAdapter(
