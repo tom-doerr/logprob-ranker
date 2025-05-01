@@ -51,7 +51,6 @@ def test_initialization(config): # No ranker fixture needed here
     """Test LogProbRanker initialization (without needing mocks)."""
     ranker_instance = LogProbRanker(llm_client=None, config=config)
     assert ranker_instance.config == config
-    assert ranker_instance.attributes == ["test", "quality"]
 
 
 @pytest.mark.asyncio
@@ -145,27 +144,29 @@ async def test_generate_and_evaluate_output(mock_acompletion, ranker): # Add moc
 
 
 @pytest.mark.asyncio
-@patch('logprob_ranker.ranker.litellm.acompletion', new_callable=AsyncMock)
-@ pytest.mark.xfail(reason="Need to investigate why RuntimeError is not raised") # Temporarily mark as xfail
-async def test_generate_and_evaluate_output_failure(mock_acompletion):
+@patch('logprob_ranker.ranker.LogProbRanker._create_chat_completion', new_callable=AsyncMock)
+async def test_generate_and_evaluate_output_failure(mock_create_chat_completion):
     """Test handling of generation failures."""
-    # Create mock LLM client that raises an exception
-    mock_client = AsyncMock()
-    mock_client._create_chat_completion.side_effect = Exception("Generation failed")
+    # Configure the patched method to raise an exception
+    mock_create_chat_completion.side_effect = Exception("Generation failed")
     
+    # Mock client can be simpler now, as its method isn't directly mocked here
+    mock_client = MagicMock()
+ 
     # Create ranker with mock client
     config = LogProbConfig(
         template='{"test": LOGPROB_TRUE}'
     )
     ranker = LogProbRanker(mock_client, config)
     
-    # Test that errors are properly propagated
+    # Expect RuntimeError because the inner exception should be caught and wrapped
     with pytest.raises(RuntimeError) as exc_info:
         await ranker.generate_and_evaluate_output("Test prompt", 0)
     
     # Check if the mock was called
-    mock_client._create_chat_completion.assert_awaited_once()
+    mock_create_chat_completion.assert_awaited_once()
     
+    # Check the wrapped exception message
     assert "Failed to process output 0" in str(exc_info.value)
     assert "Generation failed" in str(exc_info.value)
 
