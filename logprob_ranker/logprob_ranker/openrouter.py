@@ -11,11 +11,11 @@ from typing import Optional, Dict, Any, List, Callable
 import litellm
 import logging
 
-from .ranker import LogProbRanker, LogProbConfig, RankedOutput
+from .ranker import LiteLLMAdapter, LogProbConfig, RankedOutput
 
 logger = logging.getLogger(__name__)
 
-class OpenRouterAdapter(LogProbRanker):
+class OpenRouterAdapter(LiteLLMAdapter):
     """
     Adapter for using OpenRouter with LogProb Ranker.
     
@@ -46,15 +46,17 @@ class OpenRouterAdapter(LogProbRanker):
             on_output_callback: Optional callback function
             **kwargs: Additional parameters to pass to the API call
         """
-        super().__init__(None, config, on_output_callback)
-        self.model = get_full_model_name(model)  # Ensure we use the full model name
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
-        self.kwargs = kwargs
+        super().__init__(
+            model=model, 
+            api_key=api_key,
+            config=config,
+            on_output_callback=on_output_callback,
+            **kwargs
+        )
         
-        # Configure litellm to use OpenRouter
-        # This tells litellm to route all requests through OpenRouter
-        # litellm.openrouter_key = self.api_key  # Removed global setting
-    
+        # Store the original model name (without prefix)
+        self.original_model = model
+        
     def _map_criterion_to_attribute_name(self, criterion_text: str) -> Optional[str]:
         """Maps keywords in criterion text to a standardized attribute name."""
         lower_text = criterion_text.lower()
@@ -101,38 +103,25 @@ class OpenRouterAdapter(LogProbRanker):
             top_p: Top-p sampling parameter
             
         Returns:
-            The raw response from litellm
+            The formatted response dictionary.
         """
-        # Use litellm with the specified model - prepend 'openrouter/' to model name
-        # This tells litellm to use OpenRouter as the provider
-        openrouter_model = f"openrouter/{self.model}"
-        
-        # Set up API key
-        api_key = self.api_key
-        
-        # Use litellm with OpenRouter
-        response = await litellm.acompletion(
+        # Get the full model name with 'openrouter/' prefix
+        openrouter_model = get_full_model_name(self.original_model)
+        logger.debug(f"Using OpenRouter model: {openrouter_model}")
+
+        # Call the inherited helper method from LiteLLMAdapter
+        # Pass the OpenRouter-specific model name and the API key via kwargs
+        # Other kwargs passed during OpenRouterAdapter instantiation are already in self.kwargs
+        return await self._execute_litellm_completion(
             model=openrouter_model,
-            api_key=api_key,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
+            api_key=self.api_key, # Pass api_key explicitly here
             **self.kwargs
         )
-        
-        # Return in standardized format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": response.choices[0].message.role,
-                        "content": response.choices[0].message.content
-                    }
-                }
-            ]
-        }
-        
+
     async def arank(self, prompt: str, criteria: Optional[str] = None) -> RankedOutput:
         """
         Generate and rank outputs for the prompt asynchronously.

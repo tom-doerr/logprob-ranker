@@ -104,45 +104,41 @@ class LogProbRanker:
         self.llm_client = llm_client
         self.config = config or LogProbConfig()
         self.on_output_callback = on_output_callback
-        
-        # Extract attribute names from the template
-        self.attributes = extract_template_attributes(self.config.template)
     
     async def generate_and_evaluate_output(self, prompt: str, index: int) -> Optional[RankedOutput]:
         """
-        Generate a single output and evaluate it according to the criteria template.
+        Generate a single output and evaluate it.
         
         Args:
-            prompt: The prompt to generate content from
-            index: The index of this generation in the batch
+            prompt: The prompt to generate from
+            index: The index of this output for error reporting
             
         Returns:
-            A RankedOutput object or None if generation failed
+            A RankedOutput containing the output and its scores, or None if generation failed
+            
+        Raises:
+            RuntimeError: If generation or evaluation fails
         """
         try:
-            # Generate content
+            # Generate output
             generation_messages = [
                 {"role": "system", "content": self.config.system_prompt},
                 {"role": "user", "content": prompt}
             ]
             
-            try:
-                generation_response = await self._create_chat_completion(
-                    messages=generation_messages,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                    top_p=self.config.top_p
-                )
-                
-                generated_text = generation_response["choices"][0]["message"]["content"]
-            except Exception as e:
-                print(f"Error generating output {index}: {str(e)}")
-                raise  # Re-raise the exception to be handled by the caller
+            generation_response = await self._create_chat_completion(
+                messages=generation_messages,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+                top_p=self.config.top_p
+            )
             
-            # Evaluate the generated text
+            output = generation_response["choices"][0]["message"]["content"]
+            
+            # Generate evaluation
             evaluation_prompt = format_evaluation_prompt(
                 self.config.evaluation_prompt,
-                generated_text,
+                output,
                 self.config.template
             )
             
@@ -151,49 +147,43 @@ class LogProbRanker:
                 {"role": "user", "content": evaluation_prompt}
             ]
             
-            try:
-                evaluation_response = await self._create_chat_completion(
-                    messages=evaluation_messages,
-                    temperature=0.0,  # Use deterministic evaluation
-                    max_tokens=500,
-                    top_p=1.0
-                )
-                
-                evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-            except Exception as e:
-                print(f"Error evaluating output {index}: {str(e)}")
-                raise  # Re-raise the exception to be handled by the caller
+            evaluation_response = await self._create_chat_completion(
+                messages=evaluation_messages,
+                temperature=0.0,  # Use deterministic evaluation
+                max_tokens=500,
+                top_p=1.0
+            )
             
-            # Parse evaluation results
-            try:
-                evaluation_data = parse_evaluation_json(evaluation_text)
-                logprob = calculate_logprob_score(evaluation_data, self.attributes)
-                
-                # Create attribute scores
-                attribute_scores = [
-                    AttributeScore(name=attr, score=1.0 if evaluation_data.get(attr, False) else 0.0)
-                    for attr in self.attributes
-                ]
-                
-                # Create ranked output
-                output = RankedOutput(
-                    output=generated_text,
-                    logprob=logprob,
-                    index=index,
-                    attribute_scores=attribute_scores,
-                    raw_evaluation=evaluation_text
-                )
-                
-                if self.on_output_callback:
-                    self.on_output_callback(output)
-                
-                return output
-            except Exception as e:
-                print(f"Error parsing evaluation for output {index}: {str(e)}")
-                raise  # Re-raise the exception to be handled by the caller
-                
+            evaluation_text = evaluation_response["choices"][0]["message"]["content"]
+            
+            # Parse evaluation
+            evaluation_data = parse_evaluation_json(evaluation_text)
+            
+            # Extract attributes from the potentially overridden template *now*
+            current_attributes = extract_template_attributes(self.config.template)
+            
+            # Calculate scores
+            attribute_scores = []
+            for attr in current_attributes:
+                score = 1.0 if evaluation_data.get(attr, False) else 0.0
+                attribute_scores.append(AttributeScore(name=attr, score=score))
+            
+            logprob = calculate_logprob_score(evaluation_data, current_attributes)
+            
+            ranked_output = RankedOutput(
+                output=output,
+                logprob=logprob,
+                index=index,
+                attribute_scores=attribute_scores,
+                raw_evaluation=evaluation_text
+            )
+            
+            if self.on_output_callback:
+                self.on_output_callback(ranked_output)
+            
+            return ranked_output
+            
         except Exception as e:
-            # Re-raise with more context
             raise RuntimeError(f"Failed to process output {index}: {str(e)}") from e
     
     async def rank_outputs(self, prompt: str) -> List[RankedOutput]:
@@ -344,20 +334,20 @@ class LiteLLMAdapter(LogProbRanker):
                 # Set a generic api_key and let LiteLLM handle it
                 self.kwargs["api_key"] = api_key
     
-    async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
+    async def _execute_litellm_completion(self, model, messages, temperature, max_tokens, top_p, **kwargs):
         """
-        Create a chat completion using LiteLLM.
+        Helper method to execute litellm.acompletion and format response.
         """
         try:
             response = await litellm.acompletion(
-                model=self.model,
+                model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 top_p=top_p,
-                **self.kwargs
+                **kwargs
             )
-            
+
             # Return in standardized format
             return {
                 "choices": [
@@ -370,5 +360,23 @@ class LiteLLMAdapter(LogProbRanker):
                 ]
             }
         except Exception as e:
-            print(f"Error in LiteLLM completion with model {self.model}: {str(e)}")
+            # Include model in the error for easier debugging
+            print(f"Error in LiteLLM completion with model {model}: {str(e)}")
+            # Re-raise the exception to be handled by the caller
             raise
+
+    async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
+        """
+        Create a chat completion using LiteLLM.
+        """
+        # Call the helper method with adapter's model and kwargs
+        return await self._execute_litellm_completion(
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            **self.kwargs
+        )
+
+# == Utility Functions ==
