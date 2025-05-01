@@ -4,11 +4,11 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 
 import asyncio
 import json
-from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional, Callable, Union
-from concurrent.futures import ThreadPoolExecutor
 import litellm
-from pydantic import ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 from .utils import (
     parse_evaluation_json,
     extract_template_attributes,
@@ -18,8 +18,7 @@ from .utils import (
 )
 
 
-@dataclass
-class AttributeScore:
+class AttributeScore(BaseModel):
     """
     Represents an attribute and its associated score from the evaluation.
     """
@@ -28,8 +27,7 @@ class AttributeScore:
     explanation: str = ""  # Optional explanation for the score
 
 
-@dataclass
-class RankedOutput:
+class RankedOutput(BaseModel):
     """
     Represents a generated output with its evaluation scores and metadata.
     """
@@ -38,23 +36,10 @@ class RankedOutput:
     index: int
     attribute_scores: Optional[List[AttributeScore]] = None
     raw_evaluation: Optional[str] = None
-    
-    @property
-    def total_score(self) -> float:
-        """
-        Calculate the total score from attribute scores.
-        
-        If no attribute scores are available, returns the logprob score.
-        """
-        if not self.attribute_scores:
-            return self.logprob
-        
-        # Sum all attribute scores
-        return sum(attr.score for attr in self.attribute_scores)
 
 
-@dataclass
-class LogProbConfig:
+# Configuration class using Pydantic BaseModel for V2 compatibility
+class LogProbConfig(BaseModel):
     """
     Configuration for the LogProb ranker.
     """
@@ -78,8 +63,11 @@ class LogProbConfig:
     system_prompt: str = "You are a creative assistant that provides a single concise response."
     evaluation_prompt: str = "You are an evaluator. Evaluate the following text based on the criteria.\nReturn ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
 
-    # Add ConfigDict to satisfy Pydantic V2+ expectations
-    model_config = ConfigDict()
+    # Pydantic V2+ configuration
+    model_config = ConfigDict(
+        # Example: Allow extra fields if needed, though defaults are usually fine
+        # extra = 'allow'
+    )
 
 
 class LogProbRanker:
