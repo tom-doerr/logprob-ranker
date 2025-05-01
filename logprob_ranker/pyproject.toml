@@ -58,12 +58,23 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
-# Set default loop scope to function to avoid PytestDeprecationWarning
-asyncio_default_fixture_loop_scope = "function"
-# Add warning filter for Pydantic deprecation
-filterwarnings = [
-    "ignore::pydantic.warnings.PydanticDeprecatedSince20"
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
 ]
+pythonpath = ["."]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore:Pydantic V2 style Suggestion.*:UserWarning:litellm.*",
+    "ignore:open_text is deprecated. Use files().*:DeprecationWarning:litellm.utils",
+    "ignore:Use 'content=<...>' to upload raw bytes/text content.*:DeprecationWarning:httpx._models",
+    "ignore:coroutine 'Logging.async_success_handler' was never awaited:RuntimeWarning:asyncio.base_events"
+]
+
+[tool.coverage.run]
+branch = true
 
 [tool.pylint.messages_control]
