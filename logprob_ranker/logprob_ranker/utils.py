@@ -32,19 +32,37 @@ except ImportError:
     pass
 
 
-def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
+def parse_evaluation_json(evaluation_text: str) -> dict:
     """
-    Parse the evaluation text into a clean JSON object.
+    Parse the evaluation response into a JSON object.
     
     Args:
         evaluation_text: The raw evaluation text from the LLM
         
     Returns:
-        A dictionary of the parsed JSON
+        A dictionary containing the evaluation results
+        
+    Raises:
+        ValueError: If the evaluation text cannot be parsed as JSON
     """
     try:
         # Try to parse as JSON directly first
-        return json.loads(evaluation_text)
+        data = json.loads(evaluation_text)
+        
+        # Ensure the parsed data is a dictionary
+        if not isinstance(data, dict):
+            raise ValueError("Evaluation text did not parse into a JSON dictionary")
+        
+        # Convert string booleans to actual booleans
+        for key, value in data.items():
+            if isinstance(value, str):
+                if value.lower() == "true":
+                    data[key] = True
+                elif value.lower() == "false":
+                    data[key] = False
+        
+        return data
+        
     except json.JSONDecodeError as e:
         # If that fails, try to extract JSON from the text
         try:
@@ -52,7 +70,22 @@ def parse_evaluation_json(evaluation_text: str) -> Dict[str, Any]:
             match = re.search(r'\{[^}]+\}', evaluation_text)
             if match:
                 json_str = match.group(0)
-                return json.loads(json_str)
+                # Try parsing again with the extracted JSON
+                data = json.loads(json_str)
+                
+                # Ensure the parsed data is a dictionary
+                if not isinstance(data, dict):
+                    raise ValueError("Evaluation text did not parse into a JSON dictionary")
+                
+                # Convert string booleans to actual booleans
+                for key, value in data.items():
+                    if isinstance(value, str):
+                        if value.lower() == "true":
+                            data[key] = True
+                        elif value.lower() == "false":
+                            data[key] = False
+                
+                return data
             else:
                 raise ValueError("No JSON object found in evaluation text")
         except Exception as nested_e:
@@ -72,31 +105,44 @@ def extract_template_attributes(template: str) -> List[str]:
     Raises:
         ValueError: If no attributes could be extracted from the template
     """
+    template_json = None
+    attributes = []
+
+    # Attempt 1: Parse as JSON directly
     try:
-        # First try to parse as JSON directly
+        template_json = json.loads(template)
+    except json.JSONDecodeError:
+        # Attempt 2: Replace LOGPROB_TRUE and parse again
         try:
-            template_json = json.loads(template)
+            valid_json_str = template.replace('LOGPROB_TRUE', '"LOGPROB_TRUE"')
+            template_json = json.loads(valid_json_str)
         except json.JSONDecodeError:
-            # Try replacing LOGPROB_TRUE with a valid JSON value
-            valid_json = template.replace('LOGPROB_TRUE', '"LOGPROB_TRUE"')
-            template_json = json.loads(valid_json)
-        
-        # Extract keys that use LOGPROB_TRUE
-        attributes = [key for key, value in template_json.items() 
+            # Both JSON parsing attempts failed, will proceed to regex fallback
+            pass
+
+    # If JSON parsing succeeded, extract attributes
+    if template_json is not None and isinstance(template_json, dict):
+        attributes = [key for key, value in template_json.items()
                      if isinstance(value, str) and value.strip('"') == "LOGPROB_TRUE"]
-        
-        if not attributes:
-            # Try regex as a fallback
-            pattern = r'"([^"]+)":\s*LOGPROB_TRUE'
+
+    # If no attributes found via JSON parsing OR parsing failed, try regex
+    if not attributes:
+        try:
+            pattern = r'"([^" ]+)":\s*LOGPROB_TRUE' # Match "key": LOGPROB_TRUE
             attributes = re.findall(pattern, template)
-            
+
             if not attributes:
-                raise ValueError("No LOGPROB_TRUE attributes found in template")
-        
-        return attributes
-        
-    except Exception as e:
-        raise ValueError(f"Failed to extract attributes from template: {str(e)}") from e
+                # Final check: maybe the value itself is just the token
+                if template.strip() == 'LOGPROB_TRUE':
+                    # This case is ambiguous, perhaps raise or handle specificially?
+                    # For now, let's assume it means no attributes defined.
+                    raise ValueError("Template contains only LOGPROB_TRUE token, cannot extract attributes.")
+                else:
+                    raise ValueError("No LOGPROB_TRUE attributes found in template via JSON or regex")
+        except re.error as e:
+            raise ValueError(f"Regex error during template parsing: {e}") from e
+
+    return attributes
 
 
 def calculate_logprob_score(evaluation_data: Dict[str, Any], attributes: List[str]) -> float:
@@ -114,6 +160,11 @@ def calculate_logprob_score(evaluation_data: Dict[str, Any], attributes: List[st
         ValueError: If no valid attributes are found in the evaluation data
     """
     try:
+        # Check for missing keys first
+        for attribute in attributes:
+            if attribute not in evaluation_data:
+                raise ValueError(f"Missing attribute '{attribute}' in evaluation data for score calculation.")
+        
         # Count how many criteria were met
         true_count = sum(1 for attr in attributes if evaluation_data.get(attr, False))
         

@@ -94,8 +94,46 @@ class TestUtils(unittest.TestCase):
             extract_template_attributes(template)
 
     def test_extract_template_attributes_invalid_json(self):
+        # Invalid JSON (missing brace), but regex should find the attribute
         template = '{"key": LOGPROB_TRUE'
-        with self.assertRaises(ValueError):
+        expected = ["key"]
+        self.assertEqual(extract_template_attributes(template), expected)
+
+    def test_extract_template_attributes_regex_fallback(self):
+        # Invalid JSON (single quotes) but should be caught by regex
+        template = "{'attr1': LOGPROB_TRUE, \"attr2\": LOGPROB_TRUE}"
+        expected_strict_regex = ["attr2"]
+        try:
+            self.assertEqual(extract_template_attributes(template), expected_strict_regex)
+        except ValueError:
+            # If it raises ValueError, neither parsing nor regex worked.
+            # This might indicate the regex needs to be more flexible or the initial parsing needs adjustment.
+            self.fail("extract_template_attributes failed unexpectedly on regex fallback case")
+
+    def test_extract_template_attributes_whitespace_variation(self):
+        # Test different whitespace patterns around the colon (for regex)
+        template = '{"attr1"   :LOGPROB_TRUE, "attr2":    LOGPROB_TRUE}'
+        expected = ["attr1", "attr2"]
+        self.assertEqual(extract_template_attributes(template), expected)
+
+    def test_extract_template_attributes_case_insensitive(self):
+        # LOGPROB_TRUE is case-sensitive. 'logprob_true' makes JSON parsing fail,
+        # but the regex fallback should still find the correctly cased 'attr2'.
+        template = '{"attr1": logprob_true, "attr2": LOGPROB_TRUE}'
+        expected = ["attr2"]
+        self.assertEqual(extract_template_attributes(template), expected)
+
+    def test_extract_template_attributes_logprob_as_key_or_substring(self):
+        # Should not extract if LOGPROB_TRUE is a key or part of another string
+        # Corrected input: Use a valid quoted key
+        template = '{"LOGPROB_TRUE_key": "value", "key": "prefix_LOGPROB_TRUE", "attr1": LOGPROB_TRUE}'
+        expected = ["attr1"]
+        self.assertEqual(extract_template_attributes(template), expected)
+
+    def test_extract_template_attributes_invalid_json_no_match(self):
+        # Invalid JSON that also won't match the regex
+        template = '{key: LOGPROB_TRUE}' # Key not quoted
+        with self.assertRaisesRegex(ValueError, "No LOGPROB_TRUE attributes found"):
             extract_template_attributes(template)
 
     def test_calculate_logprob_score_all_true(self):
