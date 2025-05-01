@@ -9,9 +9,11 @@ import os
 import asyncio
 from typing import Optional, Dict, Any, List, Callable
 import litellm
+import logging
 
 from .ranker import LogProbRanker, LogProbConfig, RankedOutput
 
+logger = logging.getLogger(__name__)
 
 class OpenRouterAdapter(LogProbRanker):
     """
@@ -53,6 +55,37 @@ class OpenRouterAdapter(LogProbRanker):
         # This tells litellm to route all requests through OpenRouter
         # litellm.openrouter_key = self.api_key  # Removed global setting
     
+    def _map_criterion_to_attribute_name(self, criterion_text: str) -> Optional[str]:
+        """Maps keywords in criterion text to a standardized attribute name."""
+        lower_text = criterion_text.lower()
+        
+        if 'language' in lower_text or 'style' in lower_text:
+            return 'language'
+        if 'clarity' in lower_text:
+            return 'clarity'
+        if 'example' in lower_text or 'analogies' in lower_text:
+            return 'examples'
+        if 'structure' in lower_text:
+            return 'structure'
+        if 'creativity' in lower_text or 'creative' in lower_text:
+            return 'creativity'
+        if 'relevant' in lower_text or 'relevance' in lower_text:
+            return 'relevance'
+        if 'technical' in lower_text or 'accuracy' in lower_text:
+            return 'accuracy'
+        if 'correct' in lower_text or 'correctness' in lower_text:
+            return 'correctness'
+        if 'emotional' in lower_text or 'impact' in lower_text:
+            return 'impact'
+        if 'thorough' in lower_text:
+            return 'thoroughness'
+        if 'engaging' in lower_text or 'fun' in lower_text:
+            return 'engagement'
+        if 'imagery' in lower_text:
+            return 'imagery'
+            
+        return None # No keyword found
+
     async def _create_chat_completion(self, 
                                     messages: List[Dict[str, Any]], 
                                     temperature: float, 
@@ -132,39 +165,14 @@ class OpenRouterAdapter(LogProbRanker):
                         # Convert the key concepts to a valid JSON key
                         # Take the first few words to capture the essence of the criteria
                         words = attr_text.split()
-                        # Extract a meaningful attribute name (typically the first 1-3 words)
-                        lower_attr_text = attr_text.lower()
-                        if len(words) > 0:
-                            # Different strategies for attribute name extraction
-                            if 'language' in lower_attr_text or 'style' in lower_attr_text:
-                                attr_name = 'language'
-                            elif 'clarity' in lower_attr_text:
-                                attr_name = 'clarity'
-                            elif 'example' in lower_attr_text or 'analogies' in lower_attr_text:
-                                attr_name = 'examples'
-                            elif 'structure' in lower_attr_text:
-                                attr_name = 'structure'
-                            elif 'creativity' in lower_attr_text or 'creative' in lower_attr_text:
-                                attr_name = 'creativity'
-                            elif 'relevant' in lower_attr_text or 'relevance' in lower_attr_text:
-                                attr_name = 'relevance'
-                            elif 'technical' in lower_attr_text or 'accuracy' in lower_attr_text:
-                                attr_name = 'accuracy'
-                            elif 'correct' in lower_attr_text or 'correctness' in lower_attr_text:
-                                attr_name = 'correctness'
-                            elif 'emotional' in lower_attr_text or 'impact' in lower_attr_text:
-                                attr_name = 'impact'
-                            elif 'thorough' in lower_attr_text:
-                                attr_name = 'thoroughness'
-                            elif 'engaging' in lower_attr_text or 'fun' in lower_attr_text:
-                                attr_name = 'engagement'
-                            elif 'imagery' in lower_attr_text:
-                                attr_name = 'imagery'
-                            else:
-                                # Default: use the first word as the attribute name
-                                attr_name = words[0].lower().replace('-', '_')
+                        # Try mapping using keywords first
+                        attr_name = self._map_criterion_to_attribute_name(attr_text)
+                        
+                        # If no keyword matched, use the default first-word strategy
+                        if attr_name is None:
+                            attr_name = words[0].lower().replace('-', '_')
                             
-                            attributes.append(attr_name)
+                        attributes.append(attr_name)
             
             # Create a template with the extracted attributes
             if attributes:
