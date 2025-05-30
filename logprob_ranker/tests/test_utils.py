@@ -11,7 +11,8 @@ from logprob_ranker.utils import (
     format_evaluation_prompt,
     sort_ranked_outputs,
     serialize_ranked_output,
-    deserialize_ranked_output
+    deserialize_ranked_output,
+    EvaluationParseError # Import the specific exception
 )
 # Explicitly import the actual classes needed for testing instantiation
 from logprob_ranker.ranker import RankedOutput, AttributeScore
@@ -36,22 +37,22 @@ class TestParseEvaluationJson(unittest.TestCase):
 
     def test_parse_evaluation_json_invalid_json(self):
         invalid_json = '{"key": "value"' # Missing closing brace
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EvaluationParseError):
             parse_evaluation_json(invalid_json)
 
     def test_parse_evaluation_json_invalid_json_in_markdown(self):
         invalid_markdown = '```json\n{"key": "value"\n```'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EvaluationParseError):
             parse_evaluation_json(invalid_markdown)
 
     def test_parse_evaluation_json_invalid_json_with_text(self):
         invalid_text = 'Text { "key": value } Text' # Value not quoted
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EvaluationParseError):
             parse_evaluation_json(invalid_text)
             
     def test_parse_evaluation_json_no_json(self):
         no_json_text = "This text contains no JSON object."
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EvaluationParseError):
             parse_evaluation_json(no_json_text)
 
     def test_parse_evaluation_json_multiple_json_objects(self):
@@ -62,12 +63,12 @@ class TestParseEvaluationJson(unittest.TestCase):
         
     def test_parse_evaluation_json_not_dict(self):
         not_dict_json = '[1, 2, 3]'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(EvaluationParseError):
             parse_evaluation_json(not_dict_json)
             
     def test_parse_evaluation_json_not_dict_in_text(self):
         not_dict_text = 'List: [1, 2, 3]' 
-        with self.assertRaises(ValueError): 
+        with self.assertRaises(EvaluationParseError): 
             parse_evaluation_json(not_dict_text)
 
 
@@ -154,16 +155,39 @@ class TestUtils(unittest.TestCase):
     def test_calculate_logprob_score_missing_attributes(self):
         evaluation = {"attr1": True}
         attributes = ["attr1", "attr2"] # attr2 missing in evaluation
-        # Depending on implementation, this might raise error or assume False
-        # Assuming it raises ValueError for missing required attributes
-        with self.assertRaises(ValueError):
-           calculate_logprob_score(evaluation, attributes)
+        # Expects 0.5 because attr1 is True, attr2 is treated as False (1/2)
+        self.assertEqual(calculate_logprob_score(evaluation, attributes), 0.5)
 
     def test_calculate_logprob_score_no_attributes(self):
         evaluation = {"attr1": True}
         attributes = []
         with self.assertRaises(ValueError):
             calculate_logprob_score(evaluation, attributes)
+
+    def test_calculate_logprob_score_empty_evaluation_data(self):
+        evaluation = {}
+        attributes = ["attr1", "attr2"]
+        # Expects 0.0 because no attributes are True in empty evaluation (0/2)
+        self.assertEqual(calculate_logprob_score(evaluation, attributes), 0.0)
+
+    def test_calculate_logprob_score_non_boolean_values_in_eval(self):
+        # parse_evaluation_json converts 'true'/'false' strings to booleans.
+        # This test checks direct calls to calculate_logprob_score with varied types.
+        evaluation = {
+            "attr1": "true_string",  # Truthy string
+            "attr2": None,           # Falsy
+            "attr3": "",             # Falsy empty string
+            "attr4": "non_bool_string", # Truthy string
+            "attr5": 1,              # Truthy int
+            "attr6": 0,              # Falsy int
+            "attr7": True,           # Boolean True
+            "attr8": False           # Boolean False
+        }
+        attributes = ["attr1", "attr2", "attr3", "attr4", "attr5", "attr6", "attr7", "attr8", "missing_attr"]
+        # Expected true: attr1, attr4, attr5, attr7 (4 attributes)
+        # Total attributes considered: 9
+        expected_score = 4 / 9
+        self.assertAlmostEqual(calculate_logprob_score(evaluation, attributes), expected_score)
 
     def test_format_evaluation_prompt(self):
         eval_prompt = "Evaluate this:"
@@ -178,6 +202,18 @@ Criteria template:
 {"criterion": LOGPROB_TRUE}"""
         self.assertEqual(format_evaluation_prompt(eval_prompt, generated_text, template), expected)
 
+    def test_format_evaluation_prompt_empty_eval_prompt(self):
+        with self.assertRaises(ValueError):
+            format_evaluation_prompt("", "text", "template")
+
+    def test_format_evaluation_prompt_empty_generated_text(self):
+        with self.assertRaises(ValueError):
+            format_evaluation_prompt("prompt", "", "template")
+
+    def test_format_evaluation_prompt_empty_template(self):
+        with self.assertRaises(ValueError):
+            format_evaluation_prompt("prompt", "text", "")
+
     def test_sort_ranked_outputs(self):
         # Use actual RankedOutput if available, otherwise mock
         outputs = [
@@ -188,6 +224,18 @@ Criteria template:
         sorted_outputs = sort_ranked_outputs(outputs)
         self.assertEqual([o.output for o in sorted_outputs], ["a", "b", "c"])
         self.assertEqual([o.logprob for o in sorted_outputs], [0.8, 0.5, 0.2])
+
+    def test_sort_ranked_outputs_empty_list(self):
+        outputs = []
+        sorted_outputs = sort_ranked_outputs(outputs)
+        self.assertEqual(sorted_outputs, [])
+
+    def test_sort_ranked_outputs_single_item(self):
+        output_item = RankedOutput(output="a", logprob=0.8, index=0)
+        outputs = [output_item]
+        sorted_outputs = sort_ranked_outputs(outputs)
+        self.assertEqual(len(sorted_outputs), 1)
+        self.assertEqual(sorted_outputs[0].output, "a")
 
     def test_serialize_ranked_output_basic(self):
         # Use actual RankedOutput if available
@@ -242,6 +290,57 @@ Criteria template:
         self.assertEqual(deserialized.attribute_scores[0].name, "quality")
         self.assertEqual(deserialized.attribute_scores[0].score, 1.0)
         self.assertEqual(deserialized.raw_evaluation, "raw")
+
+    def test_deserialize_ranked_output_missing_required_fields(self):
+        # Missing 'output'
+        data_missing_output = {"logprob": 0.9, "index": 0}
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_missing_output)
+
+        # Missing 'logprob'
+        data_missing_logprob = {"output": "text", "index": 0}
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_missing_logprob)
+
+        # Missing 'index'
+        data_missing_index = {"output": "text", "logprob": 0.9}
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_missing_index)
+
+    def test_deserialize_ranked_output_incorrect_types(self):
+        # 'logprob' as string
+        data_wrong_type_logprob = {"output": "text", "logprob": "not-a-float", "index": 0}
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_wrong_type_logprob)
+
+        # 'index' as string
+        data_wrong_type_index = {"output": "text", "logprob": 0.9, "index": "not-an-int"}
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_wrong_type_index)
+
+        # 'attribute_scores' not a list
+        data_wrong_type_attrs = {
+            "output": "text", "logprob": 0.9, "index": 0,
+            "attribute_scores": "not-a-list"
+        }
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_wrong_type_attrs)
+
+        # 'attribute_scores' contains non-dict items
+        data_wrong_type_attr_item = {
+            "output": "text", "logprob": 0.9, "index": 0,
+            "attribute_scores": ["not-a-dict"]
+        }
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_wrong_type_attr_item)
+
+        # 'attribute_scores' item missing 'name'
+        data_missing_attr_name = {
+            "output": "text", "logprob": 0.9, "index": 0,
+            "attribute_scores": [{"score": 1.0}]
+        }
+        with self.assertRaises(EvaluationParseError):
+            deserialize_ranked_output(data_missing_attr_name)
 
 
 if __name__ == '__main__':

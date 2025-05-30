@@ -37,9 +37,6 @@ class TestLiteLLMBasic(unittest.TestCase):
             self.assertEqual(adapter.model, "gpt-3.5-turbo")
             self.assertEqual(adapter.api_key, "test-key")
             self.assertEqual(adapter.config, self.config)
-            
-            # Check OpenAI API key was set
-            self.assertEqual(mock_litellm.openai_api_key, "test-key")
     
     def test_anthropic_initialization(self):
         """Test initialization with Anthropic model."""
@@ -53,9 +50,6 @@ class TestLiteLLMBasic(unittest.TestCase):
             # Check basic properties
             self.assertEqual(adapter.model, "claude-2")
             self.assertEqual(adapter.api_key, "anthropic-test-key")
-            
-            # Check Anthropic API key was set
-            self.assertEqual(mock_litellm.anthropic_api_key, "anthropic-test-key")
     
     def test_custom_initialization(self):
         """Test initialization with custom model."""

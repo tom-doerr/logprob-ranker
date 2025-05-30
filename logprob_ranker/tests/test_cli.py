@@ -181,11 +181,12 @@ def test_main_no_command():
     # Fix: Also patch print_provider_help
     # Fix: Remove sys.exit patch as it's not called
     with patch('logprob_ranker.cli.setup_parser', return_value=parser_mock):
-        with patch('logprob_ranker.cli.print_provider_help') as mock_print_provider:
+        with patch('logprob_ranker.cli.print_provider_help') as mock_print_provider, \
+             patch('asyncio.run') as mock_asyncio_run:
             main()
             parser_mock.print_help.assert_called_once()
             mock_print_provider.assert_called_once() # Assert it was called
-            # mock_exit.assert_called_once_with(1) # Removed assertion
+            mock_asyncio_run.assert_not_called() # Ensure the async path wasn't taken
 
 def test_print_provider_help():
     """Test that provider help information is printed correctly."""
@@ -269,7 +270,8 @@ async def test_run_rank_command_with_output_file(mock_json_dump, mock_file_open,
     mock_result2.attribute_scores = []
     mock_result2.raw_evaluation = ""
     mock_results = [mock_result1, mock_result2]
-    mock_adapter_instance.rank_outputs.return_value = mock_results # Configure method on the instance
+    # Configure the rank_outputs method ON THE ADAPTER INSTANCE to be an AsyncMock
+    mock_adapter_instance.rank_outputs = AsyncMock(return_value=mock_results)
 
     # Provide an output path for the results
     output_path = "/fake/output.json"

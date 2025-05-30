@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable, Union
 from concurrent.futures import ThreadPoolExecutor
+import litellm
+from pydantic import ConfigDict
 from .utils import (
     parse_evaluation_json,
     extract_template_attributes,
@@ -23,6 +25,7 @@ class AttributeScore:
     """
     name: str
     score: float
+    explanation: str = ""  # Optional explanation for the score
 
 
 @dataclass
@@ -35,6 +38,19 @@ class RankedOutput:
     index: int
     attribute_scores: Optional[List[AttributeScore]] = None
     raw_evaluation: Optional[str] = None
+    
+    @property
+    def total_score(self) -> float:
+        """
+        Calculate the total score from attribute scores.
+        
+        If no attribute scores are available, returns the logprob score.
+        """
+        if not self.attribute_scores:
+            return self.logprob
+        
+        # Sum all attribute scores
+        return sum(attr.score for attr in self.attribute_scores)
 
 
 @dataclass
@@ -61,6 +77,9 @@ class LogProbConfig:
     # Prompts
     system_prompt: str = "You are a creative assistant that provides a single concise response."
     evaluation_prompt: str = "You are an evaluator. Evaluate the following text based on the criteria.\nReturn ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+
+    # Add ConfigDict to satisfy Pydantic V2+ expectations
+    model_config = ConfigDict()
 
 
 class LogProbRanker:
@@ -91,17 +110,20 @@ class LogProbRanker:
     
     async def generate_and_evaluate_output(self, prompt: str, index: int) -> Optional[RankedOutput]:
         """
-        Generate a single output and evaluate it according to the criteria template.
+        Generate a single output and evaluate it.
         
         Args:
-            prompt: The prompt to generate content from
-            index: The index of this generation in the batch
+            prompt: The prompt to generate from
+            index: The index of this output for error reporting
             
         Returns:
-            A RankedOutput object or None if generation failed
+            A RankedOutput containing the output and its scores, or None if generation failed
+            
+        Raises:
+            RuntimeError: If generation or evaluation fails
         """
         try:
-            # Generate content
+            # Generate output
             generation_messages = [
                 {"role": "system", "content": self.config.system_prompt},
                 {"role": "user", "content": prompt}
@@ -114,62 +136,55 @@ class LogProbRanker:
                 top_p=self.config.top_p
             )
             
-            # Extract generated content
-            generated_text = generation_response["choices"][0]["message"]["content"]
+            output = generation_response["choices"][0]["message"]["content"]
             
-            # Create evaluation prompt
+            # Generate evaluation
             evaluation_prompt = format_evaluation_prompt(
-                template=self.config.template,
-                generated_text=generated_text,
-                eval_prompt=self.config.evaluation_prompt
+                self.config.evaluation_prompt,
+                output,
+                self.config.template
             )
             
-            # Evaluate the generated content
             evaluation_messages = [
-                {"role": "system", "content": self.config.evaluation_prompt},
+                {"role": "system", "content": "You are an evaluator."},
                 {"role": "user", "content": evaluation_prompt}
             ]
             
             evaluation_response = await self._create_chat_completion(
                 messages=evaluation_messages,
-                temperature=0.0,  # Use low temperature for consistent evaluations
+                temperature=0.0,  # Use deterministic evaluation
                 max_tokens=500,
                 top_p=1.0
             )
             
-            # Extract evaluation
             evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-            evaluation_json = parse_evaluation_json(evaluation_text)
+            
+            # Parse evaluation
+            evaluation_data = parse_evaluation_json(evaluation_text)
             
             # Calculate scores
             attribute_scores = []
             for attr in self.attributes:
-                # Convert boolean to score (true = 1.0, false = 0.0)
-                score = 1.0 if evaluation_json.get(attr, False) else 0.0
+                score = 1.0 if evaluation_data.get(attr, False) else 0.0
                 attribute_scores.append(AttributeScore(name=attr, score=score))
             
-            # Calculate overall logprob score
-            logprob = calculate_logprob_score(attribute_scores)
+            logprob = calculate_logprob_score(evaluation_data, self.attributes)
             
-            # Create result
-            result = RankedOutput(
-                output=generated_text,
+            ranked_output = RankedOutput(
+                output=output,
                 logprob=logprob,
                 index=index,
                 attribute_scores=attribute_scores,
                 raw_evaluation=evaluation_text
             )
             
-            # Call callback if provided
             if self.on_output_callback:
-                self.on_output_callback(result)
-                
-            return result
-        
+                self.on_output_callback(ranked_output)
+            
+            return ranked_output
+            
         except Exception as e:
-            # Log error and return None to indicate failure
-            print(f"Error generating output {index}: {str(e)}")
-            return None
+            raise RuntimeError(f"Failed to process output {index}: {str(e)}") from e
     
     async def rank_outputs(self, prompt: str) -> List[RankedOutput]:
         """
@@ -182,30 +197,31 @@ class LogProbRanker:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
         tasks = []
+        results = []
+        errors = []
+
+        # Create tasks for each variant
         for i in range(self.config.num_variants):
-            tasks.append(self.generate_and_evaluate_output(prompt, i))
+            task = asyncio.create_task(self.generate_and_evaluate_output(prompt, i))
+            tasks.append(task)
         
-        # Use thread count for parallel execution
-        if self.config.thread_count > 1:
-            # Split tasks into batches based on thread count
-            batched_results = []
-            for i in range(0, len(tasks), self.config.thread_count):
-                batch = tasks[i:i + self.config.thread_count]
-                batch_results = await asyncio.gather(*batch)
-                batched_results.extend(batch_results)
-            
-            results = batched_results
-        else:
-            # Sequential execution
-            results = await asyncio.gather(*tasks)
+        # Wait for all tasks to complete
+        for task in asyncio.as_completed(tasks):
+            try:
+                result = await task
+                if result is not None:
+                    results.append(result)
+            except Exception as e:
+                errors.append(str(e))
+                print(f"Error in task: {str(e)}")
+                continue
         
-        # Filter out None results (failed generations)
-        results = [r for r in results if r is not None]
+        # If we have no valid results and encountered errors, raise the first error
+        if not results and errors:
+            raise RuntimeError(f"All tasks failed. First error: {errors[0]}")
         
-        # Sort by logprob score (highest first)
-        sorted_results = sort_ranked_outputs(results)
-        
-        return sorted_results
+        # Sort and return results
+        return sort_ranked_outputs(results)
     
     def rank_outputs_sync(self, prompt: str) -> List[RankedOutput]:
         """
@@ -217,14 +233,27 @@ class LogProbRanker:
         Returns:
             A list of RankedOutput objects sorted by logprob (highest first)
         """
-        return asyncio.run(self.rank_outputs(prompt))
+        try:
+            # Get or create an event loop for this thread
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the async function
+            result = loop.run_until_complete(self.rank_outputs(prompt))
+            
+            return result
+        except Exception as e:
+            print(f"Error in rank_outputs_sync: {str(e)}")
+            raise
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
         """
-        Create a chat completion using the provided LLM client.
+        Create a chat completion using LiteLLM.
         
-        This is an internal method that adapts to different LLM client implementations.
-        Override this in a subclass to support different LLM clients.
+        This is an internal method that uses LiteLLM to call any supported LLM provider.
         
         Args:
             messages: List of message objects (role and content)
@@ -235,89 +264,101 @@ class LogProbRanker:
         Returns:
             The raw response from the LLM client
         """
-        # Default implementation for OpenAI-like clients
-        response = await self.llm_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Default model
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p
-        )
+        # Use LiteLLM to handle the completion request
+        model = self.model if hasattr(self, 'model') else "gpt-3.5-turbo"
         
-        # Convert the response to a simple dict format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": response.choices[0].message.role,
-                        "content": response.choices[0].message.content
+        # Make the completion request
+        try:
+            response = await litellm.acompletion(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p
+            )
+            
+            # Return in standardized format
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": response.choices[0].message.role,
+                            "content": response.choices[0].message.content
+                        }
                     }
-                }
-            ]
-        }
+                ]
+            }
+        except Exception as e:
+            print(f"Error in LiteLLM completion: {str(e)}")
+            raise
 
 
-class OpenAIAdapter(LogProbRanker):
-    """Adapter for the OpenAI API client"""
+class LiteLLMAdapter(LogProbRanker):
+    """
+    Adapter for using LiteLLM with any supported model/provider.
+    
+    LiteLLM supports various providers like OpenAI, Anthropic, Cohere, 
+    Hugging Face, Azure, PaLM, etc.
+    """
+    
+    def __init__(
+        self,
+        model: str,
+        api_key: Optional[str] = None,
+        config: Optional[LogProbConfig] = None,
+        on_output_callback: Optional[Callable[[RankedOutput], None]] = None,
+        **kwargs
+    ):
+        """
+        Initialize the LiteLLM adapter.
+        
+        Args:
+            model: The model identifier (e.g., "gpt-4", "claude-2", "command-nightly")
+            api_key: Optional API key (uses env variables if not provided)
+            config: Optional configuration settings
+            on_output_callback: Optional callback function
+            **kwargs: Additional parameters to pass to LiteLLM
+        """
+        super().__init__(None, config, on_output_callback)
+        self.model = model
+        self.api_key = api_key
+        self.kwargs = kwargs
+        
+        # Set API key if provided
+        if api_key:
+            if "anthropic" in model.lower() or model.lower().startswith("claude"):
+                litellm.anthropic_api_key = api_key
+            elif "openai" in model.lower() or model.lower().startswith("gpt"):
+                litellm.openai_api_key = api_key
+            else:
+                # Set a generic api_key and let LiteLLM handle it
+                self.kwargs["api_key"] = api_key
     
     async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
-        # Use the client to create a chat completion
-        response = await self.llm_client.chat.completions.create(
-            model="gpt-3.5-turbo",  # You can configure this if needed
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p
-        )
-        
-        # Convert the response to a simple dict format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": response.choices[0].message.role,
-                        "content": response.choices[0].message.content
+        """
+        Create a chat completion using LiteLLM.
+        """
+        try:
+            response = await litellm.acompletion(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                **self.kwargs
+            )
+            
+            # Return in standardized format
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": response.choices[0].message.role,
+                            "content": response.choices[0].message.content
+                        }
                     }
-                }
-            ]
-        }
-
-
-class AnthropicAdapter(LogProbRanker):
-    """Adapter for the Anthropic API client"""
-    
-    async def _create_chat_completion(self, messages, temperature, max_tokens, top_p):
-        # Convert messages to Anthropic format
-        system = None
-        prompt = ""
-        
-        for msg in messages:
-            if msg["role"] == "system":
-                system = msg["content"]
-            elif msg["role"] == "user":
-                prompt += f"\n\nHuman: {msg['content']}"
-            elif msg["role"] == "assistant":
-                prompt += f"\n\nAssistant: {msg['content']}"
-        
-        prompt += "\n\nAssistant:"
-        
-        # Call Anthropic API
-        response = await self.llm_client.completions.create(
-            model="claude-2",  # You can configure this
-            prompt=prompt,
-            max_tokens_to_sample=max_tokens,
-            temperature=temperature,
-            system=system
-        )
-        
-        # Convert to the expected format
-        return {
-            "choices": [
-                {
-                    "message": {
-                        "role": "assistant",
-                        "content": response.completion
-                    }
-                }
-            ]
-        }
+                ]
+            }
+        except Exception as e:
+            print(f"Error in LiteLLM completion with model {self.model}: {str(e)}")
+            raise

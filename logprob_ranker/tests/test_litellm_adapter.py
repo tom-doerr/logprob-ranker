@@ -52,9 +52,6 @@ class TestLiteLLMAdapter(unittest.TestCase):
         self.assertEqual(self.adapter.model, "gpt-3.5-turbo")
         self.assertEqual(self.adapter.api_key, "test-key")
         self.assertEqual(self.adapter.config, self.config)
-        
-        # Check OpenAI API key was set
-        self.assertEqual(self.mock_litellm.openai_api_key, "test-key")
     
     async def async_test_create_chat_completion(self):
         """Test the _create_chat_completion method."""
@@ -76,7 +73,8 @@ class TestLiteLLMAdapter(unittest.TestCase):
             messages=messages,
             temperature=0.7,
             max_tokens=100,
-            top_p=1.0
+            top_p=1.0,
+            api_key="test-key"  # Verify api_key is passed
         )
         
         # Check result format
@@ -135,9 +133,6 @@ class TestLiteLLMAdapter(unittest.TestCase):
             config=self.config
         )
         
-        # Check Anthropic API key was set
-        self.assertEqual(self.mock_litellm.anthropic_api_key, "anthropic-test-key")
-        
         # Test call with Anthropic model
         messages = [{"role": "user", "content": "Test"}]
         result = await anthropic_adapter._create_chat_completion(
@@ -153,7 +148,8 @@ class TestLiteLLMAdapter(unittest.TestCase):
             messages=messages,
             temperature=0.7,
             max_tokens=100,
-            top_p=1.0
+            top_p=1.0,
+            api_key="anthropic-test-key"  # Verify api_key is passed
         )
         
         # Check response was correctly formatted
