@@ -2,15 +2,17 @@
 Basic async tests for the LiteLLMAdapter.
 """
 
+# Standard library imports
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
-import sys
-import os
 import asyncio
-import json
 
-from logprob_ranker.logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig, RankedOutput, AttributeScore
-from logprob_ranker.logprob_ranker.utils import LLMGenerationError, EvaluationParseError
+# Third-party imports
+from litellm.utils import ModelResponse # Import for spec
+
+# First-party imports
+from logprob_ranker.logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig
+from logprob_ranker.logprob_ranker.utils import LLMGenerationError
 
 
 class AsyncBasicTests(unittest.TestCase):
@@ -36,16 +38,41 @@ class AsyncBasicTests(unittest.TestCase):
         gen_message.content = "Test generated content"
         gen_choice = MagicMock()
         gen_choice.message = gen_message
-        self.gen_response = MagicMock()
+        # Mock logprobs structure
+        mock_token_logprob1 = MagicMock()
+        mock_token_logprob1.token = "Test"
+        mock_token_logprob1.logprob = -0.123
+        mock_token_logprob2 = MagicMock()
+        mock_token_logprob2.token = "content"
+        mock_token_logprob2.logprob = -0.456
+        
+        mock_logprobs_content = [mock_token_logprob1, mock_token_logprob2]
+        mock_logprobs_obj = MagicMock()
+        mock_logprobs_obj.content = mock_logprobs_content
+        gen_choice.logprobs = mock_logprobs_obj # Add logprobs to choice
+
+        self.gen_response = MagicMock(spec=ModelResponse) # Use spec for better mocking
         self.gen_response.choices = [gen_choice]
+        # Ensure the mock response object itself can be introspected if needed by LiteLLMAdapter
+        self.gen_response.model_dump_json = MagicMock(return_value="{}")
         
         # Setup response for mock evaluation
         eval_message = MagicMock()
         eval_message.content = '{"test": true}'
         eval_choice = MagicMock()
         eval_choice.message = eval_message
-        self.eval_response = MagicMock()
+        # Mock logprobs for evaluation (though not strictly used for ranking, _extract_raw_token_logprobs will be called)
+        mock_eval_token_logprob = MagicMock()
+        mock_eval_token_logprob.token = "{\"test\":"
+        mock_eval_token_logprob.logprob = -0.01
+        mock_eval_logprobs_content = [mock_eval_token_logprob]
+        mock_eval_logprobs_obj = MagicMock()
+        mock_eval_logprobs_obj.content = mock_eval_logprobs_content
+        eval_choice.logprobs = mock_eval_logprobs_obj # Add logprobs to choice
+
+        self.eval_response = MagicMock(spec=ModelResponse)
         self.eval_response.choices = [eval_choice]
+        self.eval_response.model_dump_json = MagicMock(return_value="{}")
         
         # Set up acompletion to return our mock responses
         self.mock_litellm.acompletion = AsyncMock()
@@ -75,7 +102,10 @@ class AsyncBasicTests(unittest.TestCase):
         # Verify basic results
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].output, "Test generated content")
-        self.assertEqual(results[0].logprob, 1.0)  # True = 1.0
+        # Check logprob (average of evaluation attribute scores)
+        # The template is '{"test": LOGPROB_TRUE}' and eval response is '{"test": true}'
+        # So, attribute 'test' gets score 1.0. Average is 1.0.
+        self.assertEqual(results[0].logprob, 1.0)  # Based on '{"test": true}' evaluation and LOGPROB_TRUE template
         
         # Verify acompletion was called twice (generate + evaluate)
         self.assertEqual(self.mock_litellm.acompletion.call_count, 2)
@@ -89,36 +119,33 @@ class AsyncBasicTests(unittest.TestCase):
         self.assertIsNotNone(results)
 
     async def _test_error_handling(self):
-        """Test error handling in async generation."""
-        # Configure the mock to raise an exception
-        # Directly use LLMGenerationError to see if it changes behavior
-        self.mock_litellm.acompletion.side_effect = LLMGenerationError("Test error from side effect")
+        """Test error handling in async generation when all variants fail."""
+        # Configure mock to raise an error that LiteLLMAdapter._create_chat_completion will wrap.
+        # This simulates a failure during the call to the LLM service.
+        self.mock_litellm.acompletion.side_effect = Exception("Mocked LiteLLM acompletion failure")
         
-        # Create adapter with mocked litellm
         adapter = LiteLLMAdapter(
             model="gpt-3.5-turbo",
             api_key="test-key",
-            config=self.config
+            config=self.config  # self.config has num_variants = 1 by default in setUp
         )
         
-        # Test that errors are properly propagated
-        # rank_outputs raises RuntimeError if all tasks fail.
-        # The cause of that RuntimeError should be the LLMGenerationError
-        with self.assertRaises(RuntimeError) as cm:
-            await adapter.rank_outputs("Test prompt")
+        # When litellm.acompletion fails, LiteLLMAdapter._create_chat_completion raises LLMGenerationError.
+        # Then, LogProbRanker.generate_and_evaluate_output catches this and raises a RuntimeError.
+        # Since num_variants is 1, rank_outputs will receive this one failure and, finding no
+        # successful results, will raise RuntimeError("All generation and evaluation tasks failed.").
+        # However, for a single variant, the RuntimeError from generate_and_evaluate_output itself propagates out.
+        expected_error_message = "LLM generation failed for variant 0: LiteLLM completion failed for model gpt-3.5-turbo: Mocked LiteLLM acompletion failure"
+        with self.assertRaisesRegex(RuntimeError, expected_error_message):
+            await adapter.rank_outputs("Test prompt for error")
 
-        self.assertTrue(str(cm.exception).startswith("All tasks failed to generate and evaluate outputs."))
-        # The final RuntimeError message will contain the message from the TypeError due to mocking behavior.
-        expected_inner_error_message = "Unexpected error generating and evaluating output 0: catching classes that do not inherit from BaseException is not allowed"
-        self.assertIn(expected_inner_error_message, str(cm.exception))
-        
-        return True
+        # Ensure acompletion was called once (for the generation attempt of the single variant).
+        self.mock_litellm.acompletion.assert_called_once()
 
     def test_error_handling(self):
         """Run the async error handling test."""
         loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(self._test_error_handling())
-        self.assertTrue(result)
+        loop.run_until_complete(self._test_error_handling()) # _test_error_handling now makes assertions directly
 
     async def _test_concurrent_tasks(self):
         """Test concurrent task handling."""
@@ -138,8 +165,20 @@ class AsyncBasicTests(unittest.TestCase):
             gen_message.content = f"Test content {i}"
             gen_choice = MagicMock()
             gen_choice.message = gen_message
-            response = MagicMock()
+            mock_token_logprob_c1 = MagicMock()
+            mock_token_logprob_c1.token = f"Test{i}"
+            mock_token_logprob_c1.logprob = -0.1 * i
+            mock_token_logprob_c2 = MagicMock()
+            mock_token_logprob_c2.token = "content"
+            mock_token_logprob_c2.logprob = -0.2 * i
+            mock_logprobs_content_c = [mock_token_logprob_c1, mock_token_logprob_c2]
+            mock_logprobs_obj_c = MagicMock()
+            mock_logprobs_obj_c.content = mock_logprobs_content_c
+            gen_choice.logprobs = mock_logprobs_obj_c
+
+            response = MagicMock(spec=ModelResponse)
             response.choices = [gen_choice]
+            response.model_dump_json = MagicMock(return_value="{}")
             responses.append(response)
         
         # Create evaluation responses
@@ -149,8 +188,17 @@ class AsyncBasicTests(unittest.TestCase):
             eval_message.content = '{"test": true}'
             eval_choice = MagicMock()
             eval_choice.message = eval_message
-            eval_response = MagicMock()
+            mock_eval_token_logprob_c = MagicMock()
+            mock_eval_token_logprob_c.token = "{\"test\":"
+            mock_eval_token_logprob_c.logprob = -0.01 * i
+            mock_eval_logprobs_content_c = [mock_eval_token_logprob_c]
+            mock_eval_logprobs_obj_c = MagicMock()
+            mock_eval_logprobs_obj_c.content = mock_eval_logprobs_content_c
+            eval_choice.logprobs = mock_eval_logprobs_obj_c
+
+            eval_response = MagicMock(spec=ModelResponse)
             eval_response.choices = [eval_choice]
+            eval_response.model_dump_json = MagicMock(return_value="{}")
             eval_responses.append(eval_response)
         
         # Set up side effects to return our responses in sequence

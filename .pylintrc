@@ -1,0 +1,52 @@
+[MESSAGES CONTROL]
+# Disable specific Pylint messages
+# C0114: Missing module docstring
+# C0115: Missing class docstring
+# C0116: Missing function or method docstring
+# C0301: Line too long
+# C0303: Trailing whitespace
+# C0304: Final newline missing
+# C0321: More than one statement on a single line
+# C0103: Argument name "..." doesn't conform to snake_case naming style (for specific cases like MockAdapter)
+# W0212: Access to a protected member (often needed in tests)
+# W0613: Unused argument (can be acceptable for interface consistency)
+# W0621: Redefining name '...' from outer scope (common in test fixtures)
+# R0913: Too many arguments
+# R0914: Too many local variables
+# R0915: Too many statements
+# R0902: Too many instance attributes
+# R0801: Similar lines in N files (duplicate-code)
+# C0413: Import "..." should be placed at the top of the module (wrong-import-position)
+# E0401: Unable to import (import-error) - Use with caution, ensure sys.path modifications are correct
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    line-too-long,
+    trailing-whitespace,
+    missing-final-newline,
+    multiple-statements,
+    invalid-name,
+    protected-access,
+    unused-argument,
+    redefined-outer-name,
+    too-many-arguments,
+    too-many-locals,
+    too-many-statements,
+    too-many-instance-attributes,
+    duplicate-code,
+    wrong-import-position,
+    import-error,
+    broad-exception-caught,
+    too-many-positional-arguments,
+    too-many-public-methods,
+    too-few-public-methods,
+    too-many-branches
+
+[FORMAT]
+# Increase the max line length
+max-line-length=120
+
+[REPORTS]
+# Disable reports generation
+reports=no

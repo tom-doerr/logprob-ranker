@@ -8,7 +8,7 @@ import re
 from typing import Dict, Any, List # Optional, TypeVar removed
 
 # Import models from the new models.py file
-from .models import RankedOutput, AttributeScore # Used in deserialize_ranked_output
+from .models import RankedOutput # AttributeScore removed, Used in deserialize_ranked_output
 
 class LLMGenerationError(Exception):
     """Custom exception for errors during LLM generation."""
@@ -130,40 +130,6 @@ def extract_template_attributes(template: str) -> List[str]:
             raise ValueError(f"Regex error during template parsing: {e}") from e
 
     return attributes
-
-
-def calculate_logprob_score(evaluation_data: Dict[str, Any], attributes: List[str]) -> float:
-    """
-    Calculate the log probability score from evaluation data.
-
-    Args:
-        evaluation_data: Dictionary containing evaluation results
-        attributes: List of attributes to consider
-
-    Returns:
-        The calculated log probability score
-
-    Raises:
-        ValueError: If no valid attributes are found in the evaluation data
-    """
-    try:
-        if not attributes:
-            raise ValueError("Attributes list cannot be empty for score calculation.")
-
-        # Count how many criteria were met
-        # Using .get(attr, False) ensures that if an attribute is missing or None, it's treated as False.
-        true_count = sum(1 for attr in attributes if evaluation_data.get(attr, False))
-
-        # Calculate score as proportion of criteria met
-        score_value = true_count / len(attributes)
-
-        return score_value
-
-    except Exception as e:
-        # Catching a broad exception. Consider if more specific handling is needed.
-        # Including original exception for better debugging.
-        raise ValueError(f"Failed to calculate logprob score: {str(e)}") from e
-
 
 def format_evaluation_prompt(eval_prompt: str, generated_text: str, template: str) -> str:
     """

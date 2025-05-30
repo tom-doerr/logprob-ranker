@@ -7,13 +7,11 @@ import sys
 import json
 import argparse
 import asyncio
-from typing import Any, Optional, List
+from typing import Optional
 
 from .ranker import (
-    LogProbRanker, 
     LogProbConfig, 
     RankedOutput, 
-    AttributeScore, 
     LiteLLMAdapter
 )
 from .utils import serialize_ranked_output
@@ -82,7 +80,7 @@ def load_template_from_file(file_path: str) -> Optional[str]:
         return None
         
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
     except Exception as e:
         print(f"Error loading template file: {e}")
@@ -93,17 +91,17 @@ def get_model_from_provider(provider: str) -> str:
     """Get a default model name from provider type."""
     if provider == "openai":
         return "gpt-3.5-turbo"
-    elif provider == "anthropic":
+    if provider == "anthropic":  
         return "claude-2"
-    elif provider == "azure":
+    if provider == "azure":  
         return "azure/gpt-35-turbo"  # Example Azure deployment
-    elif provider == "cohere":
+    if provider == "cohere":  
         return "command"
-    elif provider == "huggingface":
+    if provider == "huggingface":  
         return "huggingface/mistralai/Mistral-7B-Instruct-v0.1"
-    elif provider == "palm":
+    if provider == "palm":  
         return "palm/chat-bison"
-    elif provider == "custom":
+    if provider == "custom":  
         print("Custom provider requires specifying a model. See examples/custom_llm_adapter.py.")
         sys.exit(1)
     else:
@@ -195,7 +193,7 @@ async def run_rank_command(args: argparse.Namespace) -> None:
     # Save results to file if requested
     if args.output:
         try:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 # Convert results to serializable format
                 json_results = [serialize_ranked_output(r) for r in results]
                 json.dump(json_results, f, indent=2)

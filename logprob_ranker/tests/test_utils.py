@@ -3,8 +3,7 @@ Unit tests for utility functions.
 """
 
 import unittest
-import json
-from logprob_ranker.utils import (
+from logprob_ranker.logprob_ranker.utils import (
     parse_evaluation_json,
     extract_template_attributes,
     calculate_logprob_score,
@@ -15,7 +14,7 @@ from logprob_ranker.utils import (
     EvaluationParseError # Import the specific exception
 )
 # Explicitly import the actual classes needed for testing instantiation
-from logprob_ranker.ranker import RankedOutput, AttributeScore
+from logprob_ranker.logprob_ranker.ranker import RankedOutput, AttributeScore
 
 
 class TestParseEvaluationJson(unittest.TestCase):

@@ -17,7 +17,8 @@ class AttributeScore(BaseModel):
 
 class RankedOutput(BaseModel):
     """
-    Represents a generated output with its evaluation scores and metadata.
+    Represents a generated output with its score and metadata.
+    The score is typically the average token logprobability from generation.
     """
     output: str
     logprob: float

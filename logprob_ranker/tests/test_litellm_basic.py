@@ -2,15 +2,17 @@
 Basic tests for LiteLLMAdapter initialization.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
+# Standard library imports
 import os
+import sys
+import unittest
+from unittest.mock import patch # MagicMock removed
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig
+# First-party imports
+from logprob_ranker.logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig
 
 class TestLiteLLMBasic(unittest.TestCase):
     """Test basic initialization of LiteLLMAdapter."""
@@ -26,7 +28,7 @@ class TestLiteLLMBasic(unittest.TestCase):
         
     def test_openai_initialization(self):
         """Test initialization with OpenAI model."""
-        with patch('logprob_ranker.ranker.litellm') as mock_litellm:
+        with patch('logprob_ranker.logprob_ranker.ranker.litellm'):
             adapter = LiteLLMAdapter(
                 model="gpt-3.5-turbo",
                 api_key="test-key",
@@ -40,7 +42,7 @@ class TestLiteLLMBasic(unittest.TestCase):
     
     def test_anthropic_initialization(self):
         """Test initialization with Anthropic model."""
-        with patch('logprob_ranker.ranker.litellm') as mock_litellm:
+        with patch('logprob_ranker.logprob_ranker.ranker.litellm'):
             adapter = LiteLLMAdapter(
                 model="claude-2",
                 api_key="anthropic-test-key",
@@ -53,7 +55,7 @@ class TestLiteLLMBasic(unittest.TestCase):
     
     def test_custom_initialization(self):
         """Test initialization with custom model."""
-        with patch('logprob_ranker.ranker.litellm') as mock_litellm:
+        with patch('logprob_ranker.logprob_ranker.ranker.litellm'):
             adapter = LiteLLMAdapter(
                 model="custom-model",
                 api_key="custom-key",

@@ -2,16 +2,22 @@
 Functional tests for the LiteLLMAdapter.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-import sys
+# Standard library imports
 import os
-import asyncio
+import sys
+from unittest.mock import patch, MagicMock, AsyncMock
+
+# Third-party imports
+import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Adjusting path to point to project root for consistency
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig, RankedOutput, AttributeScore
+# First-party imports
+# Assuming RankedOutput and AttributeScore are not used in this specific file based on typical Pylint behavior for unused imports.
+# If they are used, this will need to be adjusted.
+from logprob_ranker.logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig, RankedOutput, AttributeScore
 
 @pytest.fixture
 def config():
@@ -24,19 +30,25 @@ def config():
     )
 
 @pytest.mark.asyncio
-@patch('logprob_ranker.ranker.litellm')
+@patch('logprob_ranker.logprob_ranker.ranker.litellm')
 async def test_simple_rank(mock_litellm, config):
     """Test basic ranking functionality with a single output."""
     # Create response for generation
     generation_response = MagicMock()
     generation_response.choices = [
-        MagicMock(message=MagicMock(role="assistant", content="Generated test content"))
+        MagicMock(
+            message=MagicMock(role="assistant", content="Generated test content"),
+            logprobs=MagicMock(content=[MagicMock(logprob=0.0)]) # Add a mock logprob item
+        )
     ]
     
     # Create response for evaluation
     evaluation_response = MagicMock()
     evaluation_response.choices = [
-        MagicMock(message=MagicMock(role="assistant", content='{"clear": true, "useful": false}'))
+        MagicMock(
+            message=MagicMock(role="assistant", content='{"clear": true, "useful": false}'),
+            logprobs=MagicMock(content=[MagicMock(logprob=0.0)]) # Add mock logprobs structure
+        )
     ]
     
     # Configure the async mock to return our responses in sequence

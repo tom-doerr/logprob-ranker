@@ -9,7 +9,10 @@ from .ranker import (
     LogProbConfig,
     RankedOutput,
     AttributeScore,
-    LiteLLMAdapter
+    LiteLLMAdapter,
+    LLMGenerationError,
+    EvaluationParseError,
+    LogprobsNotAvailableError
 )
 
 __all__ = [
@@ -17,5 +20,9 @@ __all__ = [
     "LogProbConfig",
     "RankedOutput",
     "AttributeScore",
-    "LiteLLMAdapter"
+    "LiteLLMAdapter",
+    "LLMGenerationError",
+    "EvaluationParseError",
+    "LogprobsNotAvailableError",
+    "__version__"
 ]

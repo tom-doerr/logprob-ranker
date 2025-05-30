@@ -7,26 +7,28 @@ loads configuration, and interacts with the LogProbRanker.
 
 import os
 import sys
-import pytest 
-import tempfile
-import json
-from unittest.mock import patch, MagicMock, mock_open, AsyncMock, ANY 
 from io import StringIO
+from unittest.mock import patch, MagicMock, mock_open, AsyncMock, ANY
+
+import pytest  # pylint: disable=import-error, wrong-import-position
 
 # Add parent directory to path to import the package
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# This is generally discouraged; consider alternative project structures or execution methods.
+_PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PARENT_DIR not in sys.path:
+    sys.path.insert(0, _PARENT_DIR)
 
-from logprob_ranker.cli import (
-    setup_parser, 
-    load_template_from_file, 
+from logprob_ranker.logprob_ranker.cli import (  # pylint: disable=wrong-import-position
+    setup_parser,
+    load_template_from_file,
     get_model_from_provider,
-    on_output_generated, 
-    run_rank_command, 
+    on_output_generated,
+    run_rank_command,
     print_provider_help,
-    main 
+    main
 )
-from logprob_ranker.ranker import RankedOutput, AttributeScore, LogProbRanker
-from logprob_ranker.utils import serialize_ranked_output 
+from logprob_ranker.logprob_ranker.ranker import RankedOutput, AttributeScore  # pylint: disable=wrong-import-position # LogProbRanker was unused
+# serialize_ranked_output was unused
 
 # Removed unittest.TestCase inheritance
 
@@ -45,9 +47,9 @@ def mock_args_rank():
         model="gpt-4",
         api_key="test_key",
         threads=2,
-        template='{"test": LOGPROB_TRUE}', 
-        output=None, 
-        config=None 
+        template='{"test": LOGPROB_TRUE}',
+        output=None,
+        config=None
     )
 
 # --- Test Functions ---
@@ -55,15 +57,15 @@ def mock_args_rank():
 def test_setup_parser():
     """Test that the argument parser is correctly set up."""
     parser = setup_parser()
-    
+
     # Test that the parser has the expected commands
     assert hasattr(parser, 'parse_args')
-    
+
     # Parse some arguments to test parser functionality
     args = parser.parse_args(['rank', 'test prompt'])
     assert args.command == 'rank'
     assert args.prompt == 'test prompt'
-    assert args.variants == 3  
+    assert args.variants == 3
     # Test with more arguments
     args = parser.parse_args([
         'rank', 
@@ -149,7 +151,7 @@ def test_on_output_generated():
         assert 'test: 1.000' in output # Check specific score format
         assert mock_output.output in output # Check output content itself
 
-@patch('logprob_ranker.cli.run_rank_command') 
+@patch('logprob_ranker.logprob_ranker.cli.run_rank_command', new_callable=AsyncMock) 
 def test_main_rank_command(mock_run_rank, mock_args_rank):
     """Test that the main function correctly runs the rank command."""
     # Patch parse_args to return our mock rank args
@@ -180,8 +182,8 @@ def test_main_no_command():
 
     # Fix: Also patch print_provider_help
     # Fix: Remove sys.exit patch as it's not called
-    with patch('logprob_ranker.cli.setup_parser', return_value=parser_mock):
-        with patch('logprob_ranker.cli.print_provider_help') as mock_print_provider, \
+    with patch('logprob_ranker.logprob_ranker.cli.setup_parser', return_value=parser_mock):
+        with patch('logprob_ranker.logprob_ranker.cli.print_provider_help', new_callable=MagicMock) as mock_print_provider, \
              patch('asyncio.run') as mock_asyncio_run:
             main()
             parser_mock.print_help.assert_called_once()
@@ -206,8 +208,8 @@ def test_print_provider_help():
 # Test the async function directly
 @pytest.mark.asyncio
 # Correct Patching: Remove LogProbRanker patch, keep LiteLLMAdapter patch
-@patch('logprob_ranker.cli.LiteLLMAdapter') # Patch the Adapter class
-@patch('logprob_ranker.cli.load_template_from_file') # Patch template loading
+@patch('logprob_ranker.logprob_ranker.cli.LiteLLMAdapter') # Patch the Adapter class
+@patch('logprob_ranker.logprob_ranker.cli.load_template_from_file') # Patch template loading
 async def test_run_rank_command_no_output_file(mock_load_template, MockAdapter, mock_args_rank):
     """Test run_rank_command without writing to an output file."""
     template_content = '{"test": LOGPROB_TRUE}'
@@ -227,7 +229,7 @@ async def test_run_rank_command_no_output_file(mock_load_template, MockAdapter, 
     mock_adapter_instance.rank_outputs.return_value = mock_results # Configure method on the instance
 
     # Patch the callback (passed to Adapter constructor)
-    with patch('logprob_ranker.cli.on_output_generated') as mock_callback:
+    with patch('logprob_ranker.logprob_ranker.cli.on_output_generated') as mock_callback:
         await run_rank_command(mock_args_rank)
 
         # Verify template loaded
@@ -247,8 +249,8 @@ async def test_run_rank_command_no_output_file(mock_load_template, MockAdapter, 
 
 @pytest.mark.asyncio
 # Correct Patching: Remove LogProbRanker patch, keep LiteLLMAdapter patch
-@patch('logprob_ranker.cli.LiteLLMAdapter')
-@patch('logprob_ranker.cli.load_template_from_file')
+@patch('logprob_ranker.logprob_ranker.cli.LiteLLMAdapter')
+@patch('logprob_ranker.logprob_ranker.cli.load_template_from_file')
 @patch('builtins.open', new_callable=mock_open) # Mock file opening for output
 @patch('json.dump') # Mock json writing
 async def test_run_rank_command_with_output_file(mock_json_dump, mock_file_open, mock_load_template, MockAdapter, mock_args_rank):
@@ -278,7 +280,7 @@ async def test_run_rank_command_with_output_file(mock_json_dump, mock_file_open,
     mock_args_rank.output = output_path
 
     # Patch the callback (passed to Adapter constructor)
-    with patch('logprob_ranker.cli.on_output_generated') as mock_callback:
+    with patch('logprob_ranker.logprob_ranker.cli.on_output_generated') as mock_callback:
         await run_rank_command(mock_args_rank)
 
         # Verify template loaded
@@ -297,7 +299,7 @@ async def test_run_rank_command_with_output_file(mock_json_dump, mock_file_open,
         )
 
         # Verify file was opened and written to (for results)
-        mock_file_open.assert_called_once_with(output_path, 'w')
+        mock_file_open.assert_called_once_with(output_path, 'w', encoding='utf-8')
         mock_json_dump.assert_called_once()
         # Check the data passed to json.dump (serialized results)
         dump_args, dump_kwargs = mock_json_dump.call_args
