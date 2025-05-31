@@ -4,9 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "logprob-ranker"
-version = "0.1.0"
+version = "0.2.0"
 description = "A package for ranking LLM outputs using log probability scoring"
-readme = "README.md"
 authors = [
     {name = "AI Developers", email = "example@example.com"}
 ]
@@ -37,8 +36,8 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/logprob-ranker"
-"Bug Tracker" = "https://github.com/yourusername/logprob-ranker/issues"
+"Homepage" = "https://github.com/tom-doerr/logprob-ranker"
+"Bug Tracker" = "https://github.com/tom-doerr/logprob-ranker/issues"
 
 [project.scripts]
 logprob-ranker = "logprob_ranker.cli:main"
@@ -57,3 +56,25 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+pythonpath = ["."]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+    "ignore:Pydantic V2 style Suggestion.*:UserWarning:litellm.*",
+    "ignore:open_text is deprecated. Use files().*:DeprecationWarning:litellm.utils",
+    "ignore:Use 'content=<...>' to upload raw bytes/text content.*:DeprecationWarning:httpx._models",
+    "ignore:coroutine 'Logging.async_success_handler' was never awaited:RuntimeWarning:asyncio.base_events"
+]
+
+[tool.coverage.run]
+branch = true
+
+[tool.pylint.messages_control]

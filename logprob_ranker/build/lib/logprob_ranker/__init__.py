@@ -2,22 +2,35 @@
 LogProb Ranker: A library for ranking LLM outputs by log probability scoring
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"  # Updated for LiteLLM integration
 
 from .ranker import (
     LogProbRanker,
     LogProbConfig,
     RankedOutput,
     AttributeScore,
-    OpenAIAdapter,
-    AnthropicAdapter
+    LiteLLMAdapter
 )
 
-__all__ = [
-    "LogProbRanker",
-    "LogProbConfig",
-    "RankedOutput",
-    "AttributeScore",
-    "OpenAIAdapter",
-    "AnthropicAdapter"
-]
+# Import OpenRouter adapter
+try:
+    from .openrouter import OpenRouterAdapter, get_full_model_name, OpenAIAdapter
+    __all__ = [
+        "LogProbRanker",
+        "LogProbConfig",
+        "RankedOutput",
+        "AttributeScore",
+        "LiteLLMAdapter",
+        "OpenRouterAdapter",
+        "get_full_model_name",
+        "OpenAIAdapter"
+    ]
+except ImportError:
+    # If litellm is not installed, OpenRouter won't be available
+    __all__ = [
+        "LogProbRanker",
+        "LogProbConfig",
+        "RankedOutput",
+        "AttributeScore",
+        "LiteLLMAdapter"
+    ]

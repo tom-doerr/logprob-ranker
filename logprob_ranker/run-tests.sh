@@ -6,10 +6,8 @@ set -e  # Exit on error
 echo "Running unit tests..."
 cd "$(dirname "$0")"  # Navigate to script directory
 
-# Run basic tests 
-python -m unittest tests/test_ranker.py
-python -m unittest tests/test_utils.py
-python -m unittest tests/test_async_basic.py
+# Run tests using pytest
+pytest tests/
 
 echo "All tests passed!"
 

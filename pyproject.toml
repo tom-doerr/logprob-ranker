@@ -1,9 +1,6 @@
-[project]
-name = "repl-nix-workspace"
-version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.11"
-dependencies = [
-    "coverage>=7.8.0",
-    "litellm>=1.66.3",
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning", # Ignore elusive AsyncMock warnings
+    "ignore:Support for class-based `config` is deprecated, use ConfigDict instead.:DeprecationWarning:pydantic._internal._config" # Ignore Pydantic v1 config deprecation from dependencies
 ]
