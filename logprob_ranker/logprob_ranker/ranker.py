@@ -4,7 +4,9 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union, Callable, Coroutine, Tuple
+from typing import List, Dict, Any, Optional, Callable, Tuple
+
+import aiohttp # Added import
 import litellm
 import litellm.exceptions as litellm_exceptions # Import real exceptions
 from litellm.utils import ModelResponse # Added for type hinting
@@ -12,7 +14,6 @@ from litellm.utils import ModelResponse # Added for type hinting
 # as they are used in models.py
 
 from .utils import (
-    parse_evaluation_json,
     extract_template_attributes,
     sort_ranked_outputs,
     format_evaluation_prompt
@@ -32,6 +33,11 @@ class EvaluationParseError(Exception):
 
 class LogprobsNotAvailableError(LLMGenerationError):
     """Custom exception for when logprobs are expected but not available or processable."""
+    pass  # pylint: disable=unnecessary-pass
+
+
+class MalformedLogprobsError(LLMGenerationError):
+    """Custom exception for when logprobs are present but malformed or unprocessable."""
     pass  # pylint: disable=unnecessary-pass
 
 
@@ -59,24 +65,60 @@ class LogProbRanker(ABC):
         self.on_output_callback = on_output_callback
     
     @abstractmethod
-    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float) -> Dict[str, Any]:
+    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, **kwargs) -> Dict[str, Any]:
         """
         Abstract method to create a chat completion using an LLM.
         Subclasses must implement this method.
         
         Args:
-            messages: List of message objects (role and content)
-            temperature: Temperature parameter for generation
-            max_tokens: Maximum tokens to generate
-            top_p: Top-p sampling parameter
+            messages: List of message objects (role and content).
+            temperature: Temperature parameter for generation.
+            max_tokens: Maximum tokens to generate.
+            top_p: Top-p sampling parameter.
+            **kwargs: Additional provider-specific arguments.
             
         Returns:
-            The raw response from the LLM client, expected in a standardized format.
+            The raw response from the LLM client, expected in a standardized format
+            (e.g., including 'content' and 'raw_token_logprobs').
         
         Raises:
             LLMGenerationError: If the LLM call fails.
         """
         pass  # pylint: disable=unnecessary-pass
+
+    async def _call_llm_and_get_content(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        top_p: float,
+        call_purpose: str, # "generation" or "evaluation"
+        error_context_index: int,
+        **kwargs
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Helper to call _create_chat_completion and validate/return content and full response."""
+        response_data = await self._create_chat_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            **kwargs
+        )
+        
+        content = response_data.get("content")
+        if content is None:
+            error_message = (
+                f"{call_purpose.capitalize()} response from _create_chat_completion for variant {error_context_index} "
+                f"is missing the 'content' key. Response: {response_data}"
+            )
+            if call_purpose == "generation":
+                raise LLMGenerationError(error_message)
+            elif call_purpose == "evaluation":
+                raise EvaluationParseError(error_message)
+            else:
+                # Should not happen with controlled inputs
+                raise ValueError(f"Invalid call_purpose: {call_purpose}")
+        return content, response_data
 
     async def generate_and_evaluate_output(self, prompt: str, index: int) -> Optional[RankedOutput]:
         """
@@ -89,20 +131,16 @@ class LogProbRanker(ABC):
                 {"role": "user", "content": prompt}
             ]
             
-            generation_response_data = await self._create_chat_completion(
+            generated_output_content, _ = await self._call_llm_and_get_content(
                 messages=generation_messages,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
-                top_p=self.config.top_p
+                top_p=self.config.top_p,
+                call_purpose="generation",
+                error_context_index=index,
+                request_logprobs=self.config.logprobs, # Pass logprobs config
+                request_top_logprobs=self.config.top_logprobs # Pass top_logprobs config
             )
-            
-            generated_output_content = generation_response_data.get("content")
-            if generated_output_content is None:
-                # This would be a problem with the LLM call or mock for generation content.
-                raise LLMGenerationError(
-                    f"Generation response from _create_chat_completion for variant {index} "
-                    f"is missing the 'content' key. Response: {generation_response_data}"
-                )
             # output_avg_token_logprob from generation_response_data["average_token_logprob"] is not directly used for ranking score anymore.
             
             # Generate evaluation
@@ -118,20 +156,16 @@ class LogProbRanker(ABC):
             ]
             
             # This call returns a dict including 'content' and 'raw_token_logprobs' (List[Tuple[str, float]])
-            evaluation_llm_response_data = await self._create_chat_completion(
+            raw_evaluation_text, evaluation_llm_response_data = await self._call_llm_and_get_content(
                 messages=evaluation_messages,
                 temperature=0,  # Use temperature 0 for deterministic evaluation
                 max_tokens=self.config.max_tokens, 
-                top_p=1.0
+                top_p=1.0,
+                call_purpose="evaluation",
+                error_context_index=index,
+                request_logprobs=True, # Always request logprobs for evaluation
+                request_top_logprobs=(self.config.evaluation_top_logprobs if hasattr(self.config, 'evaluation_top_logprobs') and self.config.evaluation_top_logprobs is not None else 5)
             )
-            
-            raw_evaluation_text = evaluation_llm_response_data.get("content")
-            if raw_evaluation_text is None:
-                # This would be a problem with the LLM call or mock for evaluation content.
-                raise EvaluationParseError(
-                    f"Evaluation response from _create_chat_completion for variant {index} "
-                    f"is missing the 'content' key. Response: {evaluation_llm_response_data}"
-                )
 
             eval_tokens_with_logprobs = evaluation_llm_response_data.get("raw_token_logprobs")
             if eval_tokens_with_logprobs is None:
@@ -147,7 +181,7 @@ class LogProbRanker(ABC):
             
             # 2. Extract attribute names from the template
             attributes_list = extract_template_attributes(self.config.template)
-            
+
             # 3. Construct AttributeScore objects using logprobs of 'true'/'false' tokens
             attribute_scores_list = []
             current_token_stream_idx = 0
@@ -165,13 +199,53 @@ class LogProbRanker(ABC):
                 colon_search_start_idx = -1
                 value_search_start_idx = -1
 
-                # Phase A: Find attribute key (e.g., "interesting")
-                for i in range(key_search_start_idx, len(eval_tokens_with_logprobs)):
-                    # Simplified: check if attr_name (e.g. 'interesting') is part of token (e.g. '"interesting"')
-                    # This is not robust for multi-token keys or complex JSON.
-                    if attr_name in eval_tokens_with_logprobs[i][0]:
-                        colon_search_start_idx = i # Start searching for colon from here
-                        break
+                # Phase A: Find attribute key (e.g., "is_good_output") by concatenating tokens
+                colon_search_start_idx = -1 # Reset for current attr_name; will be updated if key found
+                # key_search_start_idx is the global offset in the token stream from previous attribute searches.
+
+                for j_start_token_idx in range(key_search_start_idx, len(eval_tokens_with_logprobs)):
+                    accumulated_key_text = ""
+                    # Try to match attr_name starting from token j_start_token_idx
+                    for k_current_token_idx in range(j_start_token_idx, len(eval_tokens_with_logprobs)):
+                        token_k_raw_text = eval_tokens_with_logprobs[k_current_token_idx][0]
+
+                        # Heuristic: if token looks like a structural/delimiter that cannot be part of a key name,
+                        # stop accumulating for *this* candidate key path.
+                        # This check is for the *current* token being a delimiter for the *end* of the key.
+                        if token_k_raw_text.strip() in [":", "{", "}", "[", "]", ","] or '" :' in token_k_raw_text or ':"' in token_k_raw_text or token_k_raw_text == '"':
+                            if not accumulated_key_text and token_k_raw_text.strip() in ["{", "}", "[", "]", ","]:
+                                # If first token is a standalone structural char, this j_start_token_idx is not a key start.
+                                pass # Let outer loop j_start_token_idx continue
+                            break # Stop accumulating for this j_start_token_idx path, current token is a delimiter.
+
+                        accumulated_key_text += token_k_raw_text
+                        
+                        # Normalize accumulated_key_text for comparison with attr_name (which is clean, e.g., "is_good_output")
+                        # Handles cases like accumulated_key_text being "\"is_good_output\"" or "is_good_output"
+                        # Normalize accumulated_key_text for comparison with attr_name
+                        normalized_accumulated_key = accumulated_key_text.strip() # Strip outside whitespace first
+                        
+                        # Handle '{"key"' -> "key"
+                        if normalized_accumulated_key.startswith('{"') and normalized_accumulated_key.endswith('"'):
+                            normalized_accumulated_key = normalized_accumulated_key[2:-1]
+                        # Handle '"key"' -> "key"
+                        elif normalized_accumulated_key.startswith('"') and normalized_accumulated_key.endswith('"'):
+                            normalized_accumulated_key = normalized_accumulated_key[1:-1]
+                        # Add other normalizations if necessary for other tokenization patterns
+
+                        if normalized_accumulated_key == attr_name:
+                            # Key found, ends at k_current_token_idx.
+                            # Phase B should start searching for colon from the *next* token.
+                            colon_search_start_idx = k_current_token_idx + 1 
+                            break # Found key, break from k_current_token_idx loop (inner)
+                        elif len(normalized_accumulated_key) > len(attr_name) or not attr_name.startswith(normalized_accumulated_key):
+                            # Mismatch or overshot, this path won't form the key
+                            break # Break from k_current_token_idx loop (inner)
+                    
+                    if colon_search_start_idx != -1:
+                        # Found key for this attr_name, break from j_start_token_idx loop (outer)
+                        break 
+                # If loop finishes and colon_search_start_idx is still -1, key was not found.
                 
                 # Phase B: Find colon after key
                 if colon_search_start_idx != -1:
@@ -190,8 +264,9 @@ class LogProbRanker(ABC):
                     for i in range(value_search_start_idx, len(eval_tokens_with_logprobs)):
                         token_s, token_lp = eval_tokens_with_logprobs[i]
                         normalized_token_s = token_s.strip().lower().replace('"', '')
+                        match_found = normalized_token_s in ("true", "false")
 
-                        if normalized_token_s == "true" or normalized_token_s == "false":
+                        if match_found:
                             attr_actual_logprob = token_lp
                             explanation_str = f"Logprob of token '{token_s.strip()}' for '{attr_name}'"
                             current_token_stream_idx = i + 1 # Advance main cursor past this value token
@@ -322,6 +397,7 @@ class LiteLLMAdapter(LogProbRanker):
         api_key: Optional[str] = None,
         config: Optional[LogProbConfig] = None,
         on_output_callback: Optional[Callable[[RankedOutput], None]] = None,
+        aiohttp_session: Optional[aiohttp.ClientSession] = None,  # Added parameter
         **kwargs
     ):
         """
@@ -332,18 +408,15 @@ class LiteLLMAdapter(LogProbRanker):
             api_key: Optional API key (uses env variables if not provided)
             config: Optional configuration settings
             on_output_callback: Optional callback function
+            aiohttp_session: Optional aiohttp ClientSession to use for requests
             **kwargs: Additional parameters to pass to LiteLLM
         """
         super().__init__(None, config, on_output_callback)
         self.model = model
         self.api_key = api_key # Retain for potential direct use if needed, though primary mechanism is via kwargs
-        self.kwargs = kwargs
+        self.aiohttp_session = aiohttp_session # Store the aiohttp session
+        self.additional_kwargs = kwargs # Store additional kwargs for litellm
         
-        # If api_key is provided, add it to kwargs to be passed to litellm.acompletion
-        # This avoids setting global litellm keys and aligns with user rule.
-        if api_key:
-            self.kwargs["api_key"] = api_key
-    
     def _extract_raw_token_logprobs(self, response: Optional[ModelResponse]) -> List[Tuple[str, float]]:
         """Extracts (token_string, logprob) tuples from the LiteLLM ModelResponse."""
         if not response:
@@ -377,9 +450,13 @@ class LiteLLMAdapter(LogProbRanker):
                has_logprob and logprob_is_num:
                 raw_token_logprobs.append((logprob_item.token, logprob_item.logprob))
             else:
-                # This case might indicate an unexpected structure in logprobs.content
-                # print(f"DEBUG_RANKER: Skipping malformed logprob_item #{i}: Token: {getattr(logprob_item, 'token', 'N/A')}, Logprob: {getattr(logprob_item, 'logprob', 'N/A')}")
-                pass # Skip malformed items
+                # If any item is malformed, we should raise an error, as partial logprobs might be misleading.
+                raise LogprobsNotAvailableError(
+                    f"Malformed logprob_item #{i} in 'logprobs.content'. "
+                    f"Token: {getattr(logprob_item, 'token', 'MISSING_OR_INVALID_TYPE')}, "
+                    f"Logprob: {getattr(logprob_item, 'logprob', 'MISSING_OR_INVALID_TYPE')}. "
+                    f"Expected (str, float/int)."
+                )
     
         if not raw_token_logprobs:
             # This means choice.logprobs.content was not empty, but all items in it were malformed.
@@ -390,114 +467,138 @@ class LiteLLMAdapter(LogProbRanker):
     def _calculate_average_token_logprob(self, token_logprobs: List[Tuple[str, float]]) -> float:
         """Calculates the average of a list of token logprobs."""
         if not token_logprobs:
-            print("DEBUG_RANKER: _calculate_average_token_logprob - Token logprobs list is empty. Returning 0.0.")
-            return 0.0 # Return 0.0 if the list is empty
-        try:
-            # Ensure all logprob values (second element of tuples) are numbers
-            if not all(isinstance(lp_tuple[1], (int, float)) for lp_tuple in token_logprobs):
-                print("DEBUG_RANKER: _calculate_average_token_logprob - All logprob values in token_logprobs tuples must be numbers. Raising ValueError.")
-                raise ValueError("All logprob values in token_logprobs tuples must be numbers.")
-        
-            # Sum only the logprob values (second element of tuples)
-            logprob_values = [lp_tuple[1] for lp_tuple in token_logprobs]
-            return sum(logprob_values) / len(logprob_values)
-        except TypeError as e: # Catch specific TypeError if sum/len fails on unexpected content despite check
-            print(f"DEBUG_RANKER: _calculate_average_token_logprob - TypeError: {e}. Raising ValueError.")
-            raise ValueError(f"Error calculating average token logprob due to type error: {e}") from e
+            return 0.0
 
-    async def _execute_litellm_completion(self, model, messages, temperature, max_tokens, top_p, **kwargs):
+        logprob_sum = 0.0
+        count = 0
+        for i, (token, logprob) in enumerate(token_logprobs):
+            if not isinstance(logprob, (int, float)):
+                raise ValueError(
+                    f"Invalid logprob type for token '{token}' (item {i}) in token_logprobs: {type(logprob).__name__}. Expected float or int."
+                )
+            logprob_sum += logprob
+            count += 1
+        
+        if count == 0:
+            return 0.0 
+            
+        return logprob_sum / count
+
+    async def _execute_litellm_completion(self, model: str, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, request_logprobs: Optional[bool] = None, request_top_logprobs: Optional[int] = None, **kwargs) -> Dict[str, Any]:
         """
         Helper method to execute litellm.acompletion and format response.
         """
-        # Prepare parameters for litellm.acompletion
-        litellm_params = kwargs.copy()
+        # kwargs received here are already {**self.additional_kwargs, **call_time_kwargs_to_create_chat_completion}
+        final_litellm_params = kwargs.copy()
 
-        # If 'api_key' is present in litellm_params and is None,
-        # remove it so LiteLLM can fall back to environment variables.
-        # .get() is used to safely check for presence and None value.
-        # .pop(key, None) safely removes the key if it exists.
-        if "api_key" in litellm_params and litellm_params["api_key"] is None:
-            litellm_params.pop("api_key")
+        # Determine API key for litellm.acompletion
+        # Priority: 1. 'api_key' in final_litellm_params (already popped if present) -> 2. self.api_key -> 3. LiteLLM uses env vars
+        api_key_for_litellm = final_litellm_params.pop('api_key', self.api_key)
 
-        response_obj: Optional[ModelResponse] = None # Initialize response_obj
+        # Determine client session for litellm.acompletion
+        # Priority: 1. 'client' in final_litellm_params -> 2. self.aiohttp_session -> 3. LiteLLM manages its own
+        if 'client' not in final_litellm_params:  # If not explicitly passed by caller
+            if self.aiohttp_session: # Use instance's session if available
+                final_litellm_params['client'] = self.aiohttp_session
+        # If 'client' IS in final_litellm_params, it's used as is (could be a session, or None to force no session from adapter).
+
+        # Determine if logprobs should be requested and how many top_logprobs
+        should_request_logprobs = request_logprobs if request_logprobs is not None else self.config.logprobs
+
+        if should_request_logprobs:
+            final_litellm_params['logprobs'] = True
+            # Determine top_logprobs value
+            actual_top_logprobs = request_top_logprobs # Prioritize call-time parameter
+            if actual_top_logprobs is None:
+                actual_top_logprobs = self.config.top_logprobs # Fallback to instance config
+            if actual_top_logprobs is None: # If still None, default for evaluation or general request
+                # For evaluation, we'd ideally use evaluation_top_logprobs, but this method is generic.
+                # A general default if logprobs are requested but no specific top_n is fine.
+                actual_top_logprobs = 5 
+            final_litellm_params['top_logprobs'] = actual_top_logprobs
+        else:
+            # Ensure logprobs and top_logprobs are not sent if not requested
+            final_litellm_params.pop('logprobs', None)
+            final_litellm_params.pop('top_logprobs', None)
+        
+        # Prepare the final set of keyword arguments for litellm.acompletion
+        litellm_call_kwargs = final_litellm_params
+        if api_key_for_litellm:
+            litellm_call_kwargs['api_key'] = api_key_for_litellm
+        # If api_key_for_litellm is None, 'api_key' is not in litellm_call_kwargs (it was popped and not re-added),
+        # allowing LiteLLM to use environment variables.
+
+        response_obj: Optional[ModelResponse] = None
+        raw_token_logprobs_list: List[Tuple[str, float]] = []
+
         try:
+            # Debug print (can be uncommented if needed)
+            # print(f"DEBUG_RANKER: LiteLLMAdapter._execute_litellm_completion - Calling litellm.acompletion with model={model}, temp={temperature}, messages={messages}, client_present={litellm_call_kwargs.get('client') is not None}, all_kwargs={litellm_call_kwargs}")
+
             response_obj = await litellm.acompletion(
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 top_p=top_p,
-                logprobs=True,  # Explicitly request logprobs
-                **litellm_params
+                **litellm_call_kwargs # Contains logprobs, api_key (if set), client (if set), and other params
             )
 
-            raw_token_logprobs_list = self._extract_raw_token_logprobs(response_obj)
+            if should_request_logprobs:
+                raw_token_logprobs_list = self._extract_raw_token_logprobs(response_obj)
+            # else: raw_token_logprobs_list remains [], which is intended if logprobs were not requested.
         
-            # DEBUG: Print the full response object if available
-            if response_obj:
-                try:
-                    # print(f"DEBUG_RANKER: Full LiteLLM response object (_execute_litellm_completion for {model}):\n{response_obj.model_dump_json(indent=2)}")
-                    pass # Keep debug minimal for now
-                except AttributeError:
-                    # print(f"DEBUG_RANKER: Full LiteLLM response object (not Pydantic or no model_dump_json) (_execute_litellm_completion for {model}):\n{response_obj}")
-                    pass # Keep debug minimal for now
-            # else:
-                # print(f"DEBUG_RANKER: LiteLLM response object was None (_execute_litellm_completion for {model}).")
-
+            # Validate response structure
             if not response_obj or not response_obj.choices or not response_obj.choices[0] or \
                not response_obj.choices[0].message or response_obj.choices[0].message.content is None:
-                # print(f"DEBUG_RANKER: Critical information missing in LiteLLM response for model {model}.")
                 raise LLMGenerationError(f"LiteLLM response missing critical information for model {model}.")
 
             response_data = {
                 "content": response_obj.choices[0].message.content,
                 "role": response_obj.choices[0].message.role,
-                "raw_token_logprobs": raw_token_logprobs_list # Return the list of (token, logprob) tuples
+                "num_tokens": len(response_obj.choices[0].message.content),
+                "raw_token_logprobs": raw_token_logprobs_list,
+                "raw_response": response_obj
             }
 
-            # Calculate and add average token logprob if logprobs are available
             if raw_token_logprobs_list:
                 response_data['average_token_logprob'] = self._calculate_average_token_logprob(raw_token_logprobs_list)
-            else:
-                # If no logprobs were extracted (e.g., due to malformed items or empty list from API),
-                # set a default or indicate absence. For now, let's use 0.0, but this could be None or an error.
-                response_data['average_token_logprob'] = 0.0 # Or handle as per desired logic for missing logprobs
+            elif should_request_logprobs:
+                raise MalformedLogprobsError(
+                    f"Logprobs were requested for model {model}, but the extracted logprobs list was empty. "
+                    f"This might indicate missing or empty 'content' in the logprobs object from the LLM response."
+                )
+            else: # This means not should_request_logprobs and raw_token_logprobs_list is empty.
+                # This is the expected behavior when logprobs are not requested.
+                response_data['average_token_logprob'] = 0.0
 
             return response_data
 
         except litellm_exceptions.APIError as e:
             raise LLMGenerationError(f"LiteLLM API error for model {model}: {e}") from e
-        except Exception as e: # Catch other exceptions, including LogprobsNotAvailableError
-            if isinstance(e, LogprobsNotAvailableError):
-                print(f"DEBUG_RANKER: Caught LogprobsNotAvailableError for model {model}. Details: {e}")
-                if response_obj: # Check if response_obj exists before trying to dump it
-                    try:
-                        print(f"DEBUG_RANKER: Full LiteLLM response object that caused LogprobsNotAvailableError:\n{response_obj.model_dump_json(indent=2)}")
-                    except AttributeError:
-                        print(f"DEBUG_RANKER: Full LiteLLM response object (not Pydantic or no model_dump_json) that caused LogprobsNotAvailableError:\n{response_obj}")
-                else:
-                    print(f"DEBUG_RANKER: LiteLLM response_obj was None when LogprobsNotAvailableError occurred.")
-            # else:
-                # For other types of exceptions, you might want different logging
-                # if response_obj:
-                #     try:
-                #         print(f"DEBUG_RANKER: LiteLLM response object during other Exception ({type(e).__name__}):\n{response_obj.model_dump_json(indent=2)}")
-                #     except AttributeError:
-                #         print(f"DEBUG_RANKER: LiteLLM response object (not Pydantic or no model_dump_json) during other Exception ({type(e).__name__}):\n{response_obj}")
-            raise LLMGenerationError(f"LiteLLM completion failed for model {model}: {e}") from e
+        except LogprobsNotAvailableError: # Raised by _extract_raw_token_logprobs
+            raise 
+        except Exception as e:
+            # Catch-all for other unexpected errors during the call or processing
+            raise LLMGenerationError(f"Unexpected error during LiteLLM completion for model {model}: {type(e).__name__} - {e}") from e
 
-    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, model: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, model: Optional[str] = None, request_logprobs: Optional[bool] = None, request_top_logprobs: Optional[int] = None, **kwargs) -> Dict[str, Any]:
         """Create a chat completion using LiteLLM, handling potential errors and extracting logprobs."""
         model_to_call = model if model is not None else self.model
         # Use self.api_key from instance attributes
+        # Combine instance-level additional_kwargs with call-time kwargs
+        # Call-time kwargs take precedence
+        combined_kwargs = {**self.additional_kwargs, **kwargs}
+
         return await self._execute_litellm_completion(
-            model=model_to_call, 
-            messages=messages, 
-            temperature=temperature, 
-            max_tokens=max_tokens, 
-            top_p=top_p, 
-            api_key=self.api_key, 
-            **kwargs
+            model=model_to_call,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            request_logprobs=request_logprobs, # Pass through
+            request_top_logprobs=request_top_logprobs, # Pass through
+            **combined_kwargs
         )
 
 # == Utility Functions ==
