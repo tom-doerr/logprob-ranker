@@ -7,7 +7,7 @@ def main_sync():
     # Configure the ranker
     # Using a model from your preferred list that works well with LiteLLM
     # and often doesn't require explicit API key in code if env vars are set.
-    model_name = "openrouter/google/gemini-2.0-flash-001" 
+    model_name = "openrouter/openai/gpt-4o-mini"  # Using GPT-4o Mini via OpenRouter 
     
     config = LogProbConfig(
         num_variants=2,  # Generate 2 variants for a quick example
@@ -38,9 +38,11 @@ def main_sync():
 
         # Print the results
         if ranked_outputs:
-            print("\nRanked Outputs:")
-            for i, ro in enumerate(ranked_outputs):
-                print(f"  Rank {i+1}: Score = {ro.logprob:.4f}, Index = {ro.index}")
+            print("\nRanked Outputs (best is last):")
+            num_outputs = len(ranked_outputs)
+            for i, ro in enumerate(reversed(ranked_outputs)):
+                current_rank = num_outputs - i # Best (original rank 1) will now be printed with this rank
+                print(f"  Rank {current_rank}: Score = {ro.logprob:.4f}, Index = {ro.index}")
                 print(f"  Output: \"{ro.output}\"")
                 if ro.attribute_scores:
                     print("  Attribute Scores:")
