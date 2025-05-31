@@ -18,7 +18,20 @@ from .utils import (
     sort_ranked_outputs,
     format_evaluation_prompt
 )
+from dataclasses import dataclass, field # Add field for default_factory
 from .models import AttributeScore, RankedOutput, LogProbConfig # Import models
+
+
+@dataclass
+class ChatCompletionParams:
+    messages: List[Dict[str, str]]
+    temperature: float
+    max_tokens: int
+    top_p: float
+    model_override: Optional[str] = None
+    request_logprobs_override: Optional[bool] = None
+    request_top_logprobs_override: Optional[int] = None
+    additional_provider_kwargs: Dict[str, Any] = field(default_factory=dict)
 
 
 class LLMGenerationError(Exception):
@@ -65,7 +78,7 @@ class LogProbRanker(ABC):
         self.on_output_callback = on_output_callback
     
     @abstractmethod
-    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, **kwargs) -> Dict[str, Any]:
+    async def _create_chat_completion(self, params: ChatCompletionParams) -> Dict[str, Any]:
         """
         Abstract method to create a chat completion using an LLM.
         Subclasses must implement this method.
@@ -97,13 +110,24 @@ class LogProbRanker(ABC):
         **kwargs
     ) -> Tuple[str, Dict[str, Any]]:
         """Helper to call _create_chat_completion and validate/return content and full response."""
-        response_data = await self._create_chat_completion(
+        # Extract specific overrides from kwargs, put the rest into additional_provider_kwargs
+        provider_kwargs_for_params = kwargs.copy() # Start with all kwargs
+
+        model_override_val = provider_kwargs_for_params.pop('model', None)
+        request_logprobs_override_val = provider_kwargs_for_params.pop('request_logprobs', None)
+        request_top_logprobs_override_val = provider_kwargs_for_params.pop('request_top_logprobs', None)
+
+        completion_params = ChatCompletionParams(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
-            **kwargs
+            model_override=model_override_val,
+            request_logprobs_override=request_logprobs_override_val,
+            request_top_logprobs_override=request_top_logprobs_override_val,
+            additional_provider_kwargs=provider_kwargs_for_params # Remaining kwargs
         )
+        response_data = await self._create_chat_completion(params=completion_params)
         
         content = response_data.get("content")
         if content is None:
@@ -582,23 +606,27 @@ class LiteLLMAdapter(LogProbRanker):
             # Catch-all for other unexpected errors during the call or processing
             raise LLMGenerationError(f"Unexpected error during LiteLLM completion for model {model}: {type(e).__name__} - {e}") from e
 
-    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, model: Optional[str] = None, request_logprobs: Optional[bool] = None, request_top_logprobs: Optional[int] = None, **kwargs) -> Dict[str, Any]:
+    async def _create_chat_completion(self, params: ChatCompletionParams) -> Dict[str, Any]:
         """Create a chat completion using LiteLLM, handling potential errors and extracting logprobs."""
-        model_to_call = model if model is not None else self.model
-        # Use self.api_key from instance attributes
-        # Combine instance-level additional_kwargs with call-time kwargs
-        # Call-time kwargs take precedence
-        combined_kwargs = {**self.additional_kwargs, **kwargs}
+        model_to_call = params.model_override if params.model_override is not None else self.model
+        
+        # Pass through overrides; _execute_litellm_completion handles defaults if these are None
+        final_request_logprobs = params.request_logprobs_override
+        final_request_top_logprobs = params.request_top_logprobs_override
+
+        # Combine instance-level additional_kwargs with call-time additional_provider_kwargs from params
+        # Params' kwargs take precedence
+        final_provider_kwargs = {**self.additional_kwargs, **params.additional_provider_kwargs}
 
         return await self._execute_litellm_completion(
             model=model_to_call,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p,
-            request_logprobs=request_logprobs, # Pass through
-            request_top_logprobs=request_top_logprobs, # Pass through
-            **combined_kwargs
+            messages=params.messages,
+            temperature=params.temperature,
+            max_tokens=params.max_tokens,
+            top_p=params.top_p,
+            request_logprobs=final_request_logprobs,
+            request_top_logprobs=final_request_top_logprobs,
+            **final_provider_kwargs
         )
 
 # == Utility Functions ==
