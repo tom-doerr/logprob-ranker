@@ -38,7 +38,11 @@ async def test_simple_rank(mock_litellm, config):
     generation_response.choices = [
         MagicMock(
             message=MagicMock(role="assistant", content="Generated test content"),
-            logprobs=MagicMock(content=[MagicMock(logprob=0.0)]) # Add a mock logprob item
+            logprobs=MagicMock(content=[
+                MagicMock(token="Generated", logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=" test", logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=" content", logprob=-0.1, top_logprobs=None, bytes=None)
+            ])
         )
     ]
     
@@ -47,7 +51,16 @@ async def test_simple_rank(mock_litellm, config):
     evaluation_response.choices = [
         MagicMock(
             message=MagicMock(role="assistant", content='{"clear": true, "useful": false}'),
-            logprobs=MagicMock(content=[MagicMock(logprob=0.0)]) # Add mock logprobs structure
+            logprobs=MagicMock(content=[
+                MagicMock(token='{"clear"', logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=':', logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=' true', logprob=-0.2, top_logprobs=None, bytes=None), # clear: true
+                MagicMock(token=',', logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=' "useful"', logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=':', logprob=-0.1, top_logprobs=None, bytes=None),
+                MagicMock(token=' false', logprob=-0.9, top_logprobs=None, bytes=None), # useful: false
+                MagicMock(token='}', logprob=-0.1, top_logprobs=None, bytes=None)
+            ])
         )
     ]
     
@@ -71,11 +84,11 @@ async def test_simple_rank(mock_litellm, config):
     # Create expected result manually for comparison
     expected_output = RankedOutput(
         output="Generated test content",
-        logprob=0.5,  # (1.0 + 0.0) / 2
+        logprob=(-0.2 - 0.9) / 2,  # For clear=true (-0.2), useful=false (-0.9)
         index=0,
         attribute_scores=[
-            AttributeScore(name="clear", score=1.0),
-            AttributeScore(name="useful", score=0.0)
+            AttributeScore(name="clear", score=-0.2, explanation="Logprob of token 'true' for 'clear'"),
+            AttributeScore(name="useful", score=-0.9, explanation="Logprob of token 'false' for 'useful'")
         ],
         raw_evaluation='{"clear": true, "useful": false}'
     )
@@ -83,7 +96,14 @@ async def test_simple_rank(mock_litellm, config):
     # Verify basic result
     assert len(results) == 1
     assert results[0].output == expected_output.output
-    assert results[0].logprob == expected_output.logprob
+    assert results[0].logprob == pytest.approx(expected_output.logprob)
+    # Compare attribute scores individually due to potential explanation string differences if not perfectly matched
+    assert len(results[0].attribute_scores) == len(expected_output.attribute_scores)
+    for res_attr, exp_attr in zip(sorted(results[0].attribute_scores, key=lambda x: x.name), sorted(expected_output.attribute_scores, key=lambda x: x.name)):
+        assert res_attr.name == exp_attr.name
+        assert res_attr.score == pytest.approx(exp_attr.score)
+        # We can be more lenient with explanation string if needed, or ensure it matches perfectly
+        assert exp_attr.explanation in res_attr.explanation
 
 def test_sync_wrapper(config):
     """Test that the synchronous wrapper works correctly."""

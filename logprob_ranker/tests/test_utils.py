@@ -6,7 +6,6 @@ import unittest
 from logprob_ranker.logprob_ranker.utils import (
     parse_evaluation_json,
     extract_template_attributes,
-    calculate_logprob_score,
     format_evaluation_prompt,
     sort_ranked_outputs,
     serialize_ranked_output,
@@ -136,57 +135,6 @@ class TestUtils(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No LOGPROB_TRUE attributes found"):
             extract_template_attributes(template)
 
-    def test_calculate_logprob_score_all_true(self):
-        evaluation = {"attr1": True, "attr2": True}
-        attributes = ["attr1", "attr2"]
-        self.assertEqual(calculate_logprob_score(evaluation, attributes), 1.0)
-
-    def test_calculate_logprob_score_some_true(self):
-        evaluation = {"attr1": True, "attr2": False, "attr3": True}
-        attributes = ["attr1", "attr2", "attr3"]
-        self.assertAlmostEqual(calculate_logprob_score(evaluation, attributes), 2/3)
-
-    def test_calculate_logprob_score_all_false(self):
-        evaluation = {"attr1": False, "attr2": False}
-        attributes = ["attr1", "attr2"]
-        self.assertEqual(calculate_logprob_score(evaluation, attributes), 0.0)
-
-    def test_calculate_logprob_score_missing_attributes(self):
-        evaluation = {"attr1": True}
-        attributes = ["attr1", "attr2"] # attr2 missing in evaluation
-        # Expects 0.5 because attr1 is True, attr2 is treated as False (1/2)
-        self.assertEqual(calculate_logprob_score(evaluation, attributes), 0.5)
-
-    def test_calculate_logprob_score_no_attributes(self):
-        evaluation = {"attr1": True}
-        attributes = []
-        with self.assertRaises(ValueError):
-            calculate_logprob_score(evaluation, attributes)
-
-    def test_calculate_logprob_score_empty_evaluation_data(self):
-        evaluation = {}
-        attributes = ["attr1", "attr2"]
-        # Expects 0.0 because no attributes are True in empty evaluation (0/2)
-        self.assertEqual(calculate_logprob_score(evaluation, attributes), 0.0)
-
-    def test_calculate_logprob_score_non_boolean_values_in_eval(self):
-        # parse_evaluation_json converts 'true'/'false' strings to booleans.
-        # This test checks direct calls to calculate_logprob_score with varied types.
-        evaluation = {
-            "attr1": "true_string",  # Truthy string
-            "attr2": None,           # Falsy
-            "attr3": "",             # Falsy empty string
-            "attr4": "non_bool_string", # Truthy string
-            "attr5": 1,              # Truthy int
-            "attr6": 0,              # Falsy int
-            "attr7": True,           # Boolean True
-            "attr8": False           # Boolean False
-        }
-        attributes = ["attr1", "attr2", "attr3", "attr4", "attr5", "attr6", "attr7", "attr8", "missing_attr"]
-        # Expected true: attr1, attr4, attr5, attr7 (4 attributes)
-        # Total attributes considered: 9
-        expected_score = 4 / 9
-        self.assertAlmostEqual(calculate_logprob_score(evaluation, attributes), expected_score)
 
     def test_format_evaluation_prompt(self):
         eval_prompt = "Evaluate this:"

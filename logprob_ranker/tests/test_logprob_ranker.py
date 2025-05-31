@@ -139,5 +139,80 @@ class TestLogProbRankerErrorHandling(unittest.TestCase):
     def test_rank_outputs_handles_all_failures(self):
         run_async_test(self._async_test_rank_outputs_handles_all_failures)
 
+
+class TestLogProbRankerScoring(unittest.TestCase):
+    """Tests the attribute scoring logic in LogProbRanker based on token logprobs."""
+
+    def setUp(self):
+        self.default_template = (
+            '{\n' # Use double backslash for literal newline in string if needed, or just \n
+            '  "interesting": LOGPROB_TRUE,\n'
+            '  "creative": LOGPROB_TRUE,\n'
+            '  "useful": LOGPROB_TRUE\n'
+            '}'
+        )
+        self.config = LogProbConfig(
+            num_variants=1,
+            evaluation_prompt="Evaluate the following text:", # Simple prompt
+            template=self.default_template
+        )
+        self.mock_create_completion = AsyncMock()
+        self.ranker = MinimalConcreteRanker(config=self.config, mock_create_completion=self.mock_create_completion)
+
+    async def _async_test_simple_successful_scoring(self):
+        """Test scoring with a clean JSON and identifiable true/false tokens."""
+        generated_text_response = {
+            "content": "This is a generated output.",
+            "raw_token_logprobs": [("This", -0.1), (" is", -0.2), (" a", -0.1), (" generated", -0.3), (" output", -0.1), (".", -0.05)]
+            # Role and other fields not strictly needed by the mock's current usage in generate_and_evaluate_output for generation part
+        }
+
+        eval_raw_json_text = '{"interesting": true, "creative": false, "useful": true}'
+        eval_tokens_with_logprobs = [
+            ('{"interesting"', -0.1), (':', -0.1), (' true', -0.5), (',', -0.1), # interesting: true (-0.5)
+            (' "creative"', -0.1), (':', -0.1), (' false', -0.8), (',', -0.1), # creative: false (-0.8)
+            (' "useful"', -0.1), (':', -0.1), (' true', -0.6), ('}', -0.1)    # useful: true (-0.6)
+        ]
+        evaluation_response = {
+            "content": eval_raw_json_text,
+            "raw_token_logprobs": eval_tokens_with_logprobs
+        }
+
+        self.ranker._internal_completion_mock.side_effect = [
+            generated_text_response,
+            evaluation_response
+        ]
+
+        ranked_output = await self.ranker.generate_and_evaluate_output(prompt="Test prompt", index=0)
+
+        self.assertIsNotNone(ranked_output)
+        self.assertEqual(ranked_output.output, "This is a generated output.")
+
+        # Expected scores: interesting: -0.5, creative: -0.8, useful: -0.6
+        # Expected final score: average of (-0.2, -0.9, -0.3) = -1.4 / 3 = -0.4666...
+        # Mock values are: interesting: true (-0.5), creative: false (-0.8), useful: true (-0.6)
+        self.assertAlmostEqual(ranked_output.logprob, (-0.5 - 0.8 - 0.6) / 3, places=5)
+        
+        self.assertEqual(len(ranked_output.attribute_scores), 3)
+        
+        score_map = {s.name: s for s in ranked_output.attribute_scores}
+        self.assertIn("interesting", score_map)
+        self.assertAlmostEqual(score_map["interesting"].score, -0.5, places=5) # Matches mock_eval_logprobs
+        self.assertIn("Logprob of token 'true' for 'interesting'", score_map["interesting"].explanation)
+
+        self.assertIn("creative", score_map)
+        self.assertAlmostEqual(score_map["creative"].score, -0.8, places=5) # Matches mock_eval_logprobs
+        self.assertIn("Logprob of token 'false' for 'creative'", score_map["creative"].explanation)
+
+        self.assertIn("useful", score_map)
+        self.assertAlmostEqual(score_map["useful"].score, -0.6, places=5) # Matches mock_eval_logprobs
+        self.assertIn("Logprob of token 'true' for 'useful'", score_map["useful"].explanation)
+        
+        self.assertEqual(self.ranker._internal_completion_mock.call_count, 2)
+
+    def test_simple_successful_scoring(self):
+        run_async_test(self._async_test_simple_successful_scoring)
+
+
 if __name__ == '__main__':
     unittest.main()

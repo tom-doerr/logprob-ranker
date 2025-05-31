@@ -40,8 +40,10 @@ class TestLiteLLMAdapter(unittest.TestCase):
 
         # Mock the logprobs structure for the default mock
         mock_logprobs_item1 = MagicMock()
+        mock_logprobs_item1.token = "setup_token_1"  # Explicitly set as string
         mock_logprobs_item1.logprob = -0.123
         mock_logprobs_item2 = MagicMock()
+        mock_logprobs_item2.token = "setup_token_2"  # Explicitly set as string
         mock_logprobs_item2.logprob = -0.456
         mock_logprobs_data = MagicMock()
         mock_logprobs_data.content = [mock_logprobs_item1, mock_logprobs_item2]
@@ -68,10 +70,15 @@ class TestLiteLLMAdapter(unittest.TestCase):
                         "message": {"role": mock_message.role, "content": mock_message.content},
                         "logprobs": {
                             "content": [
-                                {"token": "token1", "logprob": mock_logprobs_item1.logprob, "bytes": None, "top_logprobs": []},
-                                {"token": "token2", "logprob": mock_logprobs_item2.logprob, "bytes": None, "top_logprobs": []}
+                                {
+                                    "token": item.token,
+                                    "logprob": item.logprob,
+                                    "bytes": getattr(item, 'bytes', None),
+                                    "top_logprobs": getattr(item, 'top_logprobs', [])
+                                }
+                                for item in mock_choice.logprobs.content
                             ]
-                        }
+                        } if hasattr(mock_choice, 'logprobs') and mock_choice.logprobs and hasattr(mock_choice.logprobs, 'content') and isinstance(mock_choice.logprobs.content, list) else None
                     }
                 ],
                 "usage": {
@@ -156,8 +163,10 @@ class TestLiteLLMAdapter(unittest.TestCase):
             
             # Dummy logprobs for generation (can be more specific if needed)
             lp_item1 = MagicMock()
+            lp_item1.token = "token_gen_1"
             lp_item1.logprob = avg_logprob - 0.1 # e.g., -0.35
             lp_item2 = MagicMock()
+            lp_item2.token = "token_gen_2"
             lp_item2.logprob = avg_logprob + 0.1 # e.g., -0.15
             # Ensure avg_logprob is the average of these two
             # (lp_item1.logprob + lp_item2.logprob) / 2 = avg_logprob
@@ -183,13 +192,33 @@ class TestLiteLLMAdapter(unittest.TestCase):
             mock_eval_message.role = "assistant"
             mock_eval_choice.message = mock_eval_message
             
-            # Dummy logprobs for evaluation
-            lp_item_eval1 = MagicMock()
-            lp_item_eval1.logprob = avg_logprob - 0.05 # e.g., -0.55
-            lp_item_eval2 = MagicMock()
-            lp_item_eval2.logprob = avg_logprob + 0.05 # e.g., -0.45
+            # For Alpha (expected logprob -0.4 for the attribute 'test' being true)
+            eval_logprobs_list_alpha = [
+                MagicMock(token='{', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token='"test"', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token=':', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token=' true', logprob=-0.4, bytes=None, top_logprobs=[]), # This logprob is used for ranking
+                MagicMock(token='}', logprob=-0.05, bytes=None, top_logprobs=[])
+            ]
+            avg_logprob_alpha = sum(lp.logprob for lp in eval_logprobs_list_alpha) / len(eval_logprobs_list_alpha)
+
+            # For Beta (expected logprob -0.9 for the attribute 'test' being false, ranked lower)
+            eval_logprobs_list_beta = [
+                MagicMock(token='{', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token='"test"', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token=':', logprob=-0.05, bytes=None, top_logprobs=[]),
+                MagicMock(token=' false', logprob=-0.9, bytes=None, top_logprobs=[]), # This logprob is used for ranking
+                MagicMock(token='}', logprob=-0.05, bytes=None, top_logprobs=[])
+            ]
+            avg_logprob_beta = sum(lp.logprob for lp in eval_logprobs_list_beta) / len(eval_logprobs_list_beta)
+
             mock_eval_logprobs_data = MagicMock()
-            mock_eval_logprobs_data.content = [lp_item_eval1, lp_item_eval2]
+            if eval_json_str == '{"test": true}':
+                mock_eval_logprobs_data.content = eval_logprobs_list_alpha
+            elif eval_json_str == '{"test": false}':
+                mock_eval_logprobs_data.content = eval_logprobs_list_beta
+            else:
+                raise ValueError("Unexpected eval_json_str")
             mock_eval_choice.logprobs = mock_eval_logprobs_data
             mock_eval_response.choices = [mock_eval_choice]
             mock_eval_response.model_dump_json = MagicMock(return_value=f'{{"evaluation_content": "{eval_json_str}"}}') # Simplified dump
@@ -214,19 +243,20 @@ class TestLiteLLMAdapter(unittest.TestCase):
         self.assertEqual(len(results), num_variants)
         self.assertEqual(self.mock_litellm.acompletion.call_count, num_variants * 2)
 
-        # Results should be sorted by logprob (descending, so higher is better)
-        # Logprob is now based on average of attribute_scores from evaluation.
-        # Variant Alpha: evaluation {'test': true} -> attribute_score 1.0 -> logprob 1.0
+        # Results are sorted by the primary attribute_score (descending).
+        # RankedOutput.logprob is the average log probability from the evaluation LLM's response.
+        # Variant Alpha (score 1.0): eval_avg_logprob = -0.4
+        # Variant Beta (score 0.0): eval_avg_logprob = -0.9
         # Variant Beta: evaluation {'test': false} -> attribute_score 0.0 -> logprob 0.0
         self.assertEqual(results[0].output, "Generated Output Alpha")
-        self.assertAlmostEqual(results[0].logprob, 1.0, places=4) # Updated from -0.1
+        self.assertAlmostEqual(results[0].logprob, -0.4, places=4) # Avg logprob from eval_response for Alpha
         self.assertEqual(results[0].attribute_scores[0].name, "test")
-        self.assertEqual(results[0].attribute_scores[0].score, 1.0) # from '{"test": true}'
+        self.assertAlmostEqual(results[0].attribute_scores[0].score, -0.4, places=4) # Logprob of ' true' token
 
         self.assertEqual(results[1].output, "Generated Output Beta")
-        self.assertAlmostEqual(results[1].logprob, 0.0, places=4) # Updated from -0.8
+        self.assertAlmostEqual(results[1].logprob, -0.9, places=4) # Avg logprob from eval_response for Beta
         self.assertEqual(results[1].attribute_scores[0].name, "test")
-        self.assertEqual(results[1].attribute_scores[0].score, 0.0) # from '{"test": false}'
+        self.assertAlmostEqual(results[1].attribute_scores[0].score, -0.9, places=4) # Logprob of ' false' token
 
     def test_rank_outputs(self):
         run_async_test(self.async_test_rank_outputs)
@@ -243,6 +273,7 @@ class TestLiteLLMAdapter(unittest.TestCase):
         
         # Create a dummy logprobs structure for this mock response
         lp_item = MagicMock()
+        lp_item.token = "AnthropicToken" # Add token attribute
         lp_item.logprob = -0.1234
         mock_logprobs_data = MagicMock()
         mock_logprobs_data.content = [lp_item]
@@ -322,11 +353,17 @@ class TestLiteLLMAdapter(unittest.TestCase):
             print(f"DEBUG_TEST: Real call result content: {result['content'] if result else 'No result'}")
             self.assertIsNotNone(result)
             self.assertIn("content", result)
-            self.assertIn("average_token_logprob", result)
+            self.assertIn("raw_token_logprobs", result)
             self.assertTrue(len(result['content']) > 0)
             # For OpenAI gpt-3.5-turbo, we expect logprobs to be available
-            self.assertIsInstance(result["average_token_logprob"], float)
-            print(f"DEBUG_TEST: Real call average_token_logprob: {result['average_token_logprob']}")
+            self.assertIsInstance(result["raw_token_logprobs"], list)
+            if result["raw_token_logprobs"]:
+                first_logprob_item = result["raw_token_logprobs"][0]
+                self.assertIsInstance(first_logprob_item, tuple)
+                self.assertEqual(len(first_logprob_item), 2)
+                self.assertIsInstance(first_logprob_item[0], str) # token
+                self.assertIsInstance(first_logprob_item[1], float) # logprob
+            print(f"DEBUG_TEST: Real call raw_token_logprobs: {result['raw_token_logprobs'][:5]}...") # Print first 5
         except Exception as e:
             print(f"DEBUG_TEST: Error during real API call: {e}")
             self.fail(f"Real API call failed: {e}")
@@ -378,7 +415,7 @@ class TestLiteLLMAdapter(unittest.TestCase):
                 messages=[{"role": "user", "content": "Hello"}], temperature=0.7, max_tokens=10, top_p=1.0
             )
         self.assertIsInstance(cm.exception.__cause__, LogprobsNotAvailableError)
-        self.assertIn("Logprobs content was empty, cannot calculate average", str(cm.exception.__cause__))
+        self.assertIn("'logprobs.content' is an empty list.", str(cm.exception.__cause__))
 
     def test_empty_logprobs_content_mocked(self):
         run_async_test(self.async_test_empty_logprobs_content_mocked)
@@ -391,15 +428,16 @@ class TestLiteLLMAdapter(unittest.TestCase):
         mock_choice.message = mock_message
         
         malformed_logprob_item = MagicMock()
-        # Missing 'logprob' attribute on purpose, or it could be non-numeric
-        # del malformed_logprob_item.logprob # if it was there
-        # or mock_logprob_item.logprob = "not-a-number"
-        # For this test, let's ensure it doesn't have the attribute
+        # Ensure it doesn't have the 'logprob' attribute or it's not a number
         if hasattr(malformed_logprob_item, 'logprob'):
             delattr(malformed_logprob_item, 'logprob')
+        # To be certain, also ensure no 'token' attribute if that's part of malformation test
+        if hasattr(malformed_logprob_item, 'token'):
+             delattr(malformed_logprob_item, 'token')
             
         mock_logprobs_data = MagicMock()
-        mock_logprobs_data.content = [malformed_logprob_item] # Contains a malformed item
+        # Ensure content is a list of these malformed items
+        mock_logprobs_data.content = [malformed_logprob_item, MagicMock()] # Add another malformed mock
         mock_choice.logprobs = mock_logprobs_data
         mock_response.choices = [mock_choice]
         self.mock_litellm.acompletion.side_effect = [mock_response]
@@ -409,7 +447,7 @@ class TestLiteLLMAdapter(unittest.TestCase):
                 messages=[{"role": "user", "content": "Hello"}], temperature=0.7, max_tokens=10, top_p=1.0
             )
         self.assertIsInstance(cm.exception.__cause__, LogprobsNotAvailableError)
-        self.assertIn("Logprob item malformed", str(cm.exception.__cause__))
+        self.assertIn("All logprob items in 'logprobs.content' were malformed.", str(cm.exception.__cause__))
             
     def test_malformed_logprobs_item_mocked(self):
         run_async_test(self.async_test_malformed_logprobs_item_mocked)

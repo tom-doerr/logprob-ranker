@@ -61,11 +61,14 @@ class AsyncBasicTests(unittest.TestCase):
         eval_message.content = '{"test": true}'
         eval_choice = MagicMock()
         eval_choice.message = eval_message
-        # Mock logprobs for evaluation (though not strictly used for ranking, _extract_raw_token_logprobs will be called)
-        mock_eval_token_logprob = MagicMock()
-        mock_eval_token_logprob.token = "{\"test\":"
-        mock_eval_token_logprob.logprob = -0.01
-        mock_eval_logprobs_content = [mock_eval_token_logprob]
+        # Mock logprobs for evaluation '{"test": true}'
+        mock_eval_logprobs_content = [
+            MagicMock(token='{', logprob=-0.02),
+            MagicMock(token='"test"', logprob=-0.03),
+            MagicMock(token=':', logprob=-0.04),
+            MagicMock(token=' true', logprob=-0.1),  # Key logprob for the attribute value
+            MagicMock(token='}', logprob=-0.05)
+        ]
         mock_eval_logprobs_obj = MagicMock()
         mock_eval_logprobs_obj.content = mock_eval_logprobs_content
         eval_choice.logprobs = mock_eval_logprobs_obj # Add logprobs to choice
@@ -105,7 +108,7 @@ class AsyncBasicTests(unittest.TestCase):
         # Check logprob (average of evaluation attribute scores)
         # The template is '{"test": LOGPROB_TRUE}' and eval response is '{"test": true}'
         # So, attribute 'test' gets score 1.0. Average is 1.0.
-        self.assertEqual(results[0].logprob, 1.0)  # Based on '{"test": true}' evaluation and LOGPROB_TRUE template
+        self.assertAlmostEqual(results[0].logprob, -0.1, places=4)  # Avg logprob of 'true' token
         
         # Verify acompletion was called twice (generate + evaluate)
         self.assertEqual(self.mock_litellm.acompletion.call_count, 2)

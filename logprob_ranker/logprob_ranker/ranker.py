@@ -4,7 +4,7 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Union, Callable, Coroutine, Tuple
 import litellm
 import litellm.exceptions as litellm_exceptions # Import real exceptions
 from litellm.utils import ModelResponse # Added for type hinting
@@ -96,7 +96,13 @@ class LogProbRanker(ABC):
                 top_p=self.config.top_p
             )
             
-            generated_output_content = generation_response_data["content"]
+            generated_output_content = generation_response_data.get("content")
+            if generated_output_content is None:
+                # This would be a problem with the LLM call or mock for generation content.
+                raise LLMGenerationError(
+                    f"Generation response from _create_chat_completion for variant {index} "
+                    f"is missing the 'content' key. Response: {generation_response_data}"
+                )
             # output_avg_token_logprob from generation_response_data["average_token_logprob"] is not directly used for ranking score anymore.
             
             # Generate evaluation
@@ -119,9 +125,23 @@ class LogProbRanker(ABC):
                 top_p=1.0
             )
             
-            raw_evaluation_text = evaluation_llm_response_data["content"]
-            eval_tokens_with_logprobs: List[Tuple[str, float]] = evaluation_llm_response_data["raw_token_logprobs"]
+            raw_evaluation_text = evaluation_llm_response_data.get("content")
+            if raw_evaluation_text is None:
+                # This would be a problem with the LLM call or mock for evaluation content.
+                raise EvaluationParseError(
+                    f"Evaluation response from _create_chat_completion for variant {index} "
+                    f"is missing the 'content' key. Response: {evaluation_llm_response_data}"
+                )
 
+            eval_tokens_with_logprobs = evaluation_llm_response_data.get("raw_token_logprobs")
+            if eval_tokens_with_logprobs is None:
+                error_msg = (
+                    f"Evaluation response from _create_chat_completion for variant {index} "
+                    "is missing the 'raw_token_logprobs' key or its value was None. This is essential for scoring. "
+                    f"Response received: {evaluation_llm_response_data}"
+                )
+                raise LogprobsNotAvailableError(error_msg)
+            
             # 1. Parse the raw evaluation JSON (optional, for debugging or cross-referencing)
             # parsed_evaluation_dict = parse_evaluation_json(raw_evaluation_text)
             
@@ -333,37 +353,37 @@ class LiteLLMAdapter(LogProbRanker):
         # Specific issues like missing attributes will raise AttributeError, which is more informative.
 
         if not response.choices or not response.choices[0]:
-            print("DEBUG_RANKER: _extract_raw_token_logprobs - Response choices list is empty/invalid. Returning empty list.")
-            return []
+            raise LogprobsNotAvailableError("Response choices list is empty or invalid, cannot extract logprobs.")
 
         choice = response.choices[0]
 
         if not hasattr(choice, 'logprobs') or choice.logprobs is None:
-            print("DEBUG_RANKER: _extract_raw_token_logprobs - No 'logprobs' attribute on choice object or it is None. Returning empty list.")
-            return []
+            raise LogprobsNotAvailableError("No 'logprobs' attribute on choice object or it is None.")
 
-        # Assuming logprobs is an object with a 'content' attribute which is a list of logprob items
         if not hasattr(choice.logprobs, 'content') or not isinstance(choice.logprobs.content, list):
-            # If 'content' is missing or not a list, we can't iterate. If it's an empty list, the loop won't run.
-            print("DEBUG_RANKER: _extract_raw_token_logprobs - 'logprobs.content' is missing, not a list, or empty. Returning empty list.")
-            return []
+            raise LogprobsNotAvailableError("'logprobs.content' is missing or not a list.")
+
+        if not choice.logprobs.content: # Content is an empty list
+            raise LogprobsNotAvailableError("'logprobs.content' is an empty list.")
 
         raw_token_logprobs: List[Tuple[str, float]] = []
-        for logprob_item in choice.logprobs.content: # Iterates if content is a list (even if empty)
-            # Standard LiteLLM LogprobItem structure has 'token' and 'logprob'
-            if hasattr(logprob_item, 'token') and isinstance(logprob_item.token, str) and \
-               hasattr(logprob_item, 'logprob') and isinstance(logprob_item.logprob, (int, float)):
+        for i, logprob_item in enumerate(choice.logprobs.content):
+            has_token = hasattr(logprob_item, 'token')
+            token_is_str = isinstance(getattr(logprob_item, 'token', None), str)
+            has_logprob = hasattr(logprob_item, 'logprob')
+            logprob_is_num = isinstance(getattr(logprob_item, 'logprob', None), (int, float))
+
+            if has_token and token_is_str and \
+               has_logprob and logprob_is_num:
                 raw_token_logprobs.append((logprob_item.token, logprob_item.logprob))
             else:
                 # This case might indicate an unexpected structure in logprobs.content
-                print(f"DEBUG_RANKER: Logprob item has unexpected structure: {logprob_item}. Skipping.")
-        
-        # If the loop completes and raw_token_logprobs is empty, it means no valid logprobs were found or content was empty.
-        # The list will be returned as is (empty or populated).
-        if not raw_token_logprobs and choice.logprobs.content: # Only print if content was there but nothing was extracted
-            print("DEBUG_RANKER: _extract_raw_token_logprobs - Extracted list is empty, but logprobs.content was present. Check item structure.")
-        elif not choice.logprobs.content:
-            print("DEBUG_RANKER: _extract_raw_token_logprobs - logprobs.content was empty. Returning empty list.")
+                # print(f"DEBUG_RANKER: Skipping malformed logprob_item #{i}: Token: {getattr(logprob_item, 'token', 'N/A')}, Logprob: {getattr(logprob_item, 'logprob', 'N/A')}")
+                pass # Skip malformed items
+    
+        if not raw_token_logprobs:
+            # This means choice.logprobs.content was not empty, but all items in it were malformed.
+            raise LogprobsNotAvailableError("All logprob items in 'logprobs.content' were malformed.")
 
         return raw_token_logprobs
 
@@ -373,10 +393,14 @@ class LiteLLMAdapter(LogProbRanker):
             print("DEBUG_RANKER: _calculate_average_token_logprob - Token logprobs list is empty. Returning 0.0.")
             return 0.0 # Return 0.0 if the list is empty
         try:
-            if not all(isinstance(lp, (int, float)) for lp in token_logprobs):
-                print("DEBUG_RANKER: _calculate_average_token_logprob - All items in token_logprobs must be numbers. Raising ValueError.")
-                raise ValueError("All items in token_logprobs must be numbers.")
-            return sum(token_logprobs) / len(token_logprobs)
+            # Ensure all logprob values (second element of tuples) are numbers
+            if not all(isinstance(lp_tuple[1], (int, float)) for lp_tuple in token_logprobs):
+                print("DEBUG_RANKER: _calculate_average_token_logprob - All logprob values in token_logprobs tuples must be numbers. Raising ValueError.")
+                raise ValueError("All logprob values in token_logprobs tuples must be numbers.")
+        
+            # Sum only the logprob values (second element of tuples)
+            logprob_values = [lp_tuple[1] for lp_tuple in token_logprobs]
+            return sum(logprob_values) / len(logprob_values)
         except TypeError as e: # Catch specific TypeError if sum/len fails on unexpected content despite check
             print(f"DEBUG_RANKER: _calculate_average_token_logprob - TypeError: {e}. Raising ValueError.")
             raise ValueError(f"Error calculating average token logprob due to type error: {e}") from e
@@ -425,11 +449,21 @@ class LiteLLMAdapter(LogProbRanker):
                 # print(f"DEBUG_RANKER: Critical information missing in LiteLLM response for model {model}.")
                 raise LLMGenerationError(f"LiteLLM response missing critical information for model {model}.")
 
-            return {
+            response_data = {
                 "content": response_obj.choices[0].message.content,
                 "role": response_obj.choices[0].message.role,
                 "raw_token_logprobs": raw_token_logprobs_list # Return the list of (token, logprob) tuples
             }
+
+            # Calculate and add average token logprob if logprobs are available
+            if raw_token_logprobs_list:
+                response_data['average_token_logprob'] = self._calculate_average_token_logprob(raw_token_logprobs_list)
+            else:
+                # If no logprobs were extracted (e.g., due to malformed items or empty list from API),
+                # set a default or indicate absence. For now, let's use 0.0, but this could be None or an error.
+                response_data['average_token_logprob'] = 0.0 # Or handle as per desired logic for missing logprobs
+
+            return response_data
 
         except litellm_exceptions.APIError as e:
             raise LLMGenerationError(f"LiteLLM API error for model {model}: {e}") from e

@@ -117,8 +117,12 @@ async def test_parse_evaluation():
     # Test evaluation parsing
     with unittest.mock.patch.object(ranker, '_create_chat_completion', new_callable=AsyncMock) as mock_create_completion:
         mock_create_completion.side_effect = [
-            {"content": mock_generation_output, "average_token_logprob": -0.1},
-            {"content": mock_evaluation_output, "average_token_logprob": -0.2}
+            {"content": mock_generation_output, "raw_token_logprobs": [("gen_token_parse_test", -0.1)]}, # Generation
+            {"content": mock_evaluation_output, 
+             "raw_token_logprobs": [
+                 ('{"test"', -0.1), (':', -0.1), (' true', -0.2), (',', -0.1), 
+                 ('"quality"', -0.1), (':', -0.1), (' false', -0.9), ('}', -0.1)
+             ]}  # Evaluation, test=true (-0.2), quality=false (-0.9)
         ]
         result = await ranker.generate_and_evaluate_output("Test prompt", 0)
     
@@ -126,8 +130,11 @@ async def test_parse_evaluation():
     assert result is not None
     assert result.output == mock_generation_output # Check against the defined output string
     assert len(result.attribute_scores) == 2
-    assert any(score.name == "test" and score.score == 1.0 for score in result.attribute_scores)
-    assert any(score.name == "quality" and score.score == 0.0 for score in result.attribute_scores)
+    # Assertions based on new logprob scores: test = -0.2, quality = -0.9
+    # The final score is the average of these: (-0.2 + -0.9) / 2 = -0.55
+    assert result.logprob == pytest.approx((-0.2 - 0.9) / 2)
+    assert any(score.name == "test" and score.score == pytest.approx(-0.2) for score in result.attribute_scores)
+    assert any(score.name == "quality" and score.score == pytest.approx(-0.9) for score in result.attribute_scores)
 
 
 @pytest.mark.asyncio
@@ -142,8 +149,12 @@ async def test_generate_and_evaluate_output(mock_create_chat_completion, ranker)
     evaluation_json_str = '{"test": true, "quality": true}' # Score 1.0
 
     mock_create_chat_completion.side_effect = [
-        {"content": generated_text, "average_token_logprob": -0.1},
-        {"content": evaluation_json_str, "average_token_logprob": -0.2}
+        {"content": generated_text, "raw_token_logprobs": [("gen_token", -0.1)]}, # Generation
+        {"content": '{"test": true, "quality": true}', 
+         "raw_token_logprobs": [
+             ('{"test"', -0.1), (':', -0.1), (' true', -0.2), (',', -0.1), 
+             ('"quality"', -0.1), (':', -0.1), (' true', -0.3), ('}', -0.1)
+         ]}  # Evaluation
     ]
 
     result = await ranker_instance.generate_and_evaluate_output(prompt, index)
@@ -155,9 +166,10 @@ async def test_generate_and_evaluate_output(mock_create_chat_completion, ranker)
     assert len(result.attribute_scores) == 2
     # Based on config: template='{"test": LOGPROB_TRUE, "quality": LOGPROB_TRUE}'
     # and eval: '{"test": true, "quality": true}'
-    assert any(score.name == "test" and score.score == 1.0 for score in result.attribute_scores)
-    assert any(score.name == "quality" and score.score == 1.0 for score in result.attribute_scores)
-    assert result.logprob == 1.0 # (1.0 + 1.0) / 2
+    # Mock eval raw_token_logprobs: test (' true', -0.2), quality (' true', -0.3)
+    assert any(score.name == "test" and score.score == pytest.approx(-0.2) for score in result.attribute_scores)
+    assert any(score.name == "quality" and score.score == pytest.approx(-0.3) for score in result.attribute_scores)
+    assert result.logprob == pytest.approx((-0.2 - 0.3) / 2)
     assert mock_create_chat_completion.await_count == 2
     # Check first call args (generation)
     call_args_gen = mock_create_chat_completion.await_args_list[0]
@@ -214,21 +226,33 @@ async def test_rank_outputs(mock_create_chat_completion, ranker):
     evals_content = ['{"test": true, "quality": false}', '{"test": true, "quality": true}']
 
     mock_create_chat_completion.side_effect = [
-        # Variant 1
-        {"content": outputs_content[0], "average_token_logprob": -0.11},  # Generation
-        {"content": evals_content[0], "average_token_logprob": -0.12},    # Evaluation
-        # Variant 2
-        {"content": outputs_content[1], "average_token_logprob": -0.21},  # Generation
-        {"content": evals_content[1], "average_token_logprob": -0.22},    # Evaluation
+        # Variant 1: Gen Output 1, Eval '{"test": true, "quality": false}'
+        {"content": outputs_content[0], "raw_token_logprobs": [("v1_gen", -0.11)]},  # Generation
+        {"content": evals_content[0], 
+         "raw_token_logprobs": [
+             ('{"test"', -0.1), (':', -0.1), (' true', -0.2), (',', -0.1), 
+             ('"quality"', -0.1), (':', -0.1), (' false', -0.7), ('}', -0.1)
+         ]},    # Evaluation
+        # Variant 2: Gen Output 2, Eval '{"test": true, "quality": true}'
+        {"content": outputs_content[1], "raw_token_logprobs": [("v2_gen", -0.21)]},  # Generation
+        {"content": evals_content[1], 
+         "raw_token_logprobs": [
+             ('{"test"', -0.1), (':', -0.1), (' true', -0.3), (',', -0.1), 
+             ('"quality"', -0.1), (':', -0.1), (' true', -0.4), ('}', -0.1)
+         ]},    # Evaluation
     ]
 
     results = await ranker_instance.rank_outputs(prompt)
 
     assert len(results) == num_variants
     assert results[0].output == outputs_content[1] # Output 2 (score 1.0) should be first
-    assert results[0].logprob == 1.0
-    assert results[1].output == outputs_content[0] # Output 1 (score 0.5) should be second
-    assert results[1].logprob == 0.5
+    # Eval 1 ('{"test": true, "quality": false}') -> score (-0.2 + -0.7)/2 = -0.45
+    # Eval 2 ('{"test": true, "quality": true}') -> score (-0.3 + -0.4)/2 = -0.35
+    # Variant 2 (output 2) should be first with score -0.35
+    assert results[0].output == outputs_content[1]
+    assert results[0].logprob == pytest.approx((-0.3 - 0.4) / 2)
+    assert results[1].output == outputs_content[0]
+    assert results[1].logprob == pytest.approx((-0.2 - 0.7) / 2)
     assert mock_create_chat_completion.await_count == num_variants * 2
 
 
@@ -249,14 +273,24 @@ def test_rank_outputs_sync(mock_create_chat_completion, ranker):
     async def mock_side_effect_func(*args, **kwargs):
         nonlocal call_index
         call_index += 1
+        # Variant 1: Gen Sync Output 1, Eval '{"test": false, "quality": false}'
+        # Variant 2: Gen Sync Output 2, Eval '{"test": true, "quality": false}'
         if call_index == 0: # Gen 1
-            return {"content": outputs_content[0], "average_token_logprob": -0.11}
-        if call_index == 1: # Eval 1
-            return {"content": evals_content[0], "average_token_logprob": -0.12}
+            return {"content": outputs_content[0], "raw_token_logprobs": [("s_v1_gen", -0.11)]}
+        if call_index == 1: # Eval 1 '{"test": false, "quality": false}' -> score (-0.8 + -0.9)/2 = -0.85
+            return {"content": evals_content[0], 
+                     "raw_token_logprobs": [
+                         ('{"test"', -0.1), (':', -0.1), (' false', -0.8), (',', -0.1),
+                         ('"quality"', -0.1), (':', -0.1), (' false', -0.9), ('}', -0.1)
+                     ]}
         if call_index == 2: # Gen 2
-            return {"content": outputs_content[1], "average_token_logprob": -0.21}
-        if call_index == 3: # Eval 2
-            return {"content": evals_content[1], "average_token_logprob": -0.22}
+            return {"content": outputs_content[1], "raw_token_logprobs": [("s_v2_gen", -0.21)]}
+        if call_index == 3: # Eval 2 '{"test": true, "quality": false}' -> score (-0.2 + -0.7)/2 = -0.45
+            return {"content": evals_content[1], 
+                     "raw_token_logprobs": [
+                         ('{"test"', -0.1), (':', -0.1), (' true', -0.2), (',', -0.1),
+                         ('"quality"', -0.1), (':', -0.1), (' false', -0.7), ('}', -0.1)
+                     ]}
         raise ValueError(f"Unexpected call_index: {call_index} or too many calls to mock")
             
     mock_create_chat_completion.side_effect = mock_side_effect_func
@@ -265,10 +299,13 @@ def test_rank_outputs_sync(mock_create_chat_completion, ranker):
 
     assert len(results) == num_variants
     # Results should be sorted by score (eval 1 = 0.0, eval 2 = 0.5)
-    assert results[0].output == outputs_content[1] # Sync Output 2 (score 0.5) should be first
-    assert results[0].logprob == 0.5
-    assert results[1].output == outputs_content[0] # Sync Output 1 (score 0.0) should be second
-    assert results[1].logprob == 0.0
+    # Eval 1 ('{"test": false, "quality": false}') -> score (-0.8 + -0.9)/2 = -0.85
+    # Eval 2 ('{"test": true, "quality": false}') -> score (-0.2 + -0.7)/2 = -0.45
+    # Variant 2 (Sync Output 2) should be first with score -0.45
+    assert results[0].output == outputs_content[1]
+    assert results[0].logprob == pytest.approx((-0.2 - 0.7) / 2)
+    assert results[1].output == outputs_content[0]
+    assert results[1].logprob == pytest.approx((-0.8 -0.9) / 2)
     assert mock_create_chat_completion.await_count == num_variants * 2
 
 
