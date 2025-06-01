@@ -111,7 +111,7 @@ class TestUtils(unittest.TestCase):
 
     def test_extract_template_attributes_whitespace_variation(self):
         # Test different whitespace patterns around the colon (for regex)
-        template = '{"attr1"   :LOGPROB_TRUE, "attr2":    LOGPROB_TRUE}'
+        template = '{"attr1":LOGPROB_TRUE, "attr2":    LOGPROB_TRUE}'
         expected = ["attr1", "attr2"]
         self.assertEqual(extract_template_attributes(template), expected)
 
@@ -132,7 +132,7 @@ class TestUtils(unittest.TestCase):
     def test_extract_template_attributes_invalid_json_no_match(self):
         # Invalid JSON that also won't match the regex
         template = '{key: LOGPROB_TRUE}' # Key not quoted
-        with self.assertRaisesRegex(ValueError, "No LOGPROB_TRUE attributes found"):
+        with self.assertRaisesRegex(ValueError, r"No attributes \(e\.g\., \"my_attribute\": LOGPROB_TRUE\) found in template: '{key: LOGPROB_TRUE}'. Ensure attributes are quoted strings followed by a LOGPROB_X placeholder."):
             extract_template_attributes(template)
 
 

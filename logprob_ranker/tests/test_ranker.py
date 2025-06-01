@@ -8,7 +8,7 @@ import sys
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch # Restored order
 import pytest
-from logprob_ranker.logprob_ranker.ranker import LLMGenerationError, LogProbConfig, RankedOutput, LogProbRanker, sort_ranked_outputs # Consolidated and cleaned imports
+from logprob_ranker.logprob_ranker.ranker import ChatCompletionParams, LLMGenerationError, LogprobsNotAvailableError, LogProbConfig, RankedOutput, LogProbRanker, sort_ranked_outputs # Consolidated and cleaned imports
 
 # Third-party imports
 # pytest is already imported above
@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 # Define a concrete subclass for testing
 class ConcreteTestRanker(LogProbRanker):
-    async def _create_chat_completion(self, messages: list, temperature: float, max_tokens: int, top_p: float) -> dict:
+    async def _create_chat_completion(self, params: ChatCompletionParams) -> dict:
         # Mock implementation for testing
         # Return a dictionary that mimics the expected structure from a real LLM call
         # including 'content' and 'average_token_logprob'
@@ -32,8 +32,9 @@ class ConcreteTestRanker(LogProbRanker):
         # e.g., by using self.llm_client if it's a mock, or by returning specific
         # values based on the input messages.
         return {
-            "content": f"Mocked LLM output for messages: {messages}",
-            "average_token_logprob": -0.12345  # Example logprob
+            "content": f"Mocked LLM output for messages: {params.messages}",
+            "average_token_logprob": -0.12345,  # Example logprob
+            "raw_token_logprobs": [("mock_token", -0.123)] # Ensure this key is present for tests expecting it
         }
 
     # _generate_single_output is not an abstract method of LogProbRanker
@@ -173,14 +174,14 @@ async def test_generate_and_evaluate_output(mock_create_chat_completion, ranker)
     assert mock_create_chat_completion.await_count == 2
     # Check first call args (generation)
     call_args_gen = mock_create_chat_completion.await_args_list[0]
-    assert call_args_gen.kwargs['messages'] == [
+    assert call_args_gen.kwargs['params'].messages == [
         {"role": "system", "content": ranker_instance.config.system_prompt},
         {"role": "user", "content": prompt}
     ]
     # Check second call args (evaluation)
     call_args_eval = mock_create_chat_completion.await_args_list[1]
-    assert generated_text in call_args_eval.kwargs['messages'][-1]['content']
-    assert ranker_instance.config.template in call_args_eval.kwargs['messages'][-1]['content']
+    assert generated_text in call_args_eval.kwargs['params'].messages[-1]['content']
+    assert ranker_instance.config.template in call_args_eval.kwargs['params'].messages[-1]['content']
 
 
 @pytest.mark.asyncio
@@ -209,6 +210,45 @@ async def test_generate_and_evaluate_output_failure(mock_create_chat_completion)
     # Check the wrapped exception message
     assert "LLM generation failed for variant 0: Generation failed" in str(exc_info.value)
     assert "Generation failed" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+@patch('logprob_ranker.tests.test_ranker.ConcreteTestRanker._create_chat_completion', new_callable=AsyncMock)
+async def test_generate_and_evaluate_output_missing_eval_logprobs(
+    mock_create_chat_completion, 
+    ranker # Fixture providing ConcreteTestRanker instance
+):
+    """Test LogProbRanker.generate_and_evaluate_output when evaluation logprobs are missing."""
+    ranker_instance = ranker # Use the fixture from conftest.py or local definition
+
+    # 1. Generation call: returns content and raw_token_logprobs
+    mock_generation_response = {
+        "content": "Generated output for test.",
+        "raw_token_logprobs": [("gen_token", -0.1)],
+        "average_token_logprob": -0.1
+    }
+    # 2. Evaluation call: returns content BUT raw_token_logprobs is missing
+    mock_evaluation_response_missing_logprobs = {
+        "content": "{\"test_attr\": true}", # Valid JSON content
+        # raw_token_logprobs key is intentionally missing
+        "average_token_logprob": 0.0 
+    }
+
+    mock_create_chat_completion.side_effect = [
+        mock_generation_response,
+        mock_evaluation_response_missing_logprobs
+    ]
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await ranker_instance.generate_and_evaluate_output("Test prompt for missing eval logprobs", 0)
+
+    # Assert that _create_chat_completion was called twice
+    assert mock_create_chat_completion.await_count == 2
+
+    # Assert that the raised RuntimeError's cause is LogprobsNotAvailableError
+    assert isinstance(exc_info.value.__cause__, LogprobsNotAvailableError)
+    # Optionally, check the error message of the LogprobsNotAvailableError
+    assert "is missing the 'raw_token_logprobs' key" in str(exc_info.value.__cause__)
 
 
 @pytest.mark.asyncio

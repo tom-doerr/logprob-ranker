@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import List, Dict, Any, Optional
 
-from logprob_ranker.logprob_ranker.ranker import LogProbRanker, LogProbConfig, RankedOutput, LLMGenerationError
+from logprob_ranker.logprob_ranker.ranker import LogProbRanker, LogProbConfig, RankedOutput, LLMGenerationError, ChatCompletionParams
 
 # Helper to run async tests
 def run_async_test(test_case_method):
@@ -42,9 +42,17 @@ class MinimalConcreteRanker(LogProbRanker):
         else:
             self._internal_completion_mock = AsyncMock()
 
-    async def _create_chat_completion(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int, top_p: float, model: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    async def _create_chat_completion(self, params: ChatCompletionParams) -> Dict[str, Any]:
         # This is the actual method that would call an LLM, now uses the internal mock
-        return await self._internal_completion_mock(messages, temperature, max_tokens, top_p, model, **kwargs)
+        # Unpack from params for the mock, which still expects individual args
+        return await self._internal_completion_mock(
+            messages=params.messages,
+            temperature=params.temperature,
+            max_tokens=params.max_tokens,
+            top_p=params.top_p,
+            model=params.model_override, # model_override from params corresponds to 'model' for the mock
+            **params.additional_provider_kwargs
+        )
 
 class TestLogProbRankerErrorHandling(unittest.TestCase):
     """Tests error handling in the LogProbRanker class."""

@@ -475,7 +475,7 @@ class LiteLLMAdapter(LogProbRanker):
                 raw_token_logprobs.append((logprob_item.token, logprob_item.logprob))
             else:
                 # If any item is malformed, we should raise an error, as partial logprobs might be misleading.
-                raise LogprobsNotAvailableError(
+                raise MalformedLogprobsError(
                     f"Malformed logprob_item #{i} in 'logprobs.content'. "
                     f"Token: {getattr(logprob_item, 'token', 'MISSING_OR_INVALID_TYPE')}, "
                     f"Logprob: {getattr(logprob_item, 'logprob', 'MISSING_OR_INVALID_TYPE')}. "
@@ -601,7 +601,9 @@ class LiteLLMAdapter(LogProbRanker):
         except litellm_exceptions.APIError as e:
             raise LLMGenerationError(f"LiteLLM API error for model {model}: {e}") from e
         except LogprobsNotAvailableError: # Raised by _extract_raw_token_logprobs
-            raise 
+            raise
+        except MalformedLogprobsError: # Raised by _extract_raw_token_logprobs or within this method
+            raise
         except Exception as e:
             # Catch-all for other unexpected errors during the call or processing
             raise LLMGenerationError(f"Unexpected error during LiteLLM completion for model {model}: {type(e).__name__} - {e}") from e

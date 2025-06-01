@@ -1,6 +1,1 @@
-[tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "function"
-filterwarnings = [
-    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning", # Ignore elusive AsyncMock warnings
-    "ignore:Support for class-based `config` is deprecated, use ConfigDict instead.:DeprecationWarning:pydantic._internal._config" # Ignore Pydantic v1 config deprecation from dependencies
-]
+

@@ -34,10 +34,13 @@ class LogProbConfig(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 1000
     top_p: float = 1.0
+    logprobs: Optional[bool] = False  # Request logprobs for the main generation call
+    top_logprobs: Optional[int] = None # Request top_logprobs for the main generation call (usually 1-5)
     
     # Ranking parameters
     num_variants: int = 5
     thread_count: int = 1 # Retained for now, though async is primary
+    evaluation_top_logprobs: Optional[int] = None # Number of top logprobs for evaluation LLM call
     
     # Evaluation template (uses LOGPROB_TRUE placeholders)
     template: str = """{

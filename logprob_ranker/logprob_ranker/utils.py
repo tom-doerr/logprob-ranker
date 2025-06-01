@@ -93,41 +93,37 @@ def extract_template_attributes(template: str) -> List[str]:
     Raises:
         ValueError: If no attributes could be extracted from the template
     """
-    template_json = None
     attributes = []
 
-    # Attempt 1: Parse as JSON directly
     try:
-        template_json = json.loads(template)
-    except json.JSONDecodeError:
-        # Attempt 2: Replace LOGPROB_TRUE and parse again
-        try:
-            valid_json_str = template.replace('LOGPROB_TRUE', '"LOGPROB_TRUE"')
-            template_json = json.loads(valid_json_str)
-        except json.JSONDecodeError:
-            pass
+        # Regex to find attribute names (quoted string) followed by a LOGPROB placeholder
+        # It captures the attribute name from '"attribute_name": LOGPROB_X'
+        pattern = r'"([^"]+)":\s*(LOGPROB_TRUE|LOGPROB_FALSE|LOGPROB_ANY)'
+        # re.findall will return a list of tuples if multiple capture groups are present.
+        # Each tuple will be (attribute_name, logprob_placeholder_type)
+        # We only need the attribute_name (the first element of each tuple).
+        matches = re.findall(pattern, template)
+        attributes = [match[0] for match in matches] # Extract just the attribute name
 
-    # If JSON parsing succeeded, extract attributes
-    if template_json is not None and isinstance(template_json, dict):
-        attributes = [key for key, value in template_json.items()
-                      if isinstance(value, str) and value.strip('"') == "LOGPROB_TRUE"]
-
-    # If no attributes found via JSON parsing OR parsing failed, try regex
-    if not attributes:
-        try:
-            pattern = r'"([^" ]+)":\s*LOGPROB_TRUE'
-            attributes = re.findall(pattern, template)
-
-            if not attributes:
-                if template.strip() == 'LOGPROB_TRUE':
-                    msg = ("Template contains only LOGPROB_TRUE token, "
-                           "cannot extract attributes.")
-                    raise ValueError(msg)
-                msg = ("No LOGPROB_TRUE attributes found in template via JSON "
-                       "or regex")
+        if not attributes:
+            # Check for a simple template that might just be a single placeholder
+            # (e.g. for simple pass/fail without named attributes)
+            # This case might need further refinement if we want to support it formally.
+            if template.strip() in ('LOGPROB_TRUE', 'LOGPROB_FALSE', 'LOGPROB_ANY'):
+                # If the template is *just* a placeholder, perhaps we consider it a single, unnamed attribute.
+                # For now, let's stick to requiring named attributes for clarity.
+                pass # Or raise ValueError if unnamed attributes are not supported
+            
+            # If still no attributes, and not a simple placeholder template, then raise error.
+            if not attributes: # Re-check as the above block might modify it in future
+                msg = (
+                    f"No attributes (e.g., \"my_attribute\": LOGPROB_TRUE) found in template: '{template}'. "
+                    f"Ensure attributes are quoted strings followed by a LOGPROB_X placeholder."
+                )
                 raise ValueError(msg)
-        except re.error as e:
-            raise ValueError(f"Regex error during template parsing: {e}") from e
+                
+    except re.error as e:
+        raise ValueError(f"Regex error during template parsing: {e}") from e
 
     return attributes
 

@@ -1,67 +1,45 @@
 """
-Basic async tests for the LiteLLMAdapter.
+Basic async tests for the LiteLLMAdapter using pytest.
 """
 
 # Standard library imports
-import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
-import asyncio
 
 # Third-party imports
+import pytest
 from litellm.utils import ModelResponse # Import for spec
 
 # First-party imports
 from logprob_ranker.logprob_ranker.ranker import LiteLLMAdapter, LogProbConfig
-from logprob_ranker.logprob_ranker.utils import LLMGenerationError
+# from logprob_ranker.logprob_ranker.utils import LLMGenerationError # Keep if specific exception types are asserted
 
-
-class AsyncBasicTests(unittest.TestCase):
-    """Basic async tests for the LiteLLMAdapter."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        # Patch litellm in the ranker module
-        self.patcher = patch('logprob_ranker.logprob_ranker.ranker.litellm')
-        self.mock_litellm = self.patcher.start()
-        
+@pytest.fixture
+def mock_env_fixture():
+    """Pytest fixture to mock litellm and provide common test objects."""
+    with patch('logprob_ranker.logprob_ranker.ranker.litellm') as mock_litellm:
         # Create config for tests
-        self.config = LogProbConfig(
+        config = LogProbConfig(
             num_variants=1,  # Generate just one output for test simplicity
             temperature=0.7,
             max_tokens=100,
-            thread_count=1,
+            thread_count=1, # Note: thread_count is for LogProbRanker, not directly used by LiteLLMAdapter's own concurrency
             template='{"test": LOGPROB_TRUE}'
         )
         
-        # Setup response for mock completion
-        gen_message = MagicMock()
-        gen_message.content = "Test generated content"
-        gen_choice = MagicMock()
-        gen_choice.message = gen_message
-        # Mock logprobs structure
-        mock_token_logprob1 = MagicMock()
-        mock_token_logprob1.token = "Test"
-        mock_token_logprob1.logprob = -0.123
-        mock_token_logprob2 = MagicMock()
-        mock_token_logprob2.token = "content"
-        mock_token_logprob2.logprob = -0.456
-        
+        # Setup response for mock completion (gen_response)
+        gen_message = MagicMock(content="Test generated content")
+        gen_choice = MagicMock(message=gen_message)
+        mock_token_logprob1 = MagicMock(token="Test", logprob=-0.123)
+        mock_token_logprob2 = MagicMock(token="content", logprob=-0.456)
         mock_logprobs_content = [mock_token_logprob1, mock_token_logprob2]
-        mock_logprobs_obj = MagicMock()
-        mock_logprobs_obj.content = mock_logprobs_content
-        gen_choice.logprobs = mock_logprobs_obj # Add logprobs to choice
-
-        self.gen_response = MagicMock(spec=ModelResponse) # Use spec for better mocking
-        self.gen_response.choices = [gen_choice]
-        # Ensure the mock response object itself can be introspected if needed by LiteLLMAdapter
-        self.gen_response.model_dump_json = MagicMock(return_value="{}")
+        mock_logprobs_obj = MagicMock(content=mock_logprobs_content)
+        gen_choice.logprobs = mock_logprobs_obj
+        gen_response = MagicMock(spec=ModelResponse, choices=[gen_choice])
+        gen_response.model_dump_json = MagicMock(return_value="{}")
         
-        # Setup response for mock evaluation
-        eval_message = MagicMock()
-        eval_message.content = '{"test": true}'
-        eval_choice = MagicMock()
-        eval_choice.message = eval_message
-        # Mock logprobs for evaluation '{"test": true}'
+        # Setup response for mock evaluation (eval_response)
+        eval_message = MagicMock(content='{"test": true}')
+        eval_choice = MagicMock(message=eval_message)
         mock_eval_logprobs_content = [
             MagicMock(token='{', logprob=-0.02),
             MagicMock(token='"test"', logprob=-0.03),
@@ -69,175 +47,122 @@ class AsyncBasicTests(unittest.TestCase):
             MagicMock(token=' true', logprob=-0.1),  # Key logprob for the attribute value
             MagicMock(token='}', logprob=-0.05)
         ]
-        mock_eval_logprobs_obj = MagicMock()
-        mock_eval_logprobs_obj.content = mock_eval_logprobs_content
-        eval_choice.logprobs = mock_eval_logprobs_obj # Add logprobs to choice
-
-        self.eval_response = MagicMock(spec=ModelResponse)
-        self.eval_response.choices = [eval_choice]
-        self.eval_response.model_dump_json = MagicMock(return_value="{}")
+        mock_eval_logprobs_obj = MagicMock(content=mock_eval_logprobs_content)
+        eval_choice.logprobs = mock_eval_logprobs_obj
+        eval_response = MagicMock(spec=ModelResponse, choices=[eval_choice])
+        eval_response.model_dump_json = MagicMock(return_value="{}")
         
-        # Set up acompletion to return our mock responses
-        self.mock_litellm.acompletion = AsyncMock()
+        mock_litellm.acompletion = AsyncMock()
+        
+        yield mock_litellm, config, gen_response, eval_response
+
+@pytest.mark.asyncio
+async def test_simple_generation(mock_env_fixture, aiohttp_session):
+    """Test a simple async generation using LiteLLMAdapter."""
+    mock_litellm, config, gen_response, eval_response = mock_env_fixture
     
-    def tearDown(self):
-        """Tear down test fixtures."""
-        self.patcher.stop()
+    mock_litellm.acompletion.side_effect = [gen_response, eval_response]
     
-    async def _test_simple_generation(self):
-        """Test a simple async generation."""
-        # Configure the mock to return our responses
-        self.mock_litellm.acompletion.side_effect = [
-            self.gen_response,
-            self.eval_response
+    adapter = LiteLLMAdapter(
+        model="gpt-3.5-turbo",
+        api_key="test-key",
+        config=config,
+        aiohttp_session=aiohttp_session
+    )
+    
+    results = await adapter.rank_outputs("Test prompt")
+    
+    assert len(results) == 1
+    assert results[0].output == "Test generated content"
+    assert results[0].logprob == pytest.approx(-0.1, abs=1e-4)
+    assert mock_litellm.acompletion.call_count == 2
+
+@pytest.mark.asyncio
+async def test_error_handling(mock_env_fixture, aiohttp_session):
+    """Test error handling in async generation when a variant fails."""
+    mock_litellm, config, _, _ = mock_env_fixture # gen_response, eval_response not needed
+    
+    mock_litellm.acompletion.side_effect = Exception("Mocked LiteLLM acompletion failure")
+    
+    adapter = LiteLLMAdapter(
+        model="gpt-3.5-turbo",
+        api_key="test-key",
+        config=config, # config has num_variants = 1
+        aiohttp_session=aiohttp_session
+    )
+    
+    expected_error_message = "LLM generation failed for variant 0: Unexpected error during LiteLLM completion for model gpt-3.5-turbo: Exception - Mocked LiteLLM acompletion failure"
+    with pytest.raises(RuntimeError, match=expected_error_message):
+        await adapter.rank_outputs("Test prompt for error")
+    
+    mock_litellm.acompletion.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_concurrent_tasks(mock_env_fixture, aiohttp_session):
+    """Test concurrent task handling for multiple variants."""
+    mock_litellm, _, _, _ = mock_env_fixture # Original config, gen_response, eval_response not used directly
+    
+    multi_config = LogProbConfig(
+        num_variants=3,
+        temperature=0.7,
+        max_tokens=100,
+        thread_count=2, # As in original test, for LogProbRanker context
+        template='{"test": LOGPROB_TRUE}'
+    )
+    
+    # Mock generation responses for 3 variants
+    gen_responses = []
+    for i in range(3):
+        gen_message = MagicMock(content=f"Test content {i}")
+        gen_choice = MagicMock(message=gen_message)
+        # Simplified logprobs for gen response, original had -0.1*i and -0.2*i
+        mock_token_logprob_g1 = MagicMock(token=f"Test{i}", logprob=-0.1 * (i + 1)) 
+        mock_token_logprob_g2 = MagicMock(token="content", logprob=-0.2 * (i + 1))
+        gen_choice.logprobs = MagicMock(content=[mock_token_logprob_g1, mock_token_logprob_g2])
+        response = MagicMock(spec=ModelResponse, choices=[gen_choice])
+        response.model_dump_json = MagicMock(return_value="{}")
+        gen_responses.append(response)
+        
+    # Mock evaluation responses for 3 variants
+    # The original test's eval logprobs for concurrent tasks were not set up to vary meaningfully for 'true'.
+    # Replicating the original structure, which means the logprob for 'true' might be consistent or fallback.
+    eval_responses = []
+    for i in range(3): # Loop variable 'i' for distinct mock details if needed
+        eval_message = MagicMock(content='{"test": true}')
+        eval_choice = MagicMock(message=eval_message)
+        # Original mock for eval logprobs in concurrent test was: token="{\"test\":", logprob=-0.01*i
+        # This doesn't provide a 'true' token's logprob. 
+        # For simplicity and to match original test's limited scope on this, we'll use a fixed eval logprob structure
+        # similar to the one in mock_env_fixture's eval_response, or accept fallback behavior.
+        # Here, we ensure each eval response has the standard 'true' logprob for this test's purpose.
+        mock_eval_logprobs_content_c = [
+            MagicMock(token='{', logprob=-0.02),
+            MagicMock(token='"test"', logprob=-0.03),
+            MagicMock(token=':', logprob=-0.04),
+            MagicMock(token=' true', logprob=-0.1), # Consistent logprob for 'true'
+            MagicMock(token='}', logprob=-0.05)
         ]
+        eval_choice.logprobs = MagicMock(content=mock_eval_logprobs_content_c)
+        response = MagicMock(spec=ModelResponse, choices=[eval_choice])
+        response.model_dump_json = MagicMock(return_value="{}")
+        eval_responses.append(response)
         
-        # Create adapter with mocked litellm
-        adapter = LiteLLMAdapter(
-            model="gpt-3.5-turbo",
-            api_key="test-key",
-            config=self.config
-        )
-        
-        # Run with a simple prompt - should generate and evaluate one output
-        results = await adapter.rank_outputs("Test prompt")
-        
-        # Verify basic results
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].output, "Test generated content")
-        # Check logprob (average of evaluation attribute scores)
-        # The template is '{"test": LOGPROB_TRUE}' and eval response is '{"test": true}'
-        # So, attribute 'test' gets score 1.0. Average is 1.0.
-        self.assertAlmostEqual(results[0].logprob, -0.1, places=4)  # Avg logprob of 'true' token
-        
-        # Verify acompletion was called twice (generate + evaluate)
-        self.assertEqual(self.mock_litellm.acompletion.call_count, 2)
-        
-        return results
+    all_litellm_responses = []
+    for gen_resp, eval_resp in zip(gen_responses, eval_responses):
+        all_litellm_responses.extend([gen_resp, eval_resp])
     
-    def test_async_generation(self):
-        """Run the async test in a sync test method."""
-        loop = asyncio.get_event_loop()
-        results = loop.run_until_complete(self._test_simple_generation())
-        self.assertIsNotNone(results)
-
-    async def _test_error_handling(self):
-        """Test error handling in async generation when all variants fail."""
-        # Configure mock to raise an error that LiteLLMAdapter._create_chat_completion will wrap.
-        # This simulates a failure during the call to the LLM service.
-        self.mock_litellm.acompletion.side_effect = Exception("Mocked LiteLLM acompletion failure")
-        
-        adapter = LiteLLMAdapter(
-            model="gpt-3.5-turbo",
-            api_key="test-key",
-            config=self.config  # self.config has num_variants = 1 by default in setUp
-        )
-        
-        # When litellm.acompletion fails, LiteLLMAdapter._create_chat_completion raises LLMGenerationError.
-        # Then, LogProbRanker.generate_and_evaluate_output catches this and raises a RuntimeError.
-        # Since num_variants is 1, rank_outputs will receive this one failure and, finding no
-        # successful results, will raise RuntimeError("All generation and evaluation tasks failed.").
-        # However, for a single variant, the RuntimeError from generate_and_evaluate_output itself propagates out.
-        expected_error_message = "LLM generation failed for variant 0: LiteLLM completion failed for model gpt-3.5-turbo: Mocked LiteLLM acompletion failure"
-        with self.assertRaisesRegex(RuntimeError, expected_error_message):
-            await adapter.rank_outputs("Test prompt for error")
-
-        # Ensure acompletion was called once (for the generation attempt of the single variant).
-        self.mock_litellm.acompletion.assert_called_once()
-
-    def test_error_handling(self):
-        """Run the async error handling test."""
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._test_error_handling()) # _test_error_handling now makes assertions directly
-
-    async def _test_concurrent_tasks(self):
-        """Test concurrent task handling."""
-        # Configure config for multiple variants
-        multi_config = LogProbConfig(
-            num_variants=3,
-            temperature=0.7,
-            max_tokens=100,
-            thread_count=2,
-            template='{"test": LOGPROB_TRUE}'  # Add template to config
-        )
-        
-        # Configure mock to return different responses
-        responses = []
-        for i in range(3):
-            gen_message = MagicMock()
-            gen_message.content = f"Test content {i}"
-            gen_choice = MagicMock()
-            gen_choice.message = gen_message
-            mock_token_logprob_c1 = MagicMock()
-            mock_token_logprob_c1.token = f"Test{i}"
-            mock_token_logprob_c1.logprob = -0.1 * i
-            mock_token_logprob_c2 = MagicMock()
-            mock_token_logprob_c2.token = "content"
-            mock_token_logprob_c2.logprob = -0.2 * i
-            mock_logprobs_content_c = [mock_token_logprob_c1, mock_token_logprob_c2]
-            mock_logprobs_obj_c = MagicMock()
-            mock_logprobs_obj_c.content = mock_logprobs_content_c
-            gen_choice.logprobs = mock_logprobs_obj_c
-
-            response = MagicMock(spec=ModelResponse)
-            response.choices = [gen_choice]
-            response.model_dump_json = MagicMock(return_value="{}")
-            responses.append(response)
-        
-        # Create evaluation responses
-        eval_responses = []
-        for _ in range(3):
-            eval_message = MagicMock()
-            eval_message.content = '{"test": true}'
-            eval_choice = MagicMock()
-            eval_choice.message = eval_message
-            mock_eval_token_logprob_c = MagicMock()
-            mock_eval_token_logprob_c.token = "{\"test\":"
-            mock_eval_token_logprob_c.logprob = -0.01 * i
-            mock_eval_logprobs_content_c = [mock_eval_token_logprob_c]
-            mock_eval_logprobs_obj_c = MagicMock()
-            mock_eval_logprobs_obj_c.content = mock_eval_logprobs_content_c
-            eval_choice.logprobs = mock_eval_logprobs_obj_c
-
-            eval_response = MagicMock(spec=ModelResponse)
-            eval_response.choices = [eval_choice]
-            eval_response.model_dump_json = MagicMock(return_value="{}")
-            eval_responses.append(eval_response)
-        
-        # Set up side effects to return our responses in sequence
-        # Interleave generation and evaluation responses
-        all_responses = []
-        for gen_resp, eval_resp in zip(responses, eval_responses):
-            all_responses.extend([gen_resp, eval_resp])
-        
-        self.mock_litellm.acompletion.side_effect = all_responses
-        
-        # Create adapter with mocked litellm
-        adapter = LiteLLMAdapter(
-            model="gpt-3.5-turbo",
-            api_key="test-key",
-            config=multi_config
-        )
-        
-        # Run with concurrent tasks
-        results = await adapter.rank_outputs("Test prompt")
-        
-        # Verify results
-        self.assertEqual(len(results), 3)
-        contents = {result.output for result in results}
-        self.assertEqual(contents, {"Test content 0", "Test content 1", "Test content 2"})
-        
-        # Verify all tasks were completed
-        self.assertEqual(self.mock_litellm.acompletion.call_count, 6)  # 3 generations + 3 evaluations
-        
-        return results
-
-    def test_concurrent_tasks(self):
-        """Run the concurrent tasks test."""
-        loop = asyncio.get_event_loop()
-        results = loop.run_until_complete(self._test_concurrent_tasks())
-        self.assertIsNotNone(results)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    mock_litellm.acompletion.side_effect = all_litellm_responses
+    
+    adapter = LiteLLMAdapter(
+        model="gpt-3.5-turbo",
+        api_key="test-key",
+        config=multi_config,
+        aiohttp_session=aiohttp_session
+    )
+    
+    results = await adapter.rank_outputs("Test prompt")
+    
+    assert len(results) == 3
+    output_contents = {result.output for result in results}
+    assert output_contents == {"Test content 0", "Test content 1", "Test content 2"}
+    assert mock_litellm.acompletion.call_count == 6  # 3 generations + 3 evaluations

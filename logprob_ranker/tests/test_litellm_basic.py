@@ -64,8 +64,8 @@ class TestLiteLLMBasic(unittest.TestCase):
             )
             
             # Check kwargs are stored
-            self.assertEqual(adapter.kwargs["api_key"], "custom-key")
-            self.assertEqual(adapter.kwargs["base_url"], "https://custom-api.example.com")
+            self.assertEqual(adapter.api_key, "custom-key")
+            self.assertEqual(adapter.additional_kwargs["base_url"], "https://custom-api.example.com")
             
 if __name__ == "__main__":
     unittest.main()
