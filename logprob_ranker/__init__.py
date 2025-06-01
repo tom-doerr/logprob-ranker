@@ -10,7 +10,9 @@ from .logprob_ranker import (
     LiteLLMAdapter,
     LLMGenerationError,
     EvaluationParseError,
-    LogprobsNotAvailableError
+    LogprobsNotAvailableError,
+    MalformedLogprobsError,
+    TextEvaluationResult
 )
 
 # Attempt to import version from the submodule

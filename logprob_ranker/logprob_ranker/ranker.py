@@ -23,6 +23,20 @@ from .models import AttributeScore, RankedOutput, LogProbConfig # Import models
 
 
 @dataclass
+class TextEvaluationResult:
+    """
+    Represents the result of evaluating a piece of text, typically by getting its logprobs.
+    """
+    text_evaluated: str  # The text for which logprobs are provided
+    average_logprob: float
+    num_tokens: int
+    raw_token_logprobs: List[Tuple[str, float]] = field(default_factory=list)
+    prompt_used: Optional[List[Dict[str, str]]] = None # The messages that led to this text
+    model_used: Optional[str] = None
+    raw_response: Optional[Any] = None # Store the full raw LLM response if needed
+
+
+@dataclass
 class ChatCompletionParams:
     messages: List[Dict[str, str]]
     temperature: float
@@ -630,5 +644,108 @@ class LiteLLMAdapter(LogProbRanker):
             request_top_logprobs=final_request_top_logprobs,
             **final_provider_kwargs
         )
+
+    async def evaluate_text(
+        self,
+        prompt_messages: List[Dict[str, str]],
+        text_to_evaluate: str, # Note: Current logic does not use this to force specific text evaluation.
+                               # It evaluates text generated from prompt_messages.
+        model_override: Optional[str] = None,
+        temperature: float = 0.0, 
+        max_tokens: int = 150, # Max tokens for the generated text to be evaluated
+        top_p: float = 1.0,
+        request_logprobs: bool = True, # Must be true to get logprobs
+        request_top_logprobs: Optional[int] = 5,
+        additional_provider_kwargs: Optional[Dict[str, Any]] = None
+    ) -> "TextEvaluationResult":
+        """
+        Evaluates text by generating a completion from prompt_messages and returning its logprobs.
+        The 'text_to_evaluate' parameter is currently a placeholder in the logic but kept for API compatibility.
+        """
+        effective_model = model_override if model_override is not None else self.model
+
+        params = ChatCompletionParams(
+            messages=prompt_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            model_override=effective_model, # Use effective_model here
+            request_logprobs_override=request_logprobs,
+            request_top_logprobs_override=request_top_logprobs,
+            additional_provider_kwargs=additional_provider_kwargs or {}
+        )
+
+        response_data = await self._create_chat_completion(params)
+
+        actual_generated_text = response_data.get("content", "")
+        avg_logprob = response_data.get("average_token_logprob", 0.0)
+        raw_logprobs = response_data.get("raw_token_logprobs", [])
+        
+        # Count tokens based on the length of the raw_token_logprobs list
+        num_actual_tokens = len(raw_logprobs)
+
+        return TextEvaluationResult(
+            text_evaluated=actual_generated_text,
+            average_logprob=avg_logprob,
+            num_tokens=num_actual_tokens, 
+            raw_token_logprobs=raw_logprobs,
+            prompt_used=prompt_messages,
+            model_used=effective_model,
+            raw_response=response_data.get("raw_response")
+        )
+
+    def evaluate_text_sync(
+        self,
+        prompt_messages: List[Dict[str, str]],
+        text_to_evaluate: str, # Note: Placeholder, see async version
+        model_override: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 150,
+        top_p: float = 1.0,
+        request_logprobs: bool = True,
+        request_top_logprobs: Optional[int] = 5,
+        additional_provider_kwargs: Optional[Dict[str, Any]] = None
+    ) -> "TextEvaluationResult":
+        """
+        Synchronous version of evaluate_text.
+        """
+        # This logic mirrors LogProbRanker.rank_outputs_sync
+        try:
+            # Try to get the current event loop.
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # This case is tricky. For simplicity in a script, direct execution in a new loop is common.
+                # If called from within an existing async context that needs to continue,
+                # this approach might not be ideal without tools like nest_asyncio.
+                # Given this is often for CLI or simple scripts, creating a new loop is a common pattern.
+                pass # Proceed to new loop logic if current one is running
+        except RuntimeError: # No current event loop on this thread
+            loop = None # Ensure loop is None if get_event_loop fails
+
+        # Always create a new loop for this sync call to avoid conflicts, similar to rank_outputs_sync
+        policy = asyncio.get_event_loop_policy()
+        original_loop = policy.get_event_loop() if loop and loop.is_running() else None # Store if exists and running
+        
+        new_loop = policy.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        
+        try:
+            result = new_loop.run_until_complete(
+                self.evaluate_text(
+                    prompt_messages=prompt_messages,
+                    text_to_evaluate=text_to_evaluate,
+                    model_override=model_override,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                    request_logprobs=request_logprobs,
+                    request_top_logprobs=request_top_logprobs,
+                    additional_provider_kwargs=additional_provider_kwargs
+                )
+            )
+            return result
+        finally:
+            new_loop.close()
+            asyncio.set_event_loop(original_loop) # Restore original loop if one was running
 
 # == Utility Functions ==
