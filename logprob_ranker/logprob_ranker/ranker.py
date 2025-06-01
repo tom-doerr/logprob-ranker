@@ -748,4 +748,185 @@ class LiteLLMAdapter(LogProbRanker):
             new_loop.close()
             asyncio.set_event_loop(original_loop) # Restore original loop if one was running
 
+    async def score_text_attributes(
+        self,
+        text_to_evaluate: str,
+        custom_attributes_template: Optional[str] = None,
+        model_override: Optional[str] = None,
+        temperature: float = 0.0, # Typically 0 for deterministic evaluation
+        max_tokens: Optional[int] = None, # Max tokens for the evaluation response
+        top_p: float = 1.0,
+        request_top_logprobs: Optional[int] = None, # How many top logprobs for evaluation call
+        additional_provider_kwargs: Optional[Dict[str, Any]] = None
+    ) -> List[AttributeScore]:
+        """
+        Scores a given text against a set of attributes using an LLM evaluation.
+        It extracts logprobs for 'true'/'false' tokens corresponding to each attribute.
+        Args:
+            text_to_evaluate: The text to be scored.
+            custom_attributes_template: Optional JSON-like string template defining attributes.
+                                      If None, uses self.config.template.
+                                      Example: '{"is_clear": LOGPROB_TRUE, "is_concise": LOGPROB_TRUE}'
+            model_override: Optional model to use for this specific evaluation call.
+            temperature: Temperature for the evaluation LLM call.
+            max_tokens: Max tokens for the evaluation LLM response.
+            top_p: Top_p for the evaluation LLM call.
+            request_top_logprobs: Number of top logprobs for the evaluation LLM call.
+                                  Defaults to self.config.evaluation_top_logprobs or 5.
+            additional_provider_kwargs: Additional kwargs for the LLM provider.
+        Returns:
+            A list of AttributeScore objects.
+        """
+        effective_model = model_override if model_override is not None else self.model
+        template_to_use = custom_attributes_template if custom_attributes_template is not None else self.config.template
+        
+        # 1. Format evaluation prompt
+        evaluation_formatted_prompt = format_evaluation_prompt(
+            self.config.evaluation_prompt,
+            text_to_evaluate,
+            template_to_use
+        )
+        evaluation_messages = [
+            {"role": "system", "content": "You are an evaluator that outputs JSON with boolean values."},
+            {"role": "user", "content": evaluation_formatted_prompt}
+        ]
+
+        # 2. Call LLM for evaluation
+        actual_max_tokens = max_tokens if max_tokens is not None else self.config.max_tokens
+        actual_top_logprobs = request_top_logprobs
+        if actual_top_logprobs is None:
+            actual_top_logprobs = self.config.evaluation_top_logprobs if hasattr(self.config, 'evaluation_top_logprobs') and self.config.evaluation_top_logprobs is not None else 5
+
+        params = ChatCompletionParams(
+            messages=evaluation_messages,
+            temperature=temperature,
+            max_tokens=actual_max_tokens,
+            top_p=top_p,
+            model_override=effective_model,
+            request_logprobs_override=True, # Must be true for this method
+            request_top_logprobs_override=actual_top_logprobs,
+            additional_provider_kwargs=additional_provider_kwargs or {}
+        )
+        response_data = await self._create_chat_completion(params)
+
+        eval_tokens_with_logprobs = response_data.get("raw_token_logprobs")
+        if eval_tokens_with_logprobs is None:
+            raise LogprobsNotAvailableError(
+                f"Evaluation response for model {effective_model} is missing 'raw_token_logprobs'. Response: {response_data}"
+            )
+
+        # 3. Extract attribute names from the template
+        attributes_list = extract_template_attributes(template_to_use)
+
+        # 4. Construct AttributeScore objects (adapted from LogProbRanker.generate_and_evaluate_output)
+        attribute_scores_list: List[AttributeScore] = []
+        current_token_stream_idx = 0
+
+        for attr_name in attributes_list:
+            attr_actual_logprob = 0.0
+            explanation_str = f"Value token for '{attr_name}' not found or logprob extraction failed."
+            found_this_attribute_value = False
+
+            key_search_start_idx = current_token_stream_idx
+            colon_search_start_idx = -1
+            value_search_start_idx = -1
+
+            # Phase A: Find attribute key
+            for j_start_token_idx in range(key_search_start_idx, len(eval_tokens_with_logprobs)):
+                accumulated_key_text = ""
+                for k_current_token_idx in range(j_start_token_idx, len(eval_tokens_with_logprobs)):
+                    token_k_raw_text = eval_tokens_with_logprobs[k_current_token_idx][0]
+                    if token_k_raw_text.strip() in [":", "{", "}", "[", "]", ","] or '" :' in token_k_raw_text or ':"' in token_k_raw_text or token_k_raw_text == '"':
+                        break
+                    accumulated_key_text += token_k_raw_text
+                    normalized_accumulated_key = accumulated_key_text.strip()
+                    if normalized_accumulated_key.startswith('{"') and normalized_accumulated_key.endswith('"'):
+                        normalized_accumulated_key = normalized_accumulated_key[2:-1]
+                    elif normalized_accumulated_key.startswith('"') and normalized_accumulated_key.endswith('"'):
+                        normalized_accumulated_key = normalized_accumulated_key[1:-1]
+                    if normalized_accumulated_key == attr_name:
+                        colon_search_start_idx = k_current_token_idx + 1
+                        break
+                    elif len(normalized_accumulated_key) > len(attr_name) + 5 or (len(normalized_accumulated_key) > 0 and not attr_name.startswith(normalized_accumulated_key.strip('"'))):
+                        break 
+                if colon_search_start_idx != -1:
+                    break
+            
+            # Phase B: Find colon
+            if colon_search_start_idx != -1:
+                for i in range(colon_search_start_idx, len(eval_tokens_with_logprobs)):
+                    if ":" in eval_tokens_with_logprobs[i][0]:
+                        value_search_start_idx = i + 1
+                        break
+                    if (eval_tokens_with_logprobs[i][0].startswith('"') and i > colon_search_start_idx) or eval_tokens_with_logprobs[i][0] in ["}", "]"]:
+                        value_search_start_idx = -1; break
+            
+            # Phase C: Find 'true' or 'false' token
+            if value_search_start_idx != -1 and value_search_start_idx < len(eval_tokens_with_logprobs):
+                for i in range(value_search_start_idx, len(eval_tokens_with_logprobs)):
+                    token_s, token_lp = eval_tokens_with_logprobs[i]
+                    normalized_token_s = token_s.strip().lower().replace('"', '')
+                    match_found = normalized_token_s in ("true", "false")
+                    if match_found:
+                        attr_actual_logprob = token_lp
+                        explanation_str = f"Logprob of token '{token_s.strip()}' for '{attr_name}' is {token_lp:.4f}"
+                        current_token_stream_idx = i + 1
+                        found_this_attribute_value = True
+                        break
+                    if token_s in [",", "}", "]"] or (token_s.startswith('"') and i > value_search_start_idx):
+                        break # End of value or next item
+            
+            if found_this_attribute_value:
+                attribute_scores_list.append(AttributeScore(name=attr_name, score=attr_actual_logprob, explanation=explanation_str))
+            else:
+                # Append with 0 score if not found, or handle as error if preferred
+                attribute_scores_list.append(AttributeScore(name=attr_name, score=0.0, explanation=explanation_str))
+        
+        return attribute_scores_list
+
+    def score_text_attributes_sync(
+        self,
+        text_to_evaluate: str,
+        custom_attributes_template: Optional[str] = None,
+        model_override: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+        top_p: float = 1.0,
+        request_top_logprobs: Optional[int] = None,
+        additional_provider_kwargs: Optional[Dict[str, Any]] = None
+    ) -> List[AttributeScore]:
+        """
+        Synchronous version of score_text_attributes.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                pass
+        except RuntimeError:
+            loop = None
+
+        policy = asyncio.get_event_loop_policy()
+        original_loop = policy.get_event_loop() if loop and loop.is_running() else None
+        
+        new_loop = policy.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        
+        try:
+            result = new_loop.run_until_complete(
+                self.score_text_attributes(
+                    text_to_evaluate=text_to_evaluate,
+                    custom_attributes_template=custom_attributes_template,
+                    model_override=model_override,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                    request_top_logprobs=request_top_logprobs,
+                    additional_provider_kwargs=additional_provider_kwargs
+                )
+            )
+            return result
+        finally:
+            new_loop.close()
+            asyncio.set_event_loop(original_loop)
+
 # == Utility Functions ==
