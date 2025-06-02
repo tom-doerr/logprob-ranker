@@ -588,28 +588,3 @@ class TestLiteLLMAdapter(unittest.TestCase):
     def test_malformed_logprobs_item_mocked(self):
         run_async_test(self.async_test_malformed_logprobs_item_mocked)
 
-# Helper to run async tests outside the class
-def run_async_test(async_test_method_bound):
-    """
-    Runs an asynchronous test method.
-    This helper is useful for running async test methods from within a
-    unittest.TestCase if not using a pytest-asyncio style runner directly
-    for every test method.
-    `async_test_method_bound` should be a bound method of the test class instance.
-    e.g., self.async_method_to_run
-    """
-    # Get the current event loop or create a new one if none exists.
-    # This approach is generally compatible with unittest.
-    # If pytest-asyncio is used and `asyncio_mode` is `auto`, it manages the loop.
-    # This helper is primarily for the unittest scenario or manual invocation.
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            # If the default loop is closed, create a new one for this test.
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-    except RuntimeError:  # No current event loop.
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    return loop.run_until_complete(async_test_method_bound())
