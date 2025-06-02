@@ -6,6 +6,7 @@ import asyncio
 import json # Added import
 import os
 import unittest
+from .test_utils import run_async_test
 from unittest.mock import patch, MagicMock, AsyncMock
 
 import aiohttp # Added for explicit session management
