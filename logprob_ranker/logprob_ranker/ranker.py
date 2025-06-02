@@ -963,7 +963,6 @@ class LiteLLMAdapter(LogProbRanker):
 
 def get_scores_for_attributes(
     text_to_evaluate: str,
-    print(">>> ENTERING global get_scores_for_attributes <<<", flush=True),
     attribute_names: List[str],
     model_name: str = "openrouter/openai/gpt-4o-mini",
     config: Optional[LogProbConfig] = None
