@@ -127,5 +127,31 @@ async def main():
         print(f"HTTP Error (expected in this example): {e}")
 
 
+def run_async_test(test_case_method):
+    """
+    Run an async test method in a new, isolated event loop.
+    'test_case_method' is expected to be a callable that returns a coroutine
+    (e.g., an async method of a test class).
+    """
+    policy = asyncio.get_event_loop_policy()
+    original_loop = None
+    try:
+        original_loop = policy.get_event_loop()
+    except RuntimeError:  # Indicates no current event loop is set for this thread.
+        pass # original_loop remains None
+
+    # Create and set a new event loop specifically for this test case.
+    new_loop = policy.new_event_loop()
+    policy.set_event_loop(new_loop)
+
+    try:
+        # Call the passed method to get the coroutine, then run it.
+        result = new_loop.run_until_complete(test_case_method())
+        return result
+    finally:
+        new_loop.close()
+        # Restore the original event loop (if any) for the thread.
+        policy.set_event_loop(original_loop)
+
 if __name__ == "__main__":
     asyncio.run(main())

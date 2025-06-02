@@ -917,7 +917,6 @@ class LiteLLMAdapter(LogProbRanker):
 
     def score_text_attributes_sync(
         self,
-        print(">>> ENTERING LiteLLMAdapter.score_text_attributes_sync <<<", flush=True),
         text_to_evaluate: str,
         custom_attributes_template: Optional[str] = None,
         model_override: Optional[str] = None,
