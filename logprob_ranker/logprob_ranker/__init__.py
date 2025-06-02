@@ -24,6 +24,9 @@ from .ranker import (
     # Add other ranker components here if they become part of the public API
 )
 
+# Imports from ranker.py (for high-level API functions)
+from .ranker import get_scores_for_attributes
+
 # Public API definition
 __all__ = [
     # Version
@@ -42,4 +45,7 @@ __all__ = [
     "LogprobsNotAvailableError",
     "MalformedLogprobsError",
     "TextEvaluationResult", # Added here
+
+    # From ranker.py (high-level API)
+    "get_scores_for_attributes",
 ]

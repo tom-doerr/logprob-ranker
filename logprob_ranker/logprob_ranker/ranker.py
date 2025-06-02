@@ -3,6 +3,8 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 """
 
 import asyncio
+import logging # Added for debugging
+import sys # Added for flushing prints
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Callable, Tuple
 
@@ -570,8 +572,15 @@ class LiteLLMAdapter(LogProbRanker):
         raw_token_logprobs_list: List[Tuple[str, float]] = []
 
         try:
-            # Debug print (can be uncommented if needed)
-            # print(f"DEBUG_RANKER: LiteLLMAdapter._execute_litellm_completion - Calling litellm.acompletion with model={model}, temp={temperature}, messages={messages}, client_present={litellm_call_kwargs.get('client') is not None}, all_kwargs={litellm_call_kwargs}")
+            print(">>> ENTERING LiteLLMAdapter._execute_litellm_completion <<<", flush=True)
+            print(f"\nDEBUG_RANKER: LiteLLMAdapter._execute_litellm_completion - REQUEST PARAMS:", flush=True)
+            print(f"  model: {model}", flush=True)
+            print(f"  messages: {messages}", flush=True)
+            print(f"  temperature: {temperature}", flush=True)
+            print(f"  max_tokens: {max_tokens}", flush=True)
+            print(f"  top_p: {top_p}", flush=True)
+            print(f"  litellm_call_kwargs: {repr(litellm_call_kwargs)}", flush=True)
+            print(f"DEBUG_RANKER: Calling litellm.acompletion...\n", flush=True)
 
             response_obj = await litellm.acompletion(
                 model=model,
@@ -585,6 +594,10 @@ class LiteLLMAdapter(LogProbRanker):
             if should_request_logprobs:
                 raw_token_logprobs_list = self._extract_raw_token_logprobs(response_obj)
             # else: raw_token_logprobs_list remains [], which is intended if logprobs were not requested.
+
+            print(f"\nDEBUG_RANKER: LiteLLMAdapter._execute_litellm_completion - RAW RESPONSE OBJECT:", flush=True)
+            print(f"  Type: {type(response_obj)}", flush=True)
+            print(f"  Response: {repr(response_obj)}\n", flush=True)
         
             # Validate response structure
             if not response_obj or not response_obj.choices or not response_obj.choices[0] or \
@@ -613,12 +626,18 @@ class LiteLLMAdapter(LogProbRanker):
             return response_data
 
         except litellm_exceptions.APIError as e:
+            print(f"\nDEBUG_RANKER: LiteLLM APIError caught in _execute_litellm_completion:", flush=True)
+            print(f"  Type: {type(e)}", flush=True)
+            print(f"  Error: {e}\n", flush=True)
             raise LLMGenerationError(f"LiteLLM API error for model {model}: {e}") from e
         except LogprobsNotAvailableError: # Raised by _extract_raw_token_logprobs
             raise
         except MalformedLogprobsError: # Raised by _extract_raw_token_logprobs or within this method
             raise
         except Exception as e:
+            print(f"\nDEBUG_RANKER: Unexpected Exception caught in _execute_litellm_completion:", flush=True)
+            print(f"  Type: {type(e)}", flush=True)
+            print(f"  Error: {e}\n", flush=True)
             # Catch-all for other unexpected errors during the call or processing
             raise LLMGenerationError(f"Unexpected error during LiteLLM completion for model {model}: {type(e).__name__} - {e}") from e
 
@@ -868,6 +887,16 @@ class LiteLLMAdapter(LogProbRanker):
                     normalized_token_s = token_s.strip().lower().replace('"', '')
                     match_found = normalized_token_s in ("true", "false")
                     if match_found:
+                        # A logprob of 0.0 (probability 1.0) is highly suspicious for a specific token
+                        # in this context and often indicates an upstream issue (e.g., API key error,
+                        # model not returning valid logprobs, or LiteLLM defaulting).
+                        if token_lp == 0.0:
+                            raise ValueError(
+                                f"Received a suspicious logprob of 0.0 (probability 1.0) for token '{token_s.strip()}' "
+                                f"for attribute '{attr_name}'. This may indicate an API key problem or an "
+                                f"issue with the LLM/LiteLLM returning valid logprobs."
+                            )
+                        
                         attr_actual_logprob = token_lp
                         explanation_str = f"Logprob of token '{token_s.strip()}' for '{attr_name}' is {token_lp:.4f}"
                         current_token_stream_idx = i + 1
@@ -879,13 +908,16 @@ class LiteLLMAdapter(LogProbRanker):
             if found_this_attribute_value:
                 attribute_scores_list.append(AttributeScore(name=attr_name, score=attr_actual_logprob, explanation=explanation_str))
             else:
-                # Append with 0 score if not found, or handle as error if preferred
-                attribute_scores_list.append(AttributeScore(name=attr_name, score=0.0, explanation=explanation_str))
+                # If the attribute's value token (true/false) was not found or logprob extraction failed,
+                # raise an error instead of defaulting to a 0.0 score.
+                # The explanation_str (from line 826) already details this.
+                raise ValueError(explanation_str)
         
         return attribute_scores_list
 
     def score_text_attributes_sync(
         self,
+        print(">>> ENTERING LiteLLMAdapter.score_text_attributes_sync <<<", flush=True),
         text_to_evaluate: str,
         custom_attributes_template: Optional[str] = None,
         model_override: Optional[str] = None,
@@ -928,5 +960,51 @@ class LiteLLMAdapter(LogProbRanker):
         finally:
             new_loop.close()
             asyncio.set_event_loop(original_loop)
+
+
+def get_scores_for_attributes(
+    text_to_evaluate: str,
+    print(">>> ENTERING global get_scores_for_attributes <<<", flush=True),
+    attribute_names: List[str],
+    model_name: str = "openrouter/openai/gpt-4o-mini",
+    config: Optional[LogProbConfig] = None
+) -> List[AttributeScore]:
+    """
+    High-level wrapper to get attribute scores for a text using sensible defaults.
+
+    Args:
+        text_to_evaluate: The text to be scored.
+        attribute_names: A list of attribute names (strings) to score.
+                         Assumes LOGPROB_TRUE for all attributes for simplicity.
+        model_name: The LLM model to use for evaluation.
+        config: Optional LogProbConfig. If None, a default one is created.
+
+    Returns:
+        A list of AttributeScore objects, or an empty list if an error occurs.
+    """
+    if config is None:
+        config = LogProbConfig()  # Uses default evaluation_prompt, etc.
+    
+    adapter = LiteLLMAdapter(model=model_name, config=config)
+    
+    template_parts = [f'\"{attr}\": LOGPROB_TRUE' for attr in attribute_names]
+    attributes_template_str = "{ " + ", ".join(template_parts) + " }"
+    
+    try:
+        scores = adapter.score_text_attributes_sync(
+            text_to_evaluate=text_to_evaluate,
+            custom_attributes_template=attributes_template_str,
+            model_override=model_name,
+            temperature=0.0,      # Deterministic evaluation
+            max_tokens=150,       # Max tokens for the LLM's evaluation JSON response
+            request_top_logprobs=5 # Get top logprobs for the evaluation call
+        )
+        return scores
+    except Exception as e:
+        # Consider re-raising a custom exception or logging instead of printing for a library function.
+        print(f"Error encountered in get_scores_for_attributes: {e}")
+        # import traceback
+        # traceback.print_exc() # Uncomment for detailed error for debugging
+        return []
 
 # == Utility Functions ==

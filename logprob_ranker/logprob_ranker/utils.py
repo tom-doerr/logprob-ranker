@@ -5,10 +5,10 @@ Utility functions for the LogProb ranker package.
 # Custom Exceptions
 import json
 import re
-from typing import Dict, Any, List # Optional, TypeVar removed
+from typing import Dict, Any, List, Optional # TypeVar removed
 
 # Import models from the new models.py file
-from .models import RankedOutput # AttributeScore removed, Used in deserialize_ranked_output
+from .models import RankedOutput, LogProbConfig, AttributeScore # Used in deserialize_ranked_output and get_scores_for_attributes
 
 class LLMGenerationError(Exception):
     """Custom exception for errors during LLM generation."""

@@ -2,3 +2,4 @@ c
 dist
 .DS_Store
 *.tar.gz
+.aider*
