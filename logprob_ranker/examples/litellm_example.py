@@ -1,7 +1,7 @@
 """
-Example of using LogProbRanker with LiteLLM adapter for multiple providers.
+Basic example of using LogProbRanker with LiteLLM adapter.
 
-This example demonstrates how to use the LogProbRanker with LiteLLM,
+This example demonstrates the basic usage of the LogProbRanker with LiteLLM,
 which provides access to many different LLM providers through a single interface.
 
 Supported providers through LiteLLM include:
@@ -12,9 +12,9 @@ Supported providers through LiteLLM include:
 - And many more
 
 Example usage with different providers:
-LLM_MODEL=gpt-3.5-turbo python litellm_example.py  # OpenAI
-LLM_MODEL=claude-2 python litellm_example.py  # Anthropic
-LLM_MODEL=command python litellm_example.py  # Cohere
+LLM_MODEL=gpt-3.5-turbo python basic_example.py  # OpenAI
+LLM_MODEL=claude-2 python basic_example.py  # Anthropic
+LLM_MODEL=command python basic_example.py  # Cohere
 """
 
 import asyncio
@@ -192,9 +192,9 @@ if __name__ == "__main__":
     print("\n=== INSTRUCTIONS ===")
     print("To use a different LLM provider, set the LLM_MODEL environment variable.")
     print("Examples:")
-    print("  LLM_MODEL=gpt-3.5-turbo python litellm_example.py  # OpenAI")
-    print("  LLM_MODEL=claude-2 python litellm_example.py  # Anthropic")
-    print("  LLM_MODEL=command python litellm_example.py  # Cohere")
+    print("  LLM_MODEL=gpt-3.5-turbo python basic_example.py  # OpenAI")
+    print("  LLM_MODEL=claude-2 python basic_example.py  # Anthropic")
+    print("  LLM_MODEL=command python basic_example.py  # Cohere")
     print("\nDon't forget to set the corresponding API key in the environment.")
     print("  For OpenAI: OPENAI_API_KEY")
     print("  For Anthropic: ANTHROPIC_API_KEY")
