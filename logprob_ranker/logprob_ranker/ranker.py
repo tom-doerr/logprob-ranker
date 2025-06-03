@@ -312,10 +312,10 @@ class LogProbRanker:
 
 class LiteLLMAdapter(LogProbRanker):
     """
-    Adapter for using LiteLLM with any supported model/provider.
+    Adapter for using LiteLLM with any supported model/provider including OpenRouter.
 
-    LiteLLM supports various providers like OpenAI, Anthropic, Cohere,
-    Hugging Face, Azure, PaLM, etc.
+    LiteLLM supports various providers like OpenAI, Anthropic, OpenRouter,
+    Cohere, Hugging Face, Azure, PaLM, etc.
     """
 
     def __init__(
