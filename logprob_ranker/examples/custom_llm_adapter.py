@@ -104,6 +104,7 @@ async def main():
     prompt = "Generate a tagline for a new smartphone that emphasizes privacy features"
 
     print(f"Using custom LLM API to generate and rank outputs for: {prompt}")
+    print(f"Adapter configured for model: {adapter.model_name} at {adapter.api_url}")
 
     try:
         # This would work with an actual API
