@@ -84,7 +84,7 @@ class CustomLLMAdapter(LogProbRanker):
 
 async def main():
     """Example of using the custom adapter."""
-    # Create the adapter with your API details
+    # Create and use the adapter with your API details
     adapter = CustomLLMAdapter(
         api_url="https://your-llm-api.example.com",
         api_key="your-api-key-here",
@@ -114,6 +114,11 @@ async def main():
         print("2. Evaluate each variant using the same API")
         print("3. Calculate logprob scores and rank the outputs")
         print("4. Return the results sorted by score")
+        
+        # Example usage that would work with real API credentials
+        # result = adapter.rank_outputs_sync(prompt)
+        # for i, output in enumerate(result):
+        #     print(f"{i+1}: {output.output} (Score: {output.total_score})")
     except Exception as e:
         print(f"Error (expected in this example): {e}")
 
