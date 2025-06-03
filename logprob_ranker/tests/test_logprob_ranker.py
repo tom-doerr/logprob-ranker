@@ -318,5 +318,223 @@ class TestLogProbRankerAdditional(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 await self.ranker.rank_outputs("Test prompt")
 
+# ===== Tests from test_litellm_adapter.py =====
+class TestLiteLLMAdapterComprehensive(unittest.TestCase):
+    """Comprehensive tests for the LiteLLMAdapter from test_litellm_adapter.py"""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.config = LogProbConfig(
+            num_variants=2,
+            thread_count=1,
+            template='{"test": LOGPROB_TRUE}',
+            logprobs=True
+        )
+
+        self.litellm_patch = patch('logprob_ranker.logprob_ranker.ranker.litellm')
+        self.mock_litellm = self.litellm_patch.start()
+
+        # Initialize the adapter instance for tests
+        self.adapter = LiteLLMAdapter(config=self.config, model="mock_model_in_setup_not_real")
+
+        self.mock_litellm.acompletion = AsyncMock()
+
+        mock_model_response = MagicMock(spec=ModelResponse)
+        mock_choice = MagicMock(spec=Choices)
+        mock_message = MagicMock()
+        mock_message.content = "Mocked completion content from setUp"
+        mock_message.role = "assistant"
+        mock_choice.message = mock_message
+
+        mock_logprobs_item1 = MagicMock(spec=ChatCompletionTokenLogprob)
+        mock_logprobs_item1.token = "setup_token_1"
+        mock_logprobs_item1.logprob = -0.123
+        mock_logprobs_item2 = MagicMock(spec=ChatCompletionTokenLogprob)
+        mock_logprobs_item2.token = "setup_token_2"
+        mock_logprobs_item2.logprob = -0.456
+        mock_logprobs_data = MagicMock(spec=OpenAIChoiceLogprobs)
+        mock_logprobs_data.content = [mock_logprobs_item1, mock_logprobs_item2]
+        mock_choice.logprobs = mock_logprobs_data
+
+        mock_model_response.choices = [mock_choice]
+        mock_model_response.id = "cmpl-mocksetUp"
+        mock_model_response.model = "mock-model-setUp"
+        mock_model_response.created = 1234567890
+        mock_model_response.object = "chat.completion"
+        mock_model_response.usage = MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+
+        def mock_model_dump_json_func(indent=None):
+            choice_logprobs_content = []
+            if hasattr(mock_choice, 'logprobs') and mock_choice.logprobs and \
+               hasattr(mock_choice.logprobs, 'content') and \
+               isinstance(mock_choice.logprobs.content, list):
+                for item in mock_choice.logprobs.content:
+                    logprob_item_dict = {
+                        "token": getattr(item, 'token', None),
+                        "logprob": getattr(item, 'logprob', None)
+                    }
+                    if hasattr(item, 'bytes') and getattr(item, 'bytes') is not None:
+                        logprob_item_dict["bytes"] = getattr(item, 'bytes')
+                    if hasattr(item, 'top_logprobs') and getattr(item, 'top_logprobs') is not None:
+                        logprob_item_dict["top_logprobs"] = getattr(item, 'top_logprobs')
+                    choice_logprobs_content.append(logprob_item_dict)
+
+            return json.dumps({
+                "id": mock_model_response.id,
+                "model": mock_model_response.model,
+                "created": mock_model_response.created,
+                "object": mock_model_response.object,
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": mock_message.role, "content": mock_message.content},
+                        "logprobs": {"content": choice_logprobs_content} if choice_logprobs_content else None
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": mock_model_response.usage.prompt_tokens,
+                    "completion_tokens": mock_model_response.usage.completion_tokens,
+                    "total_tokens": mock_model_response.usage.total_tokens
+                }
+            }, indent=indent)
+        mock_model_response.model_dump_json = mock_model_dump_json_func
+
+        async def mock_default_acompletion(*args, **kwargs):
+            return mock_model_response
+
+        self.mock_litellm.acompletion.side_effect = mock_default_acompletion
+    
+    def tearDown(self):
+        """Tear down test fixtures."""
+        self.litellm_patch.stop()
+    
+    def test_initialization(self):
+        """Test initialization of LiteLLMAdapter."""
+        self.assertEqual(self.adapter.model, "mock_model_in_setup_not_real")
+        self.assertIsNone(self.adapter.api_key)
+        self.assertEqual(self.adapter.config, self.config)
+    
+    async def async_test_create_chat_completion(self):
+        """Test the _create_chat_completion method."""
+        messages = [
+            {"role": "system", "content": "Test system"},
+            {"role": "user", "content": "Test user"}
+        ]
+        
+        params = ChatCompletionParams(
+            messages=messages,
+            temperature=0.7,
+            max_tokens=100,
+            top_p=1.0,
+            additional_provider_kwargs={}
+        )
+        result = await self.adapter._create_chat_completion(params)
+        
+        self.mock_litellm.acompletion.assert_called_once_with(
+            model="mock_model_in_setup_not_real",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=100,
+            top_p=1.0,
+            logprobs=True,
+            top_logprobs=5
+        )
+        
+        self.assertEqual(result["content"], "Mocked completion content from setUp")
+        self.assertIn("average_token_logprob", result)
+        self.assertIsInstance(result["average_token_logprob"], float)
+        self.assertAlmostEqual(result["average_token_logprob"], -0.2895, places=4)
+        
+    def test_create_chat_completion(self):
+        run_async_test(self.async_test_create_chat_completion)
+    
+    async def async_test_rank_outputs(self):
+        """Test ranking outputs with LiteLLMAdapter, mocking generation and evaluation calls."""
+        num_variants = self.config.num_variants
+        
+        def create_generation_response(content_text: str, avg_logprob: float = -0.25) -> ModelResponse:
+            mock_gen_response = MagicMock(spec=ModelResponse)
+            mock_gen_choice = MagicMock(spec=Choices)
+            mock_gen_message = MagicMock()
+            mock_gen_message.content = content_text
+            mock_gen_message.role = "assistant"
+            mock_gen_choice.message = mock_gen_message
+            
+            lp_item1 = MagicMock(spec=ChatCompletionTokenLogprob)
+            lp_item1.token = "token_gen_1"
+            lp_item1.logprob = avg_logprob - 0.1
+            lp_item2 = MagicMock(spec=ChatCompletionTokenLogprob)
+            lp_item2.token = "token_gen_2"
+            lp_item2.logprob = avg_logprob + 0.1
+            mock_gen_logprobs_data = MagicMock(spec=OpenAIChoiceLogprobs)
+            mock_gen_logprobs_data.content = [lp_item1, lp_item2]
+            mock_gen_choice.logprobs = mock_gen_logprobs_data
+            mock_gen_response.choices = [mock_gen_choice]
+            mock_gen_response.model_dump_json = MagicMock(return_value=json.dumps({"content": content_text}))
+            return mock_gen_response
+
+        def create_evaluation_response(eval_json_str: str, avg_logprob: float = -0.5) -> ModelResponse:
+            mock_eval_response = MagicMock(spec=ModelResponse)
+            mock_eval_choice = MagicMock(spec=Choices)
+            mock_eval_message = MagicMock()
+            mock_eval_message.content = eval_json_str
+            mock_eval_message.role = "assistant"
+            mock_eval_choice.message = mock_eval_message
+            
+            eval_logprobs_list = []
+            if eval_json_str == '{"test": true}':
+                eval_logprobs_list = [
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='{', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='"test"', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token=':', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token=' true', logprob=-0.4, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='}', logprob=-0.05, bytes=None, top_logprobs=[])
+                ]
+            elif eval_json_str == '{"test": false}':
+                eval_logprobs_list = [
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='{', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='"test"', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token=':', logprob=-0.05, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token=' false', logprob=-0.9, bytes=None, top_logprobs=[]),
+                    MagicMock(spec=ChatCompletionTokenLogprob, token='}', logprob=-0.05, bytes=None, top_logprobs=[])
+                ]
+            else:
+                eval_logprobs_list = [MagicMock(spec=ChatCompletionTokenLogprob, token='generic', logprob=avg_logprob, bytes=None, top_logprobs=[])]
+
+            mock_eval_logprobs_data = MagicMock(spec=OpenAIChoiceLogprobs)
+            mock_eval_logprobs_data.content = eval_logprobs_list
+            mock_eval_choice.logprobs = mock_eval_logprobs_data
+            mock_eval_response.choices = [mock_eval_choice]
+            mock_eval_response.model_dump_json = MagicMock(return_value=json.dumps({"evaluation_content": eval_json_str}))
+            return mock_eval_response
+
+        side_effect_list = [
+            create_generation_response("Generated Output Alpha", avg_logprob=-0.1),
+            create_evaluation_response('{"test": true}'),
+            create_generation_response("Generated Output Beta", avg_logprob=-0.8),
+            create_evaluation_response('{"test": false}')
+        ]
+
+        self.mock_litellm.acompletion.side_effect = side_effect_list
+        
+        results = await self.adapter.rank_outputs("Test prompt for ranking")
+            
+        self.assertEqual(len(results), num_variants)
+        self.assertEqual(self.mock_litellm.acompletion.call_count, num_variants * 2)
+
+        self.assertEqual(results[0].output, "Generated Output Alpha")
+        self.assertAlmostEqual(results[0].logprob, -0.4, places=4)
+        self.assertEqual(results[0].attribute_scores[0].name, "test")
+        self.assertAlmostEqual(results[0].attribute_scores[0].score, -0.4, places=4)
+        
+        self.assertEqual(results[1].output, "Generated Output Beta")
+        self.assertAlmostEqual(results[1].logprob, -0.9, places=4)
+        self.assertEqual(results[1].attribute_scores[0].name, "test")
+        self.assertAlmostEqual(results[1].attribute_scores[0].score, -0.9, places=4)
+
+    def test_rank_outputs(self):
+        run_async_test(self.async_test_rank_outputs)
+
 if __name__ == '__main__':
     unittest.main()
