@@ -99,8 +99,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = "Explain how a quantum computer works and why it's different from classical computers."
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback
@@ -146,8 +146,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = "Write a persuasive paragraph about why people should reduce plastic usage."
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback
@@ -193,8 +193,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = "Explain how to make a basic web page using HTML and CSS for beginners."
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback
@@ -251,8 +251,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = f"Summarize the following text in a concise paragraph:\n\n{long_text}"
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback
@@ -298,8 +298,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = "Write a Python function to check if a string is a palindrome (reads the same forwards and backwards)."
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback

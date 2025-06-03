@@ -147,7 +147,7 @@ class TestOpenRouterE2E(unittest.TestCase):
         4. Thoroughness
         """
         
-        adapter = OpenRouterAdapter(
+        adapter = LiteLLMAdapter(
             model=TEST_MODEL,
             config=self.config
         )
