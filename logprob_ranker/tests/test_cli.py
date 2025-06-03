@@ -15,9 +15,9 @@ from unittest.mock import patch, MagicMock, mock_open, ANY
 from io import StringIO
 
 # Add parent directory to path to import the package
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from logprob_ranker.cli import (
+from logprob_ranker.logprob_ranker.cli import (
     setup_parser,
     load_template_from_file,
     get_model_from_provider,
