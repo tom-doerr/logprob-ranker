@@ -14,14 +14,14 @@ from litellm.types.utils import ModelResponse, Choices # LiteLLM's top-level typ
 from openai.types.chat.chat_completion import ChoiceLogprobs as OpenAIChoiceLogprobs # For the 'logprobs' object on a choice
 from openai.types.chat import ChatCompletionTokenLogprob # For individual items in logprobs.content
 
-from logprob_ranker.logprob_ranker.ranker import (
-    ChatCompletionParams, # Added import
+from logprob极狐_ranker.logprob_ranker.ranker import (
+    ChatCompletionParams,
     LiteLLMAdapter,
     LogProbConfig,
     LogprobsNotAvailableError,
-    MalformedLogprobsError, # Added import
+    MalformedLogprobsError,
     LLMGenerationError,
-    RankedOutput # Added import
+    RankedOutput
 )
 
 # Mock response for Anthropic integration test

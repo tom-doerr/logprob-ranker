@@ -3,23 +3,19 @@ LogProb Ranker: A library for ranking LLM outputs by log probability scoring
 """
 
 from .logprob_ranker import (
-    LogProbRanker,
+    __version__,
     LogProbConfig,
     RankedOutput,
     AttributeScore,
+    LogProbRanker,
     LiteLLMAdapter,
     LLMGenerationError,
     EvaluationParseError,
     LogprobsNotAvailableError,
     MalformedLogprobsError,
-    TextEvaluationResult
+    TextEvaluationResult,
+    get_scores_for_attributes
 )
-
-# Attempt to import version from the submodule
-try:
-    from .logprob_ranker import __version__
-except ImportError:
-    __version__ = "0.0.0-unknown"
 
 __all__ = [
     "LogProbRanker",
@@ -30,5 +26,8 @@ __all__ = [
     "LLMGenerationError",
     "EvaluationParseError",
     "LogprobsNotAvailableError",
+    "MalformedLogprobsError",
+    "TextEvaluationResult",
+    "get_scores_for_attributes",
     "__version__"
 ]
