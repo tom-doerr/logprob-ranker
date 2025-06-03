@@ -2,7 +2,7 @@
 Utility functions for the LogProb ranker package.
 """
 
-# Custom Exceptions
+from .ranker import LLMGenerationError, EvaluationParseError
 import json
 import re
 from typing import Dict, Any, List, Optional # TypeVar removed
@@ -10,11 +10,6 @@ from typing import Dict, Any, List, Optional # TypeVar removed
 # Import models from the new models.py file
 from .models import RankedOutput, LogProbConfig, AttributeScore # Used in deserialize_ranked_output and get_scores_for_attributes
 
-class LLMGenerationError(Exception):
-    """Custom exception for errors during LLM generation."""
-
-class EvaluationParseError(Exception):
-    """Custom exception for errors during evaluation parsing."""
 
 # TypeVar T is not used in the current implementation of deserialize_ranked_output
 # RankedOutputLike was also unused.
