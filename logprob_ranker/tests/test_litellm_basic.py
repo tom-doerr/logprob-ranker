@@ -54,7 +54,7 @@ class TestLiteLLMBasic(unittest.TestCase):
 
     def test_custom_initialization(self):
         """Test initialization with custom model."""
-        with patch("logprob_ranker.ranker.litellm") as mock_litellm:
+        with patch("logprob_ranker.ranker.litellm"):
             adapter = LiteLLMAdapter(
                 model="custom-model",
                 api_key="custom-key",
