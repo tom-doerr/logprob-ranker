@@ -227,20 +227,30 @@ class TestCLI(unittest.TestCase):
         # Check that the model was prepended
         mock_adapter.assert_called_once()
         call_args, call_kwargs = mock_adapter.call_args
-        self.assertEqual(call_kwargs['model'], "openrouter/google/gemma-7b-it")
+        self.assertEqual(call_kwargs["model"], "openrouter/google/gemma-7b-it")
 
         # Also test when the model already has the prefix
         mock_adapter.reset_mock()
         args.model = "openrouter/google/gemma-7b-it"
         asyncio.run(run_rank_command(args))
-        mock_adapter.assert_called_once_with(model="openrouter/google/gemma-7b-it", api_key=None, config=mock_config.return_value, on_output_callback=ANY)
+        mock_adapter.assert_called_once_with(
+            model="openrouter/google/gemma-7b-it",
+            api_key=None,
+            config=mock_config.return_value,
+            on_output_callback=ANY,
+        )
 
         # Test with a non-openrouter provider
         mock_adapter.reset_mock()
         args.provider = "openai"
         args.model = "gpt-3.5-turbo"
         asyncio.run(run_rank_command(args))
-        mock_adapter.assert_called_once_with(model="gpt-3.5-turbo", api_key=None, config=mock_config.return_value, on_output_callback=ANY)
+        mock_adapter.assert_called_once_with(
+            model="gpt-3.5-turbo",
+            api_key=None,
+            config=mock_config.return_value,
+            on_output_callback=ANY,
+        )
 
     @patch("logprob_ranker.cli.LiteLLMAdapter")
     @patch("logprob_ranker.cli.LogProbConfig")
