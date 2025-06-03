@@ -1,8 +1,13 @@
 import asyncio
 import unittest
+import json
 from .test_utils import run_async_test
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import List, Dict, Any, Optional
+
+from litellm.types.utils import ModelResponse, Choices
+from openai.types.chat.chat_completion import ChoiceLogprobs as OpenAIChoiceLogprobs
+from openai.types.chat import ChatCompletionTokenLogprob
 
 from logprob_ranker.logprob_ranker.ranker import (
     LogProbRanker, LogProbConfig, RankedOutput, 
