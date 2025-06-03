@@ -5,12 +5,13 @@ These tests ensure that the CLI correctly handles arguments,
 loads configuration, and interacts with the LogProbRanker.
 """
 
+import asyncio
 import os
 import sys
 import unittest
 import tempfile
 import json
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock, mock_open, ANY
 from io import StringIO
 
 # Add parent directory to path to import the package
@@ -23,6 +24,7 @@ from logprob_ranker.cli import (
     on_output_generated,
     print_provider_help,
     main,
+    run_rank_command,
 )
 from logprob_ranker.ranker import RankedOutput, AttributeScore
 
@@ -194,6 +196,51 @@ class TestCLI(unittest.TestCase):
             self.assertIn("gpt-4", output)
             self.assertIn("claude-2", output)
             self.assertIn("Example usage:", output)
+
+    @patch("logprob_ranker.cli.LiteLLMAdapter")
+    @patch("logprob_ranker.cli.LogProbConfig")
+    def test_openrouter_model_prepend(self, mock_config, mock_adapter):
+        """Test that when provider is openrouter, the model name is prepended if needed."""
+        # Create mock args
+        args = MagicMock(
+            command="rank",
+            prompt="Test prompt",
+            variants=3,
+            temperature=0.7,
+            max_tokens=500,
+            provider="openrouter",
+            model="google/gemma-7b-it",
+            api_key=None,
+            threads=1,
+            template=None,
+            output=None,
+        )
+
+        # Mock the adapter instance and its method
+        mock_adapter_instance = MagicMock()
+        mock_adapter.return_value = mock_adapter_instance
+        mock_adapter_instance.rank_outputs.return_value = []
+
+        # Run the command
+        asyncio.run(run_rank_command(args))
+
+        # Check that the model was prepended
+        mock_adapter.assert_called_once()
+        call_args, call_kwargs = mock_adapter.call_args
+        self.assertEqual(call_kwargs['model'], "openrouter/google/gemma-7b-it")
+
+        # Also test when the model already has the prefix
+        mock_adapter.reset_mock()
+        args.model = "openrouter/google/gemma-7b-it"
+        asyncio.run(run_rank_command(args))
+        mock_adapter.assert_called_once_with(model="openrouter/google/gemma-7b-it", api_key=None, config=mock_config.return_value, on_output_callback=ANY)
+
+        # Test with a non-openrouter provider
+        mock_adapter.reset_mock()
+        args.provider = "openai"
+        args.model = "gpt-3.5-turbo"
+        asyncio.run(run_rank_command(args))
+        mock_adapter.assert_called_once_with(model="gpt-3.5-turbo", api_key=None, config=mock_config.return_value, on_output_callback=ANY)
 
     @patch("logprob_ranker.cli.LiteLLMAdapter")
     @patch("logprob_ranker.cli.LogProbConfig")
