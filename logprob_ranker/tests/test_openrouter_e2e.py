@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from logprob_ranker import LogProbConfig, RankedOutput
-from logprob_ranker.openrouter import OpenRouterAdapter
+from logprob_ranker.ranker import LiteLLMAdapter
 
 
 # Skip tests if no API key is available
@@ -29,7 +29,7 @@ SKIP_TESTS = "OPENROUTER_API_KEY" not in os.environ
 SKIP_MESSAGE = "Skipping OpenRouter tests: No API key (OPENROUTER_API_KEY) found"
 
 # Use a well-supported model for testing
-TEST_MODEL = "gpt-3.5-turbo"
+TEST_MODEL = "openrouter/openai/gpt-3.5-turbo"
 
 
 class TestOpenRouterE2E(unittest.TestCase):
@@ -69,7 +69,7 @@ class TestOpenRouterE2E(unittest.TestCase):
     def test_openrouter_sync_api(self):
         """Test synchronous API with OpenRouter."""
         # Create adapter
-        adapter = OpenRouterAdapter(
+        adapter = LiteLLMAdapter(
             model=TEST_MODEL,
             config=self.config,
             on_output_callback=self.callback
@@ -104,7 +104,7 @@ class TestOpenRouterE2E(unittest.TestCase):
             self.generated_outputs = []
             
             # Create adapter
-            adapter = OpenRouterAdapter(
+            adapter = LiteLLMAdapter(
                 model=TEST_MODEL,
                 config=self.config,
                 on_output_callback=self.callback

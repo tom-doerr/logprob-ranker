@@ -13,7 +13,7 @@ import unittest
 import asyncio
 from typing import List, Optional
 
-from logprob_ranker.openrouter import OpenRouterAdapter
+from logprob_ranker.ranker import LiteLLMAdapter
 from logprob_ranker.ranker import LogProbConfig, RankedOutput
 
 
@@ -27,7 +27,7 @@ class TestUseCaseE2E(unittest.TestCase):
             self.skipTest("OPENROUTER_API_KEY environment variable not set")
         
         # Use gpt-3.5-turbo for consistent, cost-effective testing
-        self.model = "openai/gpt-3.5-turbo"
+        self.model = "openrouter/openai/gpt-3.5-turbo"
         
         # Outputs collected during test
         self.outputs: List[RankedOutput] = []
@@ -52,8 +52,8 @@ class TestUseCaseE2E(unittest.TestCase):
         prompt = "Write a short sci-fi story about a robot that develops emotions."
         
         # Create adapter
-        adapter = OpenRouterAdapter(
-            self.model, 
+        adapter = LiteLLMAdapter(
+            model=self.model,
             api_key=self.api_key,
             config=config,
             on_output_callback=self.callback
