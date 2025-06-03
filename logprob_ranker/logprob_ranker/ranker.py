@@ -3,8 +3,9 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 import litellm
 from .utils import (
     parse_evaluation_json,
@@ -35,7 +36,7 @@ class RankedOutput:
     output: str
     logprob: float
     index: int
-    attribute_scores: Optional[List[AttributeScore]] = None
+    attribute_scores: Optional[List["AttributeScore"]] = None
     raw_evaluation: Optional[str] = None
 
     @property
@@ -79,7 +80,8 @@ class LogProbConfig:
         "You are a creative assistant that provides a single concise response."
     )
     evaluation_prompt: str = (
-        "You are an evaluator. Evaluate the following text based on the criteria.\nReturn ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+        "You are an evaluator. Evaluate the following text based on the criteria.\n"
+        "Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
     )
 
 
@@ -91,8 +93,8 @@ class LogProbRanker:
     def __init__(
         self,
         llm_client,
-        config: Optional[LogProbConfig] = None,
-        on_output_callback: Optional[Callable[[RankedOutput], None]] = None,
+        config: Optional["LogProbConfig"] = None,
+        on_output_callback: Optional[Callable[["RankedOutput"], None]] = None,
     ):
         """
         Initialize the ranker with the specified LLM client and configuration.
@@ -105,13 +107,14 @@ class LogProbRanker:
         self.llm_client = llm_client
         self.config = config or LogProbConfig()
         self.on_output_callback = on_output_callback
+        self.logger = logging.getLogger(__name__)
 
         # Extract attribute names from the template
         self.attributes = extract_template_attributes(self.config.template)
 
     async def generate_and_evaluate_output(
         self, prompt: str, index: int
-    ) -> Optional[RankedOutput]:
+    ) -> Optional["RankedOutput"]:
         """
         Generate a single output and evaluate it according to the criteria template.
 
@@ -212,10 +215,10 @@ class LogProbRanker:
 
         except Exception as e:
             # Log error and return None to indicate failure
-            print(f"Error generating output {index}: {str(e)}")
+            self.logger.error("Error generating output %d: %s", index, str(e))
             return None
 
-    async def rank_outputs(self, prompt: str) -> List[RankedOutput]:
+    async def rank_outputs(self, prompt: str) -> List["RankedOutput"]:
         """
         Generate multiple outputs for the prompt and rank them by log probability.
 
@@ -251,7 +254,7 @@ class LogProbRanker:
 
         return sorted_results
 
-    def rank_outputs_sync(self, prompt: str) -> List[RankedOutput]:
+    def rank_outputs_sync(self, prompt: str) -> List["RankedOutput"]:
         """
         Synchronous version of rank_outputs.
 
@@ -303,7 +306,7 @@ class LogProbRanker:
                 ]
             }
         except Exception as e:
-            print(f"Error in LiteLLM completion: {str(e)}")
+            self.logger.error("Error in LiteLLM completion: %s", str(e)) 
             raise
 
 
@@ -319,8 +322,8 @@ class LiteLLMAdapter(LogProbRanker):
         self,
         model: str,
         api_key: Optional[str] = None,
-        config: Optional[LogProbConfig] = None,
-        on_output_callback: Optional[Callable[[RankedOutput], None]] = None,
+        config: Optional["LogProbConfig"] = None,
+        on_output_callback: Optional[Callable[["RankedOutput"], None]] = None,
         **kwargs,
     ):
         """
@@ -374,5 +377,9 @@ class LiteLLMAdapter(LogProbRanker):
                 ]
             }
         except Exception as e:
-            print(f"Error in LiteLLM completion with model {self.model}: {str(e)}")
+            self.logger.error(
+                "Error in LiteLLM completion with model %s: %s", 
+                self.model, 
+                str(e)
+            )
             raise
