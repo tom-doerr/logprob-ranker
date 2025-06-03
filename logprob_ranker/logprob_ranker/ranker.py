@@ -306,7 +306,7 @@ class LogProbRanker:
                 ]
             }
         except Exception as e:
-            self.logger.error("Error in LiteLLM completion: %s", str(e)) 
+            self.logger.error("Error in LiteLLM completion: %s", str(e))
             raise
 
 
@@ -378,8 +378,6 @@ class LiteLLMAdapter(LogProbRanker):
             }
         except Exception as e:
             self.logger.error(
-                "Error in LiteLLM completion with model %s: %s", 
-                self.model, 
-                str(e)
+                "Error in LiteLLM completion with model %s: %s", self.model, str(e)
             )
             raise
