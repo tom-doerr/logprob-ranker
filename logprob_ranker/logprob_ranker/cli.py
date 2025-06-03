@@ -198,6 +198,9 @@ async def run_rank_command(args: argparse.Namespace) -> None:
         config.template = template
 
     # Create LiteLLM adapter
+    # For OpenRouter, prepend 'openrouter/' to model name
+    if provider == "openrouter" and not model.startswith("openrouter/"):
+        model = f"openrouter/{model}"
     ranker = LiteLLMAdapter(
         model=model,
         api_key=api_key,
