@@ -2,7 +2,12 @@
 Utility functions for the LogProb ranker package.
 """
 
-from .ranker import LLMGenerationError, EvaluationParseError
+from .ranker import (
+    LLMGenerationError, 
+    EvaluationParseError,
+    LogprobsNotAvailableError,
+    MalformedLogprobsError
+)
 import json
 import re
 from typing import Dict, Any, List, Optional # TypeVar removed

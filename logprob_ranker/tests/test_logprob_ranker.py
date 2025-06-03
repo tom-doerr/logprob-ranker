@@ -6,7 +6,9 @@ from typing import List, Dict, Any, Optional
 
 from logprob_ranker.logprob_ranker.ranker import (
     LogProbRanker, LogProbConfig, RankedOutput, 
-    LLMGenerationError, ChatCompletionParams, LiteLLMAdapter
+    LLMGenerationError, LogprobsNotAvailableError,
+    MalformedLogprobsError, ChatCompletionParams, 
+    LiteLLMAdapter
 )
 
 # Helper to run async tests
