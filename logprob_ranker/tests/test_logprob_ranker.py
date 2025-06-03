@@ -4,7 +4,10 @@ from .test_utils import run_async_test
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import List, Dict, Any, Optional
 
-from logprob_ranker.logprob_ranker.ranker import LogProbRanker, LogProbConfig, RankedOutput, LLMGenerationError, ChatCompletionParams
+from logprob_ranker.logprob_ranker.ranker import (
+    LogProbRanker, LogProbConfig, RankedOutput, LLMGenerationError,
+    ChatCompletionParams, LiteLLMAdapter
+)
 
 # Helper to run async tests
 
