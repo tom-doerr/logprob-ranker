@@ -115,7 +115,7 @@ async def main():
         print("2. Evaluate each variant using the same API")
         print("3. Calculate logprob scores and rank the outputs")
         print("4. Return the results sorted by score")
-        
+
         # Example usage that would work with real API credentials
         # result = adapter.rank_outputs_sync(prompt)
         # for i, output in enumerate(result):
