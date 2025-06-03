@@ -1,3 +1,6 @@
+[MASTER]
+max-module-lines=150
+
 [MESSAGES CONTROL]
 # Disable specific Pylint messages
 # C0114: Missing module docstring
