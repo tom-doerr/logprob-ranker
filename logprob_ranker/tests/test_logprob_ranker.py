@@ -198,5 +198,122 @@ class TestLogProbRankerScoring(unittest.TestCase):
         run_async_test(self._async_test_simple_successful_scoring)
 
 
+# ===== Tests from test_async_basic.py =====
+class TestAsyncBasic(unittest.TestCase):
+    """Basic tests for the async methods in LogProbRanker."""
+
+    def setUp(self):
+        self.config = LogProbConfig(
+            num_variants=2,
+            temperature=0.7,
+            max_tokens=100,
+            template='{"test": LOGPROB_TRUE}'
+        )
+        self.ranker = LogProbRanker(llm_client=MagicMock(), config=self.config)
+
+    async def test_generate_output(self):
+        # Mock the _create_chat_completion method
+        with patch.object(self.ranker, '_create_chat_completion', new_callable=AsyncMock) as mock_create:
+            mock_create.return_value = {
+                "content": "Test output",
+                "average_token_logprob": -0.5
+            }
+            output = await self.ranker.generate_output("Test prompt", 0)
+            self.assertEqual(output, "Test output")
+
+    def test_generate_output_sync(self):
+        with patch.object(self.ranker, 'generate_output', new_callable=AsyncMock) as mock_generate:
+            mock_generate.return_value = "Test output"
+            output = self.ranker.generate_output_sync("Test prompt", 0)
+            self.assertEqual(output, "Test output")
+
+    async def test_rank_outputs(self):
+        with patch.object(self.ranker, 'generate_and_evaluate_output', new_callable=AsyncMock) as mock_gen_eval:
+            mock_gen_eval.side_effect = [
+                RankedOutput(output="Output 1", logprob=-0.1, index=0),
+                RankedOutput(output="Output 2", logprob=-0.2, index=1)
+            ]
+            results = await self.ranker.rank_outputs("Test prompt")
+            self.assertEqual(len(results), 2)
+            self.assertEqual(results[0].output, "Output 1")
+            self.assertEqual(results[1].output, "Output 2")
+
+    def test_rank_outputs_sync(self):
+        with patch.object(self.ranker, 'rank_outputs', new_callable=AsyncMock) as mock_rank:
+            mock_rank.return_value = [
+                RankedOutput(output="Output 1", logprob=-0.1, index=0),
+                RankedOutput(output="Output 2", logprob=-0.2, index=1)
+            ]
+            results = self.ranker.rank_outputs_sync("Test prompt")
+            self.assertEqual(len(results), 2)
+            self.assertEqual(results[0].output, "Output 1")
+
+# ===== Tests from test_litellm_basic.py =====
+class TestLiteLLMBasic(unittest.TestCase):
+    """Basic tests for the LiteLLMAdapter."""
+
+    def setUp(self):
+        self.config = LogProbConfig(
+            num_variants=2,
+            temperature=0.7,
+            max_tokens=100,
+            template='{"test": LOGPROB_TRUE}'
+        )
+        self.adapter = LiteLLMAdapter(model="gpt-3.5-turbo", api_key="test-key", config=self.config)
+
+    @patch('litellm.acompletion', new_callable=AsyncMock)
+    async def test_create_chat_completion(self, mock_acomplete):
+        mock_acomplete.return_value = {
+            "choices": [{"message": {"content": "Test output"}}]
+        }
+        params = ChatCompletionParams(
+            messages=[{"role": "user", "content": "Test"}],
+            temperature=0.7,
+            max_tokens=100,
+            top_p=1.0
+        )
+        response = await self.adapter._create_chat_completion(params)
+        self.assertEqual(response["content"], "Test output")
+
+    @patch('litellm.acompletion', new_callable=AsyncMock)
+    async def test_evaluate_text(self, mock_acomplete):
+        mock_acomplete.return_value = {
+            "choices": [{"message": {"content": "Test output"}}]
+        }
+        result = await self.adapter.evaluate_text(
+            prompt_messages=[{"role": "user", "content": "Test"}],
+            text_to_evaluate="Test text"
+        )
+        self.assertEqual(result.text_evaluated, "Test output")
+
+# ===== Tests from test_ranker.py =====
+class TestLogProbRankerAdditional(unittest.TestCase):
+    """Additional tests for the LogProbRanker class."""
+
+    def setUp(self):
+        self.config = LogProbConfig(
+            num_variants=2,
+            temperature=0.7,
+            max_tokens=100,
+            template='{"test": LOGPROB_TRUE}'
+        )
+        self.ranker = LogProbRanker(llm_client=MagicMock(), config=self.config)
+
+    async def test_generate_and_evaluate_output(self):
+        with patch.object(self.ranker, '_create_chat_completion', new_callable=AsyncMock) as mock_create:
+            mock_create.side_effect = [
+                {"content": "Generated output", "average_token_logprob": -0.5},
+                {"content": '{"test": true}', "average_token_logprob": -0.1}
+            ]
+            ranked_output = await self.ranker.generate_and_evaluate_output("Test prompt", 0)
+            self.assertEqual(ranked_output.output, "Generated output")
+            self.assertEqual(ranked_output.logprob, -0.1)
+
+    async def test_handle_all_failures(self):
+        with patch.object(self.ranker, 'generate_and_evaluate_output', new_callable=AsyncMock) as mock_gen_eval:
+            mock_gen_eval.return_value = None
+            with self.assertRaises(RuntimeError):
+                await self.ranker.rank_outputs("Test prompt")
+
 if __name__ == '__main__':
     unittest.main()
