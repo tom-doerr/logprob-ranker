@@ -12,24 +12,10 @@ from .ranker import (
     LiteLLMAdapter
 )
 
-# Import OpenRouter adapter
-try:
-    from .openrouter import OpenRouterAdapter, get_full_model_name
-    __all__ = [
-        "LogProbRanker",
-        "LogProbConfig",
-        "RankedOutput",
-        "AttributeScore",
-        "LiteLLMAdapter",
-        "OpenRouterAdapter",
-        "get_full_model_name"
-    ]
-except ImportError:
-    # If litellm is not installed, OpenRouter won't be available
-    __all__ = [
-        "LogProbRanker",
-        "LogProbConfig",
-        "RankedOutput",
-        "AttributeScore",
-        "LiteLLMAdapter"
-    ]
+__all__ = [
+    "LogProbRanker",
+    "LogProbConfig",
+    "RankedOutput",
+    "AttributeScore",
+    "LiteLLMAdapter"
+]

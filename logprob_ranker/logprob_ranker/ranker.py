@@ -295,33 +295,8 @@ class LogProbRanker:
         Returns:
             The raw response from the LLM client
         """
-        # Use LiteLLM to handle the completion request
-        model = self.model if hasattr(self, "model") else "gpt-3.5-turbo"
-
-        # Make the completion request
-        try:
-            response = await litellm.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                top_p=top_p,
-            )
-
-            # Return in standardized format
-            return {
-                "choices": [
-                    {
-                        "message": {
-                            "role": response.choices[0].message.role,
-                            "content": response.choices[0].message.content,
-                        }
-                    }
-                ]
-            }
-        except Exception as e:
-            self.logger.error("Error in LiteLLM completion: %s", str(e))
-            raise
+        """Create a chat completion using LiteLLM. Overridden in LiteLLMAdapter."""
+        raise NotImplementedError("This method should be implemented in subclasses")
 
 
 class LiteLLMAdapter(LogProbRanker):
