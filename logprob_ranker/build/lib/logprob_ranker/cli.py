@@ -13,9 +13,8 @@ from .ranker import (
     LogProbRanker, 
     LogProbConfig, 
     RankedOutput, 
-    AttributeScore, 
-    OpenAIAdapter,
-    AnthropicAdapter
+    AttributeScore,
+    LiteLLMAdapter
 )
 from .utils import serialize_ranked_output
 
@@ -85,43 +84,14 @@ def load_template_from_file(file_path: str) -> Optional[str]:
         return None
 
 
-def create_client(provider: str, api_key: Optional[str]) -> Any:
-    """Create an API client based on the provider."""
+def get_model(provider: str) -> str:
+    """Get a default model based on provider."""
     if provider == "openai":
-        # Check for API key
-        key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not key:
-            print("Error: OpenAI API key not provided. Please set OPENAI_API_KEY environment variable or use --api-key.")
-            sys.exit(1)
-            
-        try:
-            from openai import OpenAI
-            return OpenAI(api_key=key)
-        except ImportError:
-            print("Error: OpenAI package not installed. Install with: pip install \"logprob-ranker[openai]\"")
-            sys.exit(1)
-            
+        return "gpt-3.5-turbo"
     elif provider == "anthropic":
-        # Check for API key
-        key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        if not key:
-            print("Error: Anthropic API key not provided. Please set ANTHROPIC_API_KEY environment variable or use --api-key.")
-            sys.exit(1)
-            
-        try:
-            from anthropic import Anthropic
-            return Anthropic(api_key=key)
-        except ImportError:
-            print("Error: Anthropic package not installed. Install with: pip install \"logprob-ranker[anthropic]\"")
-            sys.exit(1)
-            
-    elif provider == "custom":
-        print("Custom provider requires implementing your own adapter. See examples/custom_llm_adapter.py.")
-        sys.exit(1)
-        
+        return "claude-2"
     else:
-        print(f"Error: Unsupported provider: {provider}")
-        sys.exit(1)
+        return "gpt-3.5-turbo"  # default
 
 
 def on_output_generated(output: RankedOutput) -> None:
@@ -144,9 +114,6 @@ async def run_rank_command(args: argparse.Namespace) -> None:
         if not template:
             return
     
-    # Create client
-    client = create_client(args.provider, args.api_key)
-    
     # Create config
     config = LogProbConfig(
         num_variants=args.variants,
@@ -158,14 +125,17 @@ async def run_rank_command(args: argparse.Namespace) -> None:
     # Use template if provided
     if template:
         config.template = template
+
+    # Get model based on provider
+    model = get_model(args.provider)
     
-    # Create ranker based on provider
-    if args.provider == "openai":
-        ranker = OpenAIAdapter(llm_client=client, config=config, on_output_callback=on_output_generated)
-    elif args.provider == "anthropic":
-        ranker = AnthropicAdapter(llm_client=client, config=config, on_output_callback=on_output_generated)
-    else:
-        ranker = LogProbRanker(llm_client=client, config=config, on_output_callback=on_output_generated)
+    # Create the LiteLLMAdapter
+    ranker = LiteLLMAdapter(
+        model=model,
+        api_key=args.api_key,
+        config=config,
+        on_output_callback=on_output_generated
+    )
     
     # Run ranking
     print(f"Generating and ranking {args.variants} outputs for: {args.prompt}")
