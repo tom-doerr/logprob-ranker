@@ -3,17 +3,14 @@ Command-line interface for the LogProb ranker.
 """
 
 import os
-import sys
 import json
 import argparse
 import asyncio
-from typing import Any, Optional, List
+from typing import Optional
 
 from .ranker import (
-    LogProbRanker, 
     LogProbConfig, 
-    RankedOutput, 
-    AttributeScore,
+    RankedOutput,
     LiteLLMAdapter
 )
 from .utils import serialize_ranked_output
@@ -77,9 +74,9 @@ def load_template_from_file(file_path: str) -> Optional[str]:
         return None
         
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding='utf-8') as f:
             return f.read()
-    except Exception as e:
+    except OSError as e:
         print(f"Error loading template file: {e}")
         return None
 
@@ -88,10 +85,9 @@ def get_model(provider: str) -> str:
     """Get a default model based on provider."""
     if provider == "openai":
         return "gpt-3.5-turbo"
-    elif provider == "anthropic":
+    if provider == "anthropic":
         return "claude-2"
-    else:
-        return "gpt-3.5-turbo"  # default
+    return "gpt-3.5-turbo"  # default
 
 
 def on_output_generated(output: RankedOutput) -> None:
@@ -153,12 +149,12 @@ async def run_rank_command(args: argparse.Namespace) -> None:
     # Save results to file if requested
     if args.output:
         try:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding='utf-8') as f:
                 # Convert results to serializable format
                 json_results = [serialize_ranked_output(r) for r in results]
                 json.dump(json_results, f, indent=2)
             print(f"\nResults saved to {args.output}")
-        except Exception as e:
+        except OSError as e:
             print(f"Error saving results: {e}")
 
 

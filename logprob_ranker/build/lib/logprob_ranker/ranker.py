@@ -3,10 +3,8 @@ Core implementation of the LogProb ranking algorithm for evaluating LLM outputs.
 """
 
 import asyncio
-import json
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Callable, Union
-from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import List, Optional, Callable
 from .utils import (
     parse_evaluation_json,
     extract_template_attributes,
@@ -60,7 +58,10 @@ class LogProbConfig:
     
     # Prompts
     system_prompt: str = "You are a creative assistant that provides a single concise response."
-    evaluation_prompt: str = "You are an evaluator. Evaluate the following text based on the criteria.\nReturn ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+    evaluation_prompt: str = (
+        "You are an evaluator. Evaluate the following text based on the criteria.\n"
+        "Return ONLY a JSON object with your evaluation. Use JSON boolean values (true/false)."
+    )
 
 
 class LogProbRanker:
