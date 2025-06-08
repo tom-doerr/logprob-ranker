@@ -9,7 +9,7 @@ import asyncio
 from typing import Optional
 
 from .ranker import (
-    LogProbConfig, 
+    LogProbConfig,
     RankedOutput,
     LiteLLMAdapter
 )
@@ -21,9 +21,9 @@ def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="LogProb Ranker: Rank LLM outputs using log probability scoring"
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
-    
+
     # Rank command
     rank_parser = subparsers.add_parser(
         "rank", help="Generate and rank outputs for a prompt"
@@ -63,7 +63,7 @@ def setup_parser() -> argparse.ArgumentParser:
         "--threads", type=int, default=1,
         help="Number of parallel threads to use (default: 1)"
     )
-    
+
     return parser
 
 
@@ -72,7 +72,7 @@ def load_template_from_file(file_path: str) -> Optional[str]:
     if not os.path.exists(file_path):
         print(f"Error: Template file not found: {file_path}")
         return None
-        
+
     try:
         with open(file_path, "r", encoding='utf-8') as f:
             return f.read()
@@ -94,7 +94,7 @@ def on_output_generated(output: RankedOutput) -> None:
     """Called when an output is generated and evaluated."""
     print(f"\nOutput #{output.index + 1} (Score: {output.logprob:.3f}):")
     print(f"{output.output[:100]}...")  # Show first 100 chars
-    
+
     if output.attribute_scores:
         print("Attribute scores:")
         for attr in output.attribute_scores:
@@ -109,7 +109,7 @@ async def run_rank_command(args: argparse.Namespace) -> None:
         template = load_template_from_file(args.template)
         if not template:
             return
-    
+
     # Create config
     config = LogProbConfig(
         num_variants=args.variants,
@@ -117,14 +117,14 @@ async def run_rank_command(args: argparse.Namespace) -> None:
         max_tokens=args.max_tokens,
         thread_count=args.threads
     )
-    
+
     # Use template if provided
     if template:
         config.template = template
 
     # Get model based on provider
     model = get_model(args.provider)
-    
+
     # Create the LiteLLMAdapter
     ranker = LiteLLMAdapter(
         model=model,
@@ -132,20 +132,20 @@ async def run_rank_command(args: argparse.Namespace) -> None:
         config=config,
         on_output_callback=on_output_generated
     )
-    
+
     # Run ranking
     print(f"Generating and ranking {args.variants} outputs for: {args.prompt}")
     print(f"Using {args.provider} API with temperature {args.temperature}")
     print("This may take a minute...")
-    
+
     results = await ranker.rank_outputs(args.prompt)
-    
+
     # Display results
     print("\n===== RANKED RESULTS =====")
     for i, result in enumerate(results):
         print(f"\n{i+1}. Score: {result.logprob:.3f}")
         print(f"Output: {result.output}")
-    
+
     # Save results to file if requested
     if args.output:
         try:
@@ -162,11 +162,11 @@ def main() -> None:
     """Main entry point."""
     parser = setup_parser()
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return
-    
+
     if args.command == "rank":
         asyncio.run(run_rank_command(args))
     else:
