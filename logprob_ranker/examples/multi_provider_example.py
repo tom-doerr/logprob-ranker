@@ -84,6 +84,10 @@ async def rank_with_provider(provider: str, model: str, prompt: str,
         on_output(output, provider, model)
     
     # Create ranker using LiteLLM adapter with the specified model
+    # For OpenRouter, prepend 'openrouter/' to model name
+    if provider == "openrouter" and not model.startswith("openrouter/"):
+        model = f"openrouter/{model}"
+
     ranker = LiteLLMAdapter(
         model=model,
         api_key=api_key,
