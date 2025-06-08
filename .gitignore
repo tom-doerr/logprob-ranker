@@ -4,3 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+context.txt
+custom_aider_history.md
+aider_history.md
+.aider*
