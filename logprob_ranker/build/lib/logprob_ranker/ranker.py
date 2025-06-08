@@ -79,9 +79,9 @@ class LogProbRanker:
         Initialize the ranker with the specified LLM client and configuration.
         
         Args:
-            llm_client: A client for interacting with the language model API (e.g., OpenAI client)
+            llm_client: A client for interacting with the language model API
             config: Optional configuration settings
-            on_output_callback: Optional callback function called for each output as it's generated and ranked
+            on_output_callback: Optional callback function for outputs
         """
         self.llm_client = llm_client
         self.config = config or LogProbConfig()
@@ -90,6 +90,44 @@ class LogProbRanker:
         # Extract attribute names from the template
         self.attributes = extract_template_attributes(self.config.template)
     
+    async def _evaluate_output(self, generated_text: str) -> tuple:
+        """Helper method to evaluate generated text."""
+        # Create evaluation prompt
+        evaluation_prompt = format_evaluation_prompt(
+            template=self.config.template,
+            generated_text=generated_text,
+            eval_prompt=self.config.evaluation_prompt
+        )
+        
+        # Evaluate the generated content
+        evaluation_messages = [
+            {"role": "system", "content": self.config.evaluation_prompt},
+            {"role": "user", "content": evaluation_prompt}
+        ]
+        
+        evaluation_response = await self._create_chat_completion(
+            messages=evaluation_messages,
+            temperature=0.0,  # Use low temperature for consistent evaluations
+            max_tokens=500,
+            top_p=1.0
+        )
+        
+        # Extract evaluation
+        evaluation_text = evaluation_response["choices"][0]["message"]["content"]
+        evaluation_json = parse_evaluation_json(evaluation_text)
+        
+        # Calculate scores
+        attribute_scores = []
+        for attr in self.attributes:
+            # Convert boolean to score (true = 1.0, false = 0.0)
+            score = 1.0 if evaluation_json.get(attr, False) else 0.0
+            attribute_scores.append(AttributeScore(name=attr, score=score))
+        
+        # Calculate overall logprob score
+        logprob = calculate_logprob_score(attribute_scores)
+        
+        return attribute_scores, logprob, evaluation_text
+
     async def generate_and_evaluate_output(self, prompt: str, index: int) -> Optional[RankedOutput]:
         """
         Generate a single output and evaluate it according to the criteria template.
@@ -118,39 +156,8 @@ class LogProbRanker:
             # Extract generated content
             generated_text = generation_response["choices"][0]["message"]["content"]
             
-            # Create evaluation prompt
-            evaluation_prompt = format_evaluation_prompt(
-                template=self.config.template,
-                generated_text=generated_text,
-                eval_prompt=self.config.evaluation_prompt
-            )
-            
-            # Evaluate the generated content
-            evaluation_messages = [
-                {"role": "system", "content": self.config.evaluation_prompt},
-                {"role": "user", "content": evaluation_prompt}
-            ]
-            
-            evaluation_response = await self._create_chat_completion(
-                messages=evaluation_messages,
-                temperature=0.0,  # Use low temperature for consistent evaluations
-                max_tokens=500,
-                top_p=1.0
-            )
-            
-            # Extract evaluation
-            evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-            evaluation_json = parse_evaluation_json(evaluation_text)
-            
-            # Calculate scores
-            attribute_scores = []
-            for attr in self.attributes:
-                # Convert boolean to score (true = 1.0, false = 0.0)
-                score = 1.0 if evaluation_json.get(attr, False) else 0.0
-                attribute_scores.append(AttributeScore(name=attr, score=score))
-            
-            # Calculate overall logprob score
-            logprob = calculate_logprob_score(attribute_scores)
+            # Evaluate the output
+            attribute_scores, logprob, evaluation_text = await self._evaluate_output(generated_text)
             
             # Create result
             result = RankedOutput(
@@ -167,7 +174,7 @@ class LogProbRanker:
                 
             return result
         
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError) as e:
             # Log error and return None to indicate failure
             print(f"Error generating output {index}: {str(e)}")
             return None
