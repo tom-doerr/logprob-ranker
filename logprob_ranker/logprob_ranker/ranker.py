@@ -52,19 +52,6 @@ class RankedOutput:
         # Sum all attribute scores
         return sum(attr.score for attr in self.attribute_scores)
 
-    @property
-    def total_score(self) -> float:
-        """
-        Calculate the total score from attribute scores.
-
-        If no attribute scores are available, returns the logprob score.
-        """
-        if not self.attribute_scores:
-            return self.logprob
-
-        # Sum all attribute scores
-        return sum(attr.score for attr in self.attribute_scores)
-
 
 @dataclass
 class LogProbConfig:
@@ -115,7 +102,8 @@ class LogProbRanker:
         Args:
             llm_client: A client for interacting with the language model API (e.g., OpenAI client)
             config: Optional configuration settings
-            on_output_callback: Optional callback function called for each output as it's generated and ranked
+            on_output_callback: Optional callback function called for each output
+                as it's generated and ranked
         """
         self.llm_client = llm_client
         self.config = config or LogProbConfig()
@@ -180,7 +168,7 @@ class LogProbRanker:
 
             try:
                 evaluation_json = parse_evaluation_json(evaluation_text)
-            except Exception:
+            except (ValueError, TypeError, KeyError):
                 evaluation_json = {}
 
             # Calculate scores
@@ -192,18 +180,21 @@ class LogProbRanker:
                     # Convert boolean to score (true = 1.0, false = 0.0)
                     score = 1.0 if evaluation_json.get(attr, False) else 0.0
                     # Add an explanation based on whether criterion was met
-                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
+                    explanation = (f"The output {'' if score > 0 else 'does not '}"
+                                   f"meets the {attr} criterion")
                     attribute_scores.append(
                         AttributeScore(name=attr, score=score, explanation=explanation)
                     )
 
-            # If no matches found with template attributes, use all attributes from the evaluation JSON
+            # If no matches found with template attributes, use all attributes
+            # from the evaluation JSON
             if not attribute_scores and evaluation_json:
                 for attr, value in evaluation_json.items():
                     # Convert boolean to score (true = 1.0, false = 0.0)
                     score = 1.0 if value else 0.0
                     # Add an explanation based on whether criterion was met
-                    explanation = f"The output {'' if score > 0 else 'does not '}meets the {attr} criterion"
+                    explanation = (f"The output {'' if score > 0 else 'does not '}"
+                                   f"meets the {attr} criterion")
                     attribute_scores.append(
                         AttributeScore(name=attr, score=score, explanation=explanation)
                     )
