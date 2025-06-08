@@ -54,7 +54,7 @@ class RankedOutput:
 
 
 @dataclass
-class LogProbConfig:
+class LogProbConfig:  # pylint: disable=too-many-instance-attributes
     """
     Configuration for the LogProb ranker.
     """
@@ -113,6 +113,85 @@ class LogProbRanker:
         # Extract attribute names from the template
         self.attributes = extract_template_attributes(self.config.template)
 
+    async def _generate_output(self, prompt: str) -> str:
+        """Generate text from the given prompt."""
+        generation_messages = [
+            {"role": "system", "content": self.config.system_prompt},
+            {"role": "user", "content": prompt},
+        ]
+
+        generation_response = await self._create_chat_completion(
+            messages=generation_messages,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            top_p=self.config.top_p,
+        )
+
+        return generation_response["choices"][0]["message"]["content"]
+
+    async def _evaluate_output(self, generated_text: str) -> tuple:
+        """Evaluate generated text and return scores."""
+        # Create evaluation prompt
+        evaluation_prompt = format_evaluation_prompt(
+            template=self.config.template,
+            generated_text=generated_text,
+            eval_prompt=self.config.evaluation_prompt,
+        )
+
+        # Evaluate the generated content
+        evaluation_messages = [
+            {"role": "system", "content": self.config.evaluation_prompt},
+            {"role": "user", "content": evaluation_prompt},
+        ]
+
+        evaluation_response = await self._create_chat_completion(
+            messages=evaluation_messages,
+            temperature=0.0,  # Use low temperature for consistent evaluations
+            max_tokens=500,
+            top_p=1.0,
+        )
+
+        # Extract evaluation
+        evaluation_text = evaluation_response["choices"][0]["message"]["content"]
+        evaluation_json = {}
+        try:
+            evaluation_json = parse_evaluation_json(evaluation_text)
+        except (ValueError, TypeError, KeyError):
+            pass
+
+        # Calculate scores
+        attribute_scores = []
+
+        # First check if we have attributes in the evaluation JSON that match our template
+        for attr in self.attributes:
+            if attr in evaluation_json:
+                # Convert boolean to score (true = 1.0, false = 0.0)
+                score = 1.0 if evaluation_json.get(attr, False) else 0.0
+                # Add an explanation based on whether criterion was met
+                explanation = (f"The output {'' if score > 0 else 'does not '}"
+                               f"meets the {attr} criterion")
+                attribute_scores.append(
+                    AttributeScore(name=attr, score=score, explanation=explanation)
+                )
+
+        # If no matches found with template attributes, use all attributes
+        # from the evaluation JSON
+        if not attribute_scores and evaluation_json:
+            for attr, value in evaluation_json.items():
+                # Convert boolean to score (true = 1.0, false = 0.0)
+                score = 1.0 if value else 0.0
+                # Add an explanation based on whether criterion was met
+                explanation = (f"The output {'' if score > 0 else 'does not '}"
+                               f"meets the {attr} criterion")
+                attribute_scores.append(
+                    AttributeScore(name=attr, score=score, explanation=explanation)
+                )
+
+        # Calculate overall logprob score
+        logprob = calculate_logprob_score(attribute_scores)
+
+        return attribute_scores, logprob, evaluation_text
+
     async def generate_and_evaluate_output(
         self, prompt: str, index: int
     ) -> Optional["RankedOutput"]:
@@ -128,79 +207,10 @@ class LogProbRanker:
         """
         try:
             # Generate content
-            generation_messages = [
-                {"role": "system", "content": self.config.system_prompt},
-                {"role": "user", "content": prompt},
-            ]
+            generated_text = await self._generate_output(prompt)
 
-            generation_response = await self._create_chat_completion(
-                messages=generation_messages,
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens,
-                top_p=self.config.top_p,
-            )
-
-            # Extract generated content
-            generated_text = generation_response["choices"][0]["message"]["content"]
-
-            # Create evaluation prompt
-            evaluation_prompt = format_evaluation_prompt(
-                template=self.config.template,
-                generated_text=generated_text,
-                eval_prompt=self.config.evaluation_prompt,
-            )
-
-            # Evaluate the generated content
-            evaluation_messages = [
-                {"role": "system", "content": self.config.evaluation_prompt},
-                {"role": "user", "content": evaluation_prompt},
-            ]
-
-            evaluation_response = await self._create_chat_completion(
-                messages=evaluation_messages,
-                temperature=0.0,  # Use low temperature for consistent evaluations
-                max_tokens=500,
-                top_p=1.0,
-            )
-
-            # Extract evaluation
-            evaluation_text = evaluation_response["choices"][0]["message"]["content"]
-
-            try:
-                evaluation_json = parse_evaluation_json(evaluation_text)
-            except (ValueError, TypeError, KeyError):
-                evaluation_json = {}
-
-            # Calculate scores
-            attribute_scores = []
-
-            # First check if we have attributes in the evaluation JSON that match our template
-            for attr in self.attributes:
-                if attr in evaluation_json:
-                    # Convert boolean to score (true = 1.0, false = 0.0)
-                    score = 1.0 if evaluation_json.get(attr, False) else 0.0
-                    # Add an explanation based on whether criterion was met
-                    explanation = (f"The output {'' if score > 0 else 'does not '}"
-                                   f"meets the {attr} criterion")
-                    attribute_scores.append(
-                        AttributeScore(name=attr, score=score, explanation=explanation)
-                    )
-
-            # If no matches found with template attributes, use all attributes
-            # from the evaluation JSON
-            if not attribute_scores and evaluation_json:
-                for attr, value in evaluation_json.items():
-                    # Convert boolean to score (true = 1.0, false = 0.0)
-                    score = 1.0 if value else 0.0
-                    # Add an explanation based on whether criterion was met
-                    explanation = (f"The output {'' if score > 0 else 'does not '}"
-                                   f"meets the {attr} criterion")
-                    attribute_scores.append(
-                        AttributeScore(name=attr, score=score, explanation=explanation)
-                    )
-
-            # Calculate overall logprob score
-            logprob = calculate_logprob_score(attribute_scores)
+            # Evaluate the output
+            attribute_scores, logprob, evaluation_text = await self._evaluate_output(generated_text)
 
             # Create result
             result = RankedOutput(
@@ -217,7 +227,7 @@ class LogProbRanker:
 
             return result
 
-        except Exception as e:
+        except (RuntimeError, ValueError, TypeError, KeyError, asyncio.TimeoutError) as e:
             # Log error and return None to indicate failure
             self.logger.error("Error generating output %d: %s", index, str(e))
             return None
