@@ -52,6 +52,19 @@ class RankedOutput:
         # Sum all attribute scores
         return sum(attr.score for attr in self.attribute_scores)
 
+    @property
+    def total_score(self) -> float:
+        """
+        Calculate the total score from attribute scores.
+
+        If no attribute scores are available, returns the logprob score.
+        """
+        if not self.attribute_scores:
+            return self.logprob
+
+        # Sum all attribute scores
+        return sum(attr.score for attr in self.attribute_scores)
+
 
 @dataclass
 class LogProbConfig:
